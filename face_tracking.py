@@ -1,10 +1,18 @@
 import cv2
-import numpy as np
 import face_recognition
+from argparse import ArgumentParser
+
+parser = ArgumentParser(description="Track faces with bounding boxes")
 
 
+parser.add_argument('--camera', '-c', type=int, default=0, help="Choose the camera for tracking" )
 
-cap = cv2.VideoCapture(0)
+args = parser.parse_args()
+
+# Set this value to change the Camera ID
+CAMERA_ID = args.camera
+
+cap = cv2.VideoCapture(CAMERA_ID)
 scaling_factor = 0.5
 process_this_frame = True
 face_locations = []
@@ -14,7 +22,7 @@ while True:
     
     if process_this_frame:
     
-        small_frame = cv2.resize(frame, (0, 0), fx=0.25, fy=0.25)
+        small_frame = cv2.resize(frame, (0, 0), fx=0.25, fy=0.25) #type: ignore
    
         face_locations = face_recognition.face_locations(small_frame)
 
