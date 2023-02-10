@@ -4,6 +4,8 @@ A project dedicated to creating a fully autonomous, AI-powered Nerf gun. The tur
 
 # Dependencies
 
+The project will need the following to be installed before even starting to install packages with pip:
+
 - conda
 - bash
 - [CMake](https://cmake.org/download/)
