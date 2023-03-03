@@ -1,26 +1,11 @@
 # Autonomous Nerf Turret
 
-A project dedicated to creating a fully autonomous, AI-powered Nerf gun. The turret is equipped with a camera, allowing it to detect and track human targets. The code includes computer vision algorithms for object detection and tracking. 
+A project dedicated to creating a fully autonomous, AI-powered Nerf gun. The turret is equipped with a camera, allowing it to detect and track human targets. 
 
-# Dependencies
+## Project structure
 
-The project will need the following to be installed before even starting to install packages with pip:
+This project has a domain driven design where each domain lies in a folder in the root of the project. Each domain folder contains files that relate to the part of the project associated with that domain
 
-- conda
-- bash
-- [CMake](https://cmake.org/download/)
-
-# Get Started
-
-**Make sure to run the following commands in the project root directory.**
-
-
-- Initialize the environment when first using the project with:
-```bash
-source bin/init.sh
-```
-
-- On each session when coming back and working on the project activate the environment with:
-```bash
-source bin/activate.sh
-```
+For example:
+  - The **camera_vision** folder contains files related to the computer vision tasks associated with face tracking.
+  - The **stepper_motor** folder contains files related to the task of moving and controlling the stepper motor through the Arduino
