@@ -1,6 +1,6 @@
 # Python 3 server example
 from http.server import BaseHTTPRequestHandler, HTTPServer
-from typing import Optional
+from typing import Optional, Tuple
 import argparse
 import serial.tools.list_ports
 import json
@@ -35,15 +35,38 @@ def map_range(value=0, min_value=SLOWEST_HALF_STEP_MICROSECONDS, max_value=FASTE
     Returns:
         int: The value of the half step time in micro seconds to be sent to the stepper motor controller
     """
+    print("min_value", min_value)
+    print("max_value", max_value)
+    print("new_min_value", new_min_value)
+    print("new_max_value", new_max_value)
     
-    new_range = new_max_value - new_min_value
+    new_range = new_max_value - new_min_value    
+    print("new_range: ", new_range)
+
     original_range = max_value - min_value
+    print("original_range: ", original_range)
+
     scaling_factor = original_range / new_range
+    print("scaling_factor: ", scaling_factor)
+
     original_value = ((value - new_min_value) * scaling_factor) + min_value
+    print("original_value: ", original_value)
+
+    
     return round(original_value)
 
+def encode(isClockwise: bool = True, speed: int = 0) -> bytes:
+    print('Encoding', isClockwise, speed)
+    encoded_value = 0
+    if isClockwise:
+        encoded_value |= (1 << 7)  # Set the 8th bit to 1 for clockwise
+    encoded_value |= (speed & 0x0F)  # Mask the lower 4 bits for speed (0-10)
+    return encoded_value.to_bytes(1, byteorder='big')
 
-
+def decode(encoded_value: int) -> Tuple[bool, int]:
+    isClockwise = (encoded_value >> 7) & 1  # Extract the 8th bit for clockwise
+    speed = encoded_value & 0x0F  # Extract the lower 4 bits for speed (0-10)
+    return bool(isClockwise), speed
 
 try:
     # =========================== SERIAL ===========================================
@@ -75,13 +98,13 @@ try:
     if not serialInst.port:
         raise Exception("No Arduino Found")
 
-    serialInst.baudrate = 9600
-    
-
+    serialInst.baudrate = args.baud
     serialInst.open()
-    print("Connected to Serial Port: ", serialInst.port)
-    done_once = False
+    print("Connected to Serial Port:", serialInst.port, "at", serialInst.baudrate, "baud rate.")    
+
+    
     # ============================== SERVER ======================================
+    
     class MyServer(BaseHTTPRequestHandler):
         
         def do_GET(self):
@@ -104,20 +127,12 @@ try:
             
             # Parse the JSON data
             json_data = json.loads(data)
-            print('Recieved data', json_data)
+            print('json_data', json_data)
+            speed_in = json_data.get('speed', 0)
+            print('speed_in', speed_in)
+            print('mapped Speed', map_range(speed_in))
             
-            if "isClockwise" in json_data:
-                
-                serialInst.write(json.dumps({
-                    "isClockwise": json_data["isClockwise"]
-                }).encode())
-            
-            if "speed" in json_data:
-                
-                speed_in = round(json_data["speed"])
-                print('Got speed', speed_in)
-
-                if speed_in < SLOWEST_SPEED or speed_in > FASTEST_SPEED:
+            if speed_in and (speed_in < SLOWEST_SPEED or speed_in > FASTEST_SPEED):
                     # Send a response
                     self.send_response(400)
                     self.end_headers()
@@ -126,11 +141,10 @@ try:
                     Received a speed that was outside the min({SLOWEST_SPEED}) max({FASTEST_SPEED}) bounds: {speed_in}
                     """.encode())
                     return
-                else:
-                    serialInst.write(json.dumps({
-                        'stepUs': map_range(json_data["speed"])
-                    }).encode())
-            
+            print("Before Encoding: ", json_data.get("isClockwise", False), round(speed_in))
+            encoded_message = encode(json_data.get("isClockwise", False), round(speed_in))
+            print("Encoded Message: ", encoded_message)
+            serialInst.write(encoded_message)#.to_bytes(1, "big"))
             
             # # Send a response
             self.send_response(200)

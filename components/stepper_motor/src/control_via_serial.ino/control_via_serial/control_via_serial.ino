@@ -2,6 +2,7 @@
 #include <ArduinoJson.h>
 
 
+
 // Define stepper motor connections and steps per revolution:
 #define dirPin 2
 #define stepPin 3
@@ -37,73 +38,76 @@ bool isClockwise = false;
 bool alternator = false;
 
 /*
- * Alternates the PIN from HIGH to LOW on each half step
-*/
-unsigned long stepUs = 0;
-
-/*
 * Holds the value of the speed of the motor in RPM
 */
 byte rpm = 0;
 
+const int SLOWEST_HALF_STEP_MICROSECONDS = 17000;
+const int FASTEST_HALF_STEP_MICROSECONDS = 400;
+
+const byte SLOWEST_SPEED = 0;
+const byte FASTEST_SPEED = 10;
+
+class MotorSettings {
+public:
+  MotorSettings(bool clockwise, int speed) : isClockwise(clockwise), speed(speed) {}
+  bool isClockwise;
+  int speed;
+};
+
+MotorSettings decode(uint8_t encodedValue) {
+  bool isClockwise = (encodedValue >> 7) & 1; // Extract the 8th bit for clockwise
+  int speed = encodedValue & 0x0F; // Extract the lower 4 bits for speed (0-10)
+  return MotorSettings(isClockwise, speed);
+}
+
+int map_range(int value = 0, int min_value = SLOWEST_HALF_STEP_MICROSECONDS, int max_value = FASTEST_HALF_STEP_MICROSECONDS, int new_min_value = SLOWEST_SPEED, int new_max_value = FASTEST_SPEED) {
+    
+    int new_range = new_max_value - new_min_value;
+
+    int original_range = max_value - min_value;
+
+    float scaling_factor = (float)original_range / new_range;
+
+    float original_value = ((value - new_min_value) * scaling_factor) + min_value;
+
+    return int(original_value);
+}
+
 
 bool processSerialInput() {
-  unsigned long startOfSerialProcess = micros();
-  
-  int size_ = 0;
-  String payload;
+  if (Serial.available() > 0) {
+    unsigned long startOfSerialProcess = micros();
+    
+     // Read the encoded value from the serial port
+    uint8_t encodedValue = Serial.read();
+    
+    MotorSettings decodedValues = decode(encodedValue);
+    bool isClockwise = decodedValues.isClockwise;
+    int speed_in = decodedValues.speed;
+    int stepUs = map_range(speed_in);
 
-  if (Serial.available()) {
-    payload = Serial.readStringUntil('\n');
-  }
-
-  StaticJsonDocument<512> doc;
-  DeserializationError error = deserializeJson(doc, payload);
-
-  if (error) {
-//    Serial.println(error.c_str());
-    return false; // return an empty JSON document
-  }
-
-// // Print out json
-//  char buffer[100];
-//  serializeJsonPretty(doc, buffer);
-//  Serial.println("Received Motor config");
-//  Serial.println(buffer);
-
-  if (doc.containsKey("isClockwise")) {
-    isClockwise = doc["isClockwise"];
     if (isClockwise) {
-      digitalWrite(dirPin, HIGH);
+        digitalWrite(dirPin, HIGH);
     }
     else {
       digitalWrite(dirPin, LOW);
     }
-  }
-
-
-  if (doc.containsKey("stepUs")) {
-
-    
-    if (doc["stepUs"] <= slowestHalfStepUs && doc["stepUs"] >= quickestHalfStepUs) {
-      stepUs = doc["stepUs"];
+      
+    if (stepUs <= slowestHalfStepUs && stepUs >= quickestHalfStepUs) {
+      stepUs = stepUs;
     } else {
       stepUs = 0;
     }
-//    
-//    Serial.print("stepUs: ");
-//    Serial.println(stepUs);
-
-    timerIntervalUs = stepUs;
- 
-  }
-  meanSerialProcessingTimeUs = (meanSerialProcessingTimeUs + micros() - startOfSerialProcess) / 2;
-//  Serial.print("Time taken to process Serial(us): ");
-//  Serial.println( millis() - startOfSerialProcess);
-//  Serial.print("meanSerialProcessingTimeUs(us): ");
-//  Serial.println(meanSerialProcessingTimeUs);
   
-  return true;
+    timerIntervalUs = stepUs;
+   
+    meanSerialProcessingTimeUs = (meanSerialProcessingTimeUs + micros() - startOfSerialProcess) / 2;
+
+    return true;
+  } else {
+    return false;
+  }
 }
 
 void setup() {
@@ -120,7 +124,7 @@ void loop() {
   
   bool had_serial_input = processSerialInput();
 
-  if (rpm > 1 || stepUs > 1) {
+  if (timerIntervalUs > 1) {
 
     byte delay_time = had_serial_input ? meanSerialProcessingTimeUs : 0;
     
