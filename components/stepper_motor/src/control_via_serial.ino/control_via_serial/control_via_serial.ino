@@ -65,6 +65,7 @@ bool processSerialInput() {
     return false; // return an empty JSON document
   }
 
+// // Print out json
 //  char buffer[100];
 //  serializeJsonPretty(doc, buffer);
 //  Serial.println("Received Motor config");

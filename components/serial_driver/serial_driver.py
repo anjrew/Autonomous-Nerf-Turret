@@ -3,12 +3,14 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import Optional
 import argparse
 import serial.tools.list_ports
-from serial.tools.list_ports_common import ListPortInfo
 import json
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--set-port-man", action="store_true",dest="is_port_man", help="Set the port manually instead of using the default port through the command line prompt.")
+parser.add_argument("--set-port-man", action="store_true",dest="is_port_man", help="Set the serial port manually instead of using the default port through the command line prompt.")
+parser.add_argument("--port", help="Set the http server port.", default=5565)
+parser.add_argument("--baud", help="Set the Baud Rate of the serial communication.", default=9600)
+parser.add_argument("--host", help="Set the http server hostname.", default="localhost")
 args = parser.parse_args()
 
 webServer:Optional[HTTPServer] = None
@@ -38,7 +40,7 @@ def map_range(value=0, min_value=SLOWEST_HALF_STEP_MICROSECONDS, max_value=FASTE
     original_range = max_value - min_value
     scaling_factor = original_range / new_range
     original_value = ((value - new_min_value) * scaling_factor) + min_value
-    return original_value
+    return round(original_value)
 
 
 
@@ -51,8 +53,6 @@ try:
 
     portsList = []
 
-    
-    
     if args.is_port_man:
         
         print("\nSerial Port options: ")
@@ -63,9 +63,10 @@ try:
         val = None
         while val == None or int(val) >= len(portsList):
             val = input("Select Port: ")
-            if int(val) >= len(portsList):
+            if int(val) >= len(portsList) or int(val) < 0:
                 print("Invalid Port Selected")
-            serialInst.port = portsList[int(val or  0)]
+            else:
+                serialInst.port = portsList[int(val or  0)]
     else:
         for port in ports:
             if "Arduino" in (port.manufacturer or ""):
@@ -79,12 +80,8 @@ try:
 
     serialInst.open()
     print("Connected to Serial Port: ", serialInst.port)
-
+    done_once = False
     # ============================== SERVER ======================================
-
-    hostName = "localhost"
-    serverPort = 5565
-
     class MyServer(BaseHTTPRequestHandler):
         
         def do_GET(self):
@@ -98,16 +95,17 @@ try:
                              The json can also have a key of 'isClockwise' with a value of true or false for the direction of the motor.
                              """)
         
-        
+        # { 'isClockwise': True }
         def do_POST(self):
             # Get the content type and content length of the request
             content_length = int(self.headers.get('content-length', 0))
-            
             # Read the request data
             data = self.rfile.read(content_length)
             
             # Parse the JSON data
             json_data = json.loads(data)
+            print('Recieved data', json_data)
+            
             if "isClockwise" in json_data:
                 
                 serialInst.write(json.dumps({
@@ -116,8 +114,9 @@ try:
             
             if "speed" in json_data:
                 
-                speed_in = json_data["speed"]
-                
+                speed_in = round(json_data["speed"])
+                print('Got speed', speed_in)
+
                 if speed_in < SLOWEST_SPEED or speed_in > FASTEST_SPEED:
                     # Send a response
                     self.send_response(400)
@@ -129,19 +128,19 @@ try:
                     return
                 else:
                     serialInst.write(json.dumps({
-                        "stepUs": map_range(json_data["speed"])
+                        'stepUs': map_range(json_data["speed"])
                     }).encode())
             
             
-            # Send a response
+            # # Send a response
             self.send_response(200)
             self.end_headers()
             
-            serialInst.write(json.dumps(json_data).encode())
 
-    if __name__ == "__main__":        
-        webServer = HTTPServer((hostName, serverPort), MyServer)
-        print("Server started http://%s:%s" % (hostName, serverPort))
+    if __name__ == "__main__":
+
+        webServer = HTTPServer((args.host, args.port), MyServer)
+        print("Server started http://%s:%s" % (args.host, args.port))
 
         webServer.serve_forever()
       
