@@ -7,6 +7,8 @@ import json
 webServer:Optional[HTTPServer] = None
 serialInst:Optional[serial.Serial] = None
 
+MAX_RPM = 36
+
 try:
     # =========================== SERIAL ===========================================
 
