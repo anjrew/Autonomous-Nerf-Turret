@@ -38,4 +38,24 @@ The motor here has 200 steps in one revolution
 So 200 steps per second would equal 60 RPM
 
 So time per step in seconds = 60 * steps_per_revolution
-timeper step 
+
+
+
+## Key points
+
+Here are some key points after testing the motor at different half step speeds
+
+- The slowest the motor can go is 16000us between each half step
+  - That means that the slowest the motor can do one step is 32000us
+  - So 32000us x 200 Steps for one revolution is 6400000us
+  - That means that it does one revolution in 6.4 seconds at min speed
+  - Max Revolutions per minute = 60 seconds/0.16 seconds = 375 revolutions per minute (RPM)
+  - Min Revolutions per minute = 60 seconds/6.4 seconds = 9.375 revolutions per minute (RPM)
+
+- The fastest the motor can go is 400us between each half step
+  - That means that the fastest the motor can do one step is 800us
+  - So 800us x 200 Steps for one revolution is 160000us
+  - That means that it does one revolution in 0.16 seconds at max speed
+  - Max Revolutions per minute = 60 seconds/0.16 seconds = 375 revolutions per minute (RPM)
+
+- In summery the min/max RPM is ~9rpm/375rpm 
