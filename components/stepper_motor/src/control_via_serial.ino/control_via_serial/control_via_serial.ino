@@ -21,29 +21,15 @@ byte meanSerialProcessingTimeUs = 69;
 // The default value is the value observed when testing
 byte meanHalfStepProcessingTimeUs = 69;
 
-// The limits of the values to be set for the motor half step
-const int slowestHalfStepUs = 16000;
-const int quickestHalfStepUs = 400;
-
-/*
-* Holds the value of the direction of the motor
-* false = Anti clockwise
-* true = Clockwise
-*/
-bool isClockwise = false;
-
 /*
  * Alternates the PIN from HIGH to LOW on each half step
 */
 bool alternator = false;
 
-/*
-* Holds the value of the speed of the motor in RPM
-*/
-byte rpm = 0;
 
+// The limits of the values to be set for the motor half step
 const int SLOWEST_HALF_STEP_MICROSECONDS = 17000;
-const int FASTEST_HALF_STEP_MICROSECONDS = 400;
+const int FASTEST_HALF_STEP_MICROSECONDS = 1000;
 
 const byte SLOWEST_SPEED = 0;
 const byte FASTEST_SPEED = 10;
@@ -94,7 +80,7 @@ bool processSerialInput() {
       digitalWrite(dirPin, LOW);
     }
       
-    if (stepUs <= slowestHalfStepUs && stepUs >= quickestHalfStepUs) {
+    if (stepUs < SLOWEST_HALF_STEP_MICROSECONDS && stepUs >= FASTEST_HALF_STEP_MICROSECONDS) {
       stepUs = stepUs;
     } else {
       stepUs = 0;

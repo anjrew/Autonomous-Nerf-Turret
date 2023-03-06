@@ -4,5 +4,6 @@
         "JOYBUTTONDOWN",
         "JOYBUTTONUP",
         "JOYHATMOTION"
-    ]
+    ],
+    "C_Cpp.errorSquiggles": "disabled"
 }
