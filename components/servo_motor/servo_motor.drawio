@@ -1,0 +1,13 @@
+<mxfile host="65bd71144e">
+    <diagram name="Page-1" id="oLJQ3ziCJ-bGBNkrMgJl">
+        <mxGraphModel dx="1084" dy="862" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="4" value="&lt;figure style=&quot;box-sizing: inherit; margin: 0px auto; padding: 0px; border: 0px; clear: both; display: table; caret-color: rgb(58, 58, 58); color: rgb(58, 58, 58); font-family: -apple-system, system-ui, BlinkMacSystemFont, &amp;quot;segoe ui&amp;quot;, Helvetica, Arial, sans-serif, &amp;quot;apple color emoji&amp;quot;, &amp;quot;segoe ui emoji&amp;quot;, &amp;quot;segoe ui symbol&amp;quot;; font-size: 20px; font-style: normal; font-variant-caps: normal; font-weight: 400; letter-spacing: normal; text-align: start; text-indent: 0px; text-transform: none; word-spacing: 0px; text-size-adjust: auto; -webkit-text-stroke-width: 0px; text-decoration: none;&quot; class=&quot;aligncenter is-resized&quot;&gt;&lt;img style=&quot;box-sizing: inherit; height: auto; max-width: 100%; vertical-align: bottom; border-radius: inherit;&quot; srcset=&quot;https://howtomechatronics.com/wp-content/uploads/2018/03/Arduino-Servo-Control-Circuit-Schematic.jpg?ezimgfmt=ng:webp/ngcb2 750w,https://howtomechatronics.com/wp-content/uploads/2018/03/Arduino-Servo-Control-Circuit-Schematic-300x269.jpg?ezimgfmt=ng:webp/ngcb2 300w&quot; data-ezsrc=&quot;https://howtomechatronics.com/wp-content/uploads/2018/03/Arduino-Servo-Control-Circuit-Schematic.jpg?ezimgfmt=rs:701x629/rscb2/ng:webp/ngcb2&quot; sizes=&quot;(max-width: 701px) 100vw, 701px&quot; data-ezsrcset=&quot;https://howtomechatronics.com/wp-content/uploads/2018/03/Arduino-Servo-Control-Circuit-Schematic.jpg?ezimgfmt=ng:webp/ngcb2 750w,https://howtomechatronics.com/wp-content/uploads/2018/03/Arduino-Servo-Control-Circuit-Schematic-300x269.jpg?ezimgfmt=ng:webp/ngcb2 300w&quot; height=&quot;629&quot; width=&quot;701&quot; class=&quot;wp-image-4215 ezlazyloaded&quot; alt=&quot;Arduino servo motor control circuit diagram&quot; src=&quot;https://howtomechatronics.com/wp-content/uploads/2018/03/Arduino-Servo-Control-Circuit-Schematic.jpg?ezimgfmt=rs:701x629/rscb2/ng:webp/ngcb2&quot; loading=&quot;lazy&quot;&gt;&lt;/figure&gt;" style="text;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                    <mxGeometry x="80" y="300" width="560" height="490" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>
