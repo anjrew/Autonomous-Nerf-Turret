@@ -46,17 +46,34 @@ def map_range(value=0, min_value=SLOWEST_HALF_STEP_MICROSECONDS, max_value=FASTE
     
     return round(original_value)
 
-def encode(isClockwise: bool = True, speed: int = 0) -> bytes:
+def encode(azimuth: int ,isClockwise: bool = True, speed:int = 0) -> bytes:
+    """
+    Encodes a motor command as a single byte.
+
+    Parameters:
+        isClockwise (bool): Whether the motor should turn clockwise (True) or counterclockwise (False).
+            Default is True.
+        speed (int): The speed of the motor, from 0 (off) to 10 (maximum speed).
+            Default is 0.
+        azimuth (int): The azimuth of the motor, from 0 to 255.
+            Default is 0.
+
+    Returns:
+        bytes: A single byte representing the encoded motor command.
+
+    Example:
+        >>> encode(True, 5, 127)
+        b'\xaf'
+    """
+    print('Azimuth:', azimuth)
     encoded_value = 0
     if isClockwise:
         encoded_value |= (1 << 7)  # Set the 8th bit to 1 for clockwise
     encoded_value |= (speed & 0x0F)  # Mask the lower 4 bits for speed (0-10)
-    return encoded_value.to_bytes(1, byteorder='big')
+    encoded_value |= ((round(azimuth) & 0xFF) << 4)  # Shift the azimuth value by 4 bits to the left
+    print('the encoded value is', encoded_value)
+    return encoded_value.to_bytes(2, byteorder='big')
 
-def decode(encoded_value: int) -> Tuple[bool, int]:
-    isClockwise = (encoded_value >> 7) & 1  # Extract the 8th bit for clockwise
-    speed = encoded_value & 0x0F  # Extract the lower 4 bits for speed (0-10)
-    return bool(isClockwise), speed
 
 try:
     # =========================== SERIAL ===========================================
@@ -128,7 +145,8 @@ try:
                     Received a speed that was outside the min({SLOWEST_SPEED}) max({FASTEST_SPEED}) bounds: {speed_in}
                     """.encode())
                     return
-            encoded_message = encode(json_data.get("isClockwise", False), round(speed_in))
+                
+            encoded_message = encode(json_data.get("azimuth_angle", 90), json_data.get("isClockwise", False), round(speed_in),)
             serialInst.write(encoded_message)#.to_bytes(1, "big"))
             
             # # Send a response

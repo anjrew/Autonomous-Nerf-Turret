@@ -1,19 +1,26 @@
 /*
-     Servo Motor Control - 50Hz Pulse Train Generator
+     Servo Motor Control using the Arduino Servo Library
            by Dejan, https://howtomechatronics.com
 */
 
-#define servoPin 9
+#include <Servo.h>
+
+Servo azimuthServo;  // create servo object to control a servo
 
 void setup() {
-  pinMode(servoPin, OUTPUT);
+  azimuthServo.attach(9,600,2300);  // (pin, min, max)
 }
 
 void loop() {
-   // A pulse each 20ms
-    digitalWrite(servoPin, HIGH);
-    delayMicroseconds(1450); // Duration of the pusle in microseconds
-    digitalWrite(servoPin, LOW);
-    delayMicroseconds(18550); // 20ms - duration of the pusle
-    // Pulses duration: 600 - 0deg; 1450 - 90deg; 2300 - 180deg
+  azimuthServo.write(0);  // tell servo to go to a particular angle
+  delay(1000);
+  
+  azimuthServo.write(90);              
+  delay(500); 
+  
+  azimuthServo.write(135);              
+  delay(500);
+  
+  azimuthServo.write(180);              
+  delay(1500);                     
 }

@@ -2,6 +2,24 @@
 
 A project dedicated to creating a fully autonomous, AI-powered Nerf gun. The turret is equipped with a camera, allowing it to detect and track human targets. 
 
+## Getting started
+
+This project was built on top of these two main dependencies:
+
+ - bash
+ - conda
+
+ If these are installed then run the following command in the project root to get the rest of the dependencies and setup the virtual environment:
+ ```bash
+source bin/init.sh
+ ```
+
+ When coming back to the project to reactivate the environment run the following in the project root:
+ ```bash
+ source bin/activate.sh
+ ```
+
+
 ## Project structure
 
 This project has a domain driven design where each domain lies in a folder in the root of the project. Each domain folder contains files that relate to the part of the project associated with that domain

@@ -1,5 +1,5 @@
 import time
-from typing import Optional
+from typing import Optional, Union
 import pygame
 import argparse
 import requests
@@ -13,6 +13,7 @@ parser.add_argument("--port", help="Set the http server port.", default=5565, ty
 parser.add_argument("--host", help="Set the http server hostname.", default="localhost")
 parser.add_argument("--log-level", help="Set the logging level by integer value.", default=logging.DEBUG, type=int)
 parser.add_argument("--speed-dp", help="Set how many decimal places the speed is taken too.", default=0, type=int)
+parser.add_argument("--azimuth-dp", help="Set how many decimal places the azimuth is taken too.", default=0, type=int)
 args = parser.parse_args()
 
 logging.basicConfig(level=args.log_level)
@@ -58,11 +59,39 @@ joystick.init()
 print('Initialized ', joystick.get_name())
 
 
-is_clockwise_cache = False
-speed_cache = 0
+def map_range(input_value: Union[int,float], min_input: Union[int,float], max_input: Union[int,float], min_output: Union[int,float], max_output: Union[int,float]) -> Union[int,float]:
+    """
+    Maps an input value from one range to another range.
+
+    Parameters:
+        input_value (float): The input value to be mapped to the output range.
+        min_input (float): The minimum value of the input range.
+        max_input (float): The maximum value of the input range.
+        min_output (float): The minimum value of the output range.
+        max_output (float): The maximum value of the output range.
+
+    Returns:
+        float: The mapped value in the output range.
+
+    Example:
+        >>> map_range(-0.5, -1, 1, 0, 180)
+        90.0
+    """
+    mapped_value = ((input_value - min_input) / (max_input - min_input)) * (max_output - min_output) + min_output
+    return mapped_value
+
+
+
+
+is_clockwise_cache = False # False is the default direction
+speed_cache = 0 # 0 is the default speed
+azimuth_cache = 90 # 90 is the default position
+fire_cache = False # False is the default state
 
 try:
     while True:
+        
+        # should_send: bool = False # Keeps track of whether or not a request should be sent to the serve        
         
         for event in pygame.event.get():
             if event.type == pygame.JOYBUTTONDOWN:
@@ -70,11 +99,18 @@ try:
                     # Fire gun when user presses A
                     try:
                         requests.post(url, json={ 'fire': True })
+                        # fire_cache = True
                     except Exception as e:
                         logging.error(e)
                         
             if event.type == pygame.JOYBUTTONUP:
-                print(event)
+                if event.button == 1:
+                    # Fire gun when user presses A
+                    try:
+                        requests.post(url, json={ 'fire': False })
+                        # fire_cache = False
+                    except Exception as e:
+                        logging.error(e)
                 
                 
             if event.type == pygame.JOYAXISMOTION:
@@ -108,12 +144,17 @@ try:
                 if event.axis == 2:
                     print('Not done yet',event)
                     try:
-                        ## Move azimuth of gun
-                        speed = abs(event.value * 10)
-                        # requests.post(url, json={
-                        #         'isClockwise': event.value > 0, 
-                        #         'speed': speed if speed <= 10 else 10 
-                        #     })
+                        ## Move elevation of gun
+                        
+                        # Speed calculation 
+                        azimuth_angle = round(map_range(event.value,-1,1,0,180) , args.azimuth_dp)
+                        
+                        if azimuth_angle != azimuth_cache:
+                            requests.post(url, json={
+                                    'azimuth_angle': azimuth_angle if 0 <= azimuth_angle <= 180  else 90 
+                                })
+                            azimuth_cache = azimuth_angle
+                            
                     except Exception as e:
                         logging.error(e)
                     
