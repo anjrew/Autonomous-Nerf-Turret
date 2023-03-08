@@ -31,7 +31,7 @@ parser.add_argument("--azimuth-dp", help="Set how many decimal places the azimut
 parser.add_argument("--elevation-dp", help="Set how many decimal places the elevation is taken too.", default=0, type=int)
 parser.add_argument("--delay","-d", help="Delay to limit the data flow into the websocket server.", default=0.1, type=int)
 parser.add_argument("--test","-t", help="For testing it will not send requests to the driver.", action="store_true")
-parser.add_argument("--speed","-s", help="Set the speed factor o multiply the speed", default=0, type=int)
+parser.add_argument("--speed","-s", help="Set the speed factor o multiply the speed", default=0, )
 
 
 parser.add_argument("--target-padding", "-p",help="""
@@ -65,7 +65,7 @@ logging.info(f'Forwarding controller values to host at {url}')
 
 # Cache the controller state to prevent sending the same values over and over again
 cached_controller_state ={
-    'azimuth_angle': 90,
+    'azimuth_angle': CENTER_AZIMUTH_ANGLE,
     'is_clockwise': False,
     'speed': 0,
     'is_firing': False,
@@ -148,19 +148,41 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 view_width = json_data['view_dimensions'][0]
                 view_height = json_data['view_dimensions'][1]
                 
-                current_distance_from_the_middle = (view_width/2) + movement_vector[0]
+                current_distance_from_the_middle = movement_vector[0]
                 max_distance_from_the_middle_left = -(view_width / 2)
                 max_distance_from_the_middle_right = view_width / 2
                 
+                print("cached_controller_state['azimuth_angle']:", cached_controller_state['azimuth_angle'])
                 print('Current distance from the middle:', current_distance_from_the_middle)
                 print('Max distance from the middle left:', max_distance_from_the_middle_left)
                 print('Max distance from the middle right:', max_distance_from_the_middle_right)
-                azimuth_angle = round(map_range(current_distance_from_the_middle, max_distance_from_the_middle_left, max_distance_from_the_middle_right ,0 , 180), args.azimuth_dp) - CENTER_AZIMUTH_ANGLE
-                print('azimuth_angle:', azimuth_angle)
+                
+                
+                guessed_azimuth_angle = round(
+                    map_range(
+                        current_distance_from_the_middle,
+                        max_distance_from_the_middle_left, 
+                        max_distance_from_the_middle_right ,
+                        -90 ,
+                        90), 
+                    args.azimuth_dp
+                )
+                print('guessed_azimuth_angle:', guessed_azimuth_angle)
+        
+                def limit_value(value, minimum, maximum):
+                    if value < minimum:
+                        return minimum
+                    elif value > maximum:
+                        return maximum
+                    else:
+                        return value
+                new_azimuth = limit_value(cached_controller_state['azimuth_angle'] + guessed_azimuth_angle, 0, 180)
+                
+                print('new_azimuth:', new_azimuth)
                 controller_state = cached_controller_state = {
-                    'azimuth_angle': azimuth_angle,
+                    'azimuth_angle': new_azimuth,
                     'is_clockwise': movement_vector[1] > 0,
-                    'speed': round(map_range((view_height / 2) - ((view_height / 2) - abs(movement_vector[1])), 0, view_height / 2, 0 , 10), args.elevation_dp),
+                    'speed': round(map_range((view_height / 2) - ((view_height / 2) - abs(movement_vector[1])), 0, view_height / 2, 0 , 10), args.elevation_dp) * float(args.speed),
                     'is_firing': is_on_target,
                 }
                 
