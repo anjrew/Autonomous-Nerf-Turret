@@ -5,6 +5,7 @@ import json
 from typing import Union
 import requests
 import time
+import math
 
 # Define the conversion function
 def map_log_level(level_str) -> int:
@@ -27,8 +28,8 @@ parser.add_argument("--ws-host", help="Set the web socket server hostname to rec
 parser.add_argument("--port", help="Set the web server server port to send commands too.", default=5565, type=int)
 parser.add_argument("--host", help="Set the web server server hostname. to send commands too", default="localhost")
 parser.add_argument("--log-level", help="Set the logging level by integer value or string representation.", default=logging.INFO, type=map_log_level)
-parser.add_argument("--azimuth-dp", help="Set how many decimal places the azimuth is taken too.", default=0, type=int)
-parser.add_argument("--elevation-dp", help="Set how many decimal places the elevation is taken too.", default=0, type=int)
+parser.add_argument("--azimuth-dp", help="Set how many decimal places the azimuth is taken too.", default=2, type=int)
+parser.add_argument("--elevation-dp", help="Set how many decimal places the elevation is taken too.", default=2, type=int)
 parser.add_argument("--delay","-d", help="Delay to limit the data flow into the websocket server.", default=0, type=int)
 parser.add_argument("--test","-t", help="For testing it will not send requests to the driver.", action="store_true")
 parser.add_argument("--speed","-s", help="Set the speed factor o multiply the speed", default=0.4)
@@ -38,12 +39,12 @@ parser.add_argument("--smoothing","-sm", help="The amount of smoothing factor fo
 parser.add_argument("--target-padding", "-p",help="""
                     Set the padding for when the gun will try and shoot relative to the edge of the target in %.
                     The amount of padding around the target bounding box in pixels that the gun will ignore before shooting
-                    """, default=20, type=int)
+                    """, default=10, type=int)
 
-# parser.add_argument('--center-threshold', '-t', type=int, default=5, 
-#                     help="""
-#                     The threshold of how accurate the gun will try to get the target in the center of the crosshair in pixels.
-#                     """ )
+parser.add_argument('--accuracy-threshold', '-th', type=int, default=40, 
+                    help="""
+                    The threshold of how accurate the gun will try to get the target in the center of the crosshair in pixels.
+                    """ )
 
 # parser.add_argument('--vert-offset', '-v', type=int, default=5, 
 #                     help="""
@@ -56,6 +57,7 @@ args = parser.parse_args()
 logging.basicConfig(level=args.log_level)
 
 TARGET_PADDING_PERCENTAGE = args.target_padding/100
+ACCURACY_THRESHOLD= args.accuracy_threshold/100
 WS_HOST = args.ws_host  # IP address of the server
 WS_PORT = args.ws_port  # Port number to listen on
 
@@ -117,8 +119,8 @@ def slow_start_fast_end_smoothing(x: float, p: float, max_value: int) -> float:
     
     ratio = x / max_value
     output = ratio ** p * max_value
-
-    return output if x >= 0 else -output
+    print("Testing here", x , x >= 0 , output)
+    return output if x >= 0 else -abs(output)
 
 
 
@@ -169,10 +171,10 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 padded_right = right - padding_width
                 padded_top = top + padding_height
                 padded_bottom = bottom - padding_height
-                
+                    
                 is_on_target = False  
                 if padded_top <= center_y <= padded_bottom and padded_left <= center_x <= padded_right:
-                    is_on_target=True         
+                    is_on_target=True      
 
                 view_width = json_data['view_dimensions'][0]
                 view_height = json_data['view_dimensions'][1]
@@ -180,12 +182,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 current_distance_from_the_middle = movement_vector[0]
                 max_distance_from_the_middle_left = -(view_width / 2)
                 max_distance_from_the_middle_right = view_width / 2
-                
-                print("cached_controller_state['azimuth_angle']:", cached_controller_state['azimuth_angle'])
-                print('Current distance from the middle:', current_distance_from_the_middle)
-                print('Max distance from the middle left:', max_distance_from_the_middle_left)
-                print('Max distance from the middle right:', max_distance_from_the_middle_right)
-                
+            
                 
                 predicted_azimuth_angle = map_range(
                     current_distance_from_the_middle,
@@ -206,9 +203,9 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 print('azimuth_formatted', azimuth_formatted)
                 
                 controller_state = cached_controller_state = {
-                    'azimuth_angle': azimuth_formatted,
+                    'azimuth_angle': 0 if abs(movement_vector[0]) <= args.accuracy_threshold else azimuth_formatted,
                     'is_clockwise': movement_vector[1] > 0,
-                    'speed': round(elevation_speed_adjusted, args.elevation_dp),
+                    'speed': 0 if abs(movement_vector[1]) <= args.accuracy_threshold else round(elevation_speed_adjusted, args.elevation_dp),
                     'is_firing': is_on_target,
                 }
                 
