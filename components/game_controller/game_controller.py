@@ -4,7 +4,6 @@ import pygame
 import argparse
 import requests
 import logging
-import json
 
 
 parser = argparse.ArgumentParser()
@@ -91,77 +90,62 @@ fire_cache = False # False is the default state
 try:
     while True:
         
-        # should_send: bool = False # Keeps track of whether or not a request should be sent to the serve        
+        something_changed = False # Keeps track of whether or not a request should be sent to the serve        
         
         for event in pygame.event.get():
             if event.type == pygame.JOYBUTTONDOWN:
                 if event.button == 1:
                     # Fire gun when user presses A
-                    try:
-                        requests.post(url, json={ 'fire': True })
-                        # fire_cache = True
-                    except Exception as e:
-                        logging.error(e)
+                    fire_cache = True
+                    something_changed =True
+
                         
             if event.type == pygame.JOYBUTTONUP:
                 if event.button == 1:
                     # Fire gun when user presses A
-                    try:
-                        requests.post(url, json={ 'fire': False })
-                        # fire_cache = False
-                    except Exception as e:
-                        logging.error(e)
-                
+                    fire_cache = False
+                    something_changed =True
                 
             if event.type == pygame.JOYAXISMOTION:
                 if event.axis == 3:
                     
-                    try:
-                        ## Move elevation of gun
+                    # Speed calculation 
+                    speed = round(abs(event.value * 10), args.speed_dp)
+                    
+                    if speed != speed_cache:
+                        speed_cache = speed
+                        something_changed =True
+                    
+                    # Direction calculation
+                    clockwise_state = event.value > 0
+                    if clockwise_state != is_clockwise_cache:
+                        is_clockwise_cache = clockwise_state
+                        something_changed =True
                         
-                        # Speed calculation 
-                        speed = round(abs(event.value * 10), args.speed_dp)
-                        
-                        if speed != speed_cache:
-                            requests.post(url, json={
-                                    'speed': speed if speed <= 10 else 10 
-                                })
-                            speed_cache = speed
-                        
-                        # Direction calculation
-                        clockwise_state = event.value > 0
-                        if clockwise_state != is_clockwise_cache:
-                            print(clockwise_state)
-                            requests.post(url, json={
-                                'isClockwise': clockwise_state 
-                            })
-                            is_clockwise_cache = clockwise_state
-                            
-                    except Exception as e:
-                        logging.error(e)
-
                     
                 if event.axis == 2:
-                    print('Not done yet',event)
-                    try:
-                        ## Move elevation of gun
-                        
-                        # Speed calculation 
+                   
                         azimuth_angle = round(map_range(event.value,-1,1,0,180) , args.azimuth_dp)
                         
                         if azimuth_angle != azimuth_cache:
-                            requests.post(url, json={
-                                    'azimuth_angle': azimuth_angle if 0 <= azimuth_angle <= 180  else 90 
-                                })
                             azimuth_cache = azimuth_angle
-                            
-                    except Exception as e:
-                        logging.error(e)
-                    
+                            something_changed =True
+                               
                     
             if event.type == pygame.JOYHATMOTION:
                 print(event)
-            
+     
+        if something_changed:
+            controller_state = {
+                'azimuth_angle': azimuth_cache,
+                'is_clockwise': is_clockwise_cache,
+                'speed': speed_cache,
+                'is_firing': fire_cache,
+            }
+            try:
+                requests.post(url, json=controller_state)       
+            except:
+                logging.error("Failed to send controller state to server.")
         
             
 except Exception as e:

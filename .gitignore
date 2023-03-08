@@ -1,0 +1,23 @@
+# Python
+*.pyc
+__pycache__/
+*.log
+*.tmp
+*.swp
+/build
+/dist
+/venv
+/env
+/envs
+/Pipfile.lock
+/conda.lock
+
+
+# Arduino
+*.o
+*.elf
+*.hex
+*.user*
+*~
+*.bak
+.dist

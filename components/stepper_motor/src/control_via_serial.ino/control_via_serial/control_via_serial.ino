@@ -5,6 +5,8 @@
 // Define stepper motor connections and steps per revolution:
 #define dirPin 2
 #define stepPin 3
+#define shootPin 13
+#define azimuthServoPin 9
 #define stepsPerRevolution 200
 
 // Define the initial timer interval in microseconds. Start with max value
@@ -34,22 +36,26 @@ const byte FASTEST_SPEED = 10;
 
 Servo azimuthServo;  // create servo object to control a servo
 
-class MotorSettings {
-public:
-  MotorSettings(bool clockwise, int speed, int azimuth) : isClockwise(clockwise), speed(speed), azimuth(azimuth) {}
-  bool isClockwise;
-  int speed;
-  int azimuth;
+struct MotorSettings {
+    int azimuth;
+    bool isClockwise;
+    int speed;
+    bool isFiring;
 };
 
-
-MotorSettings decode(uint8_t encodedValue) {
-  bool isClockwise = (encodedValue >> 7) & 1; // Extract the 8th bit for clockwise
-  int speed = encodedValue & 0x0F; // Extract the lower 4 bits for speed (0-10)
-  int azimuth = ((encodedValue >> 4) & 0xFF) * 16;
-  Serial.println(azimuth);
-  return MotorSettings(isClockwise, speed, azimuth);
+MotorSettings decode(byte *encoded_command) {
+    MotorSettings motor_command;
+    
+    byte encoded_value = encoded_command[0];
+    motor_command.isClockwise = (encoded_value >> 7) & 1; // Get the 8th bit for clockwise
+    motor_command.speed = encoded_value & 0x0F; // Mask the lower 4 bits for speed
+    motor_command.isFiring = (encoded_value >> 2) & 1; // Get the 3rd bit for is_firing
+    
+    byte azimuth_byte = encoded_command[1];
+    motor_command.azimuth = round((azimuth_byte / 255.0) * 180.0); // Scale the azimuth byte back to 0-180
+    return motor_command;
 }
+
 
 int map_range(int value = 0, int min_value = SLOWEST_HALF_STEP_MICROSECONDS, int max_value = FASTEST_HALF_STEP_MICROSECONDS, int new_min_value = SLOWEST_SPEED, int new_max_value = FASTEST_SPEED) {
     
@@ -66,31 +72,27 @@ int map_range(int value = 0, int min_value = SLOWEST_HALF_STEP_MICROSECONDS, int
 
 
 bool processSerialInput() {
-  if (Serial.available() > 0) {
-    Serial.println("READING Serial");
+  
+    // Read the encoded motor command from serial input
+  byte encodedValue[2];
+  
+  if (Serial.available() >= 2) {
     unsigned long startOfSerialProcess = micros();
-    byte receivedBytes[2];
-
-    // Read the two bytes of data from the serial port
-    Serial.readBytes(receivedBytes, 2);
+    encodedValue[0] = Serial.read();
+    encodedValue[1] = Serial.read();
     
-    // Combine the two bytes into a single value
-    uint8_t encodedValue = (receivedBytes[0] << 8) | receivedBytes[1];
-//    uint8_t encodedValue = Serial.read();
+    // Decode the motor command
     
     MotorSettings decodedValues = decode(encodedValue);
     int speed_in = decodedValues.speed;
     int stepUs = map_range(speed_in);
-    Serial.println(decodedValues.azimuth);
+//    Serial.println(decodedValues.azimuth);
     azimuthServo.write(decodedValues.azimuth);
 
-    if (decodedValues.isClockwise) {
-        digitalWrite(dirPin, HIGH);
-    }
-    else {
-      digitalWrite(dirPin, LOW);
-    }
-      
+    digitalWrite(dirPin, decodedValues.isClockwise ? HIGH: LOW);
+
+    digitalWrite(shootPin, decodedValues.isFiring ? HIGH: LOW);   
+
     if (stepUs < SLOWEST_HALF_STEP_MICROSECONDS && stepUs >= FASTEST_HALF_STEP_MICROSECONDS) {
       stepUs = stepUs;
     } else {
@@ -116,7 +118,10 @@ void setup() {
   pinMode(dirPin, OUTPUT);
 
   // Setup the servo motor
-  azimuthServo.attach(9,600,2300);  // (pin, min, max)
+  azimuthServo.attach(azimuthServoPin ,600,2300);  // (pin, min, max)
+
+  // Setup pin to shoot
+  pinMode(shootPin, OUTPUT);
 
   Serial.println("Send Commands !");
 }

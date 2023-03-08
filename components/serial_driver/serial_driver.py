@@ -1,9 +1,11 @@
 # Python 3 server example
 from http.server import BaseHTTPRequestHandler, HTTPServer
-from typing import Optional, Tuple
+from typing import Optional
 import argparse
 import serial.tools.list_ports
 import json
+import logging
+
 
 
 parser = argparse.ArgumentParser()
@@ -11,7 +13,11 @@ parser.add_argument("--set-port-man", action="store_true",dest="is_port_man", he
 parser.add_argument("--port", help="Set the http server port.", default=5565)
 parser.add_argument("--baud", help="Set the Baud Rate of the serial communication.", default=9600)
 parser.add_argument("--host", help="Set the http server hostname.", default="localhost")
+parser.add_argument("--log-level", help="Set the logging level by integer value.", default=logging.DEBUG, type=int)
 args = parser.parse_args()
+
+logging.basicConfig(level=args.log_level)
+
 
 webServer:Optional[HTTPServer] = None
 serialInst:Optional[serial.Serial] = None
@@ -46,33 +52,34 @@ def map_range(value=0, min_value=SLOWEST_HALF_STEP_MICROSECONDS, max_value=FASTE
     
     return round(original_value)
 
-def encode(azimuth: int ,isClockwise: bool = True, speed:int = 0) -> bytes:
+def encode(azimuth: int, is_clockwise: bool = True, speed: int = 0, is_firing: bool = False) -> bytes:
     """
-    Encodes a motor command as a single byte.
+    Encodes a motor command as two bytes.
 
     Parameters:
-        isClockwise (bool): Whether the motor should turn clockwise (True) or counterclockwise (False).
+        azimuth (int): The azimuth of the motor, from 0 to 180.
+        is_clockwise (bool): Whether the motor should turn clockwise (True) or counterclockwise (False).
             Default is True.
         speed (int): The speed of the motor, from 0 (off) to 10 (maximum speed).
             Default is 0.
-        azimuth (int): The azimuth of the motor, from 0 to 255.
-            Default is 0.
+        is_firing (bool): Whether the motor should be fired (True) or not (False).
+            Default is False.
 
     Returns:
-        bytes: A single byte representing the encoded motor command.
+        bytes: Two bytes representing the encoded motor command.
 
     Example:
-        >>> encode(True, 5, 127)
-        b'\xaf'
+        >>> encode(90, True, 5)
+        b'\x5f\x08'
     """
-    print('Azimuth:', azimuth)
+    azimuth_byte = round((azimuth / 180.0) * 255.0)  # Scale the azimuth value to fit in a byte (0-255)
     encoded_value = 0
-    if isClockwise:
+    if is_clockwise:
         encoded_value |= (1 << 7)  # Set the 8th bit to 1 for clockwise
     encoded_value |= (speed & 0x0F)  # Mask the lower 4 bits for speed (0-10)
-    encoded_value |= ((round(azimuth) & 0xFF) << 4)  # Shift the azimuth value by 4 bits to the left
-    print('the encoded value is', encoded_value)
-    return encoded_value.to_bytes(2, byteorder='big')
+    if is_firing:
+        encoded_value |= (1 << 2)  # Set the 3rd bit to 1 for is_firing
+    return bytes([encoded_value, azimuth_byte])
 
 
 try:
@@ -134,6 +141,8 @@ try:
             
             # Parse the JSON data
             json_data = json.loads(data)
+            logging.debug("Got Data:" + json.dumps(json_data))
+            
             speed_in = json_data.get('speed', 0)
             
             if speed_in and (speed_in < SLOWEST_SPEED or speed_in > FASTEST_SPEED):
@@ -145,8 +154,9 @@ try:
                     Received a speed that was outside the min({SLOWEST_SPEED}) max({FASTEST_SPEED}) bounds: {speed_in}
                     """.encode())
                     return
-                
-            encoded_message = encode(json_data.get("azimuth_angle", 90), json_data.get("isClockwise", False), round(speed_in),)
+
+            logging.debug
+            encoded_message = encode(json_data.get("azimuth_angle", 90), json_data.get("isClockwise", False), round(speed_in),json_data['is_firing'])
             serialInst.write(encoded_message)#.to_bytes(1, "big"))
             
             # # Send a response
