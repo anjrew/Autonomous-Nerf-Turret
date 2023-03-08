@@ -124,8 +124,8 @@ try:
                     
                 if event.axis == 2:
                    
-                        azimuth_angle = round(map_range(event.value,-1,1,0,180) , args.azimuth_dp)
-                        
+                        # azimuth_angle = round(map_range(event.value,-1,1,0,180) , args.azimuth_dp)
+                        azimuth_angle = round(map_range(event.value,-1,1,-90, 90) , args.azimuth_dp)
                         if azimuth_angle != azimuth_cache:
                             azimuth_cache = azimuth_angle
                             something_changed =True

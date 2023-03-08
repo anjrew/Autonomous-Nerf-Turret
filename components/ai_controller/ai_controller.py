@@ -29,9 +29,10 @@ parser.add_argument("--host", help="Set the web server server hostname. to send 
 parser.add_argument("--log-level", help="Set the logging level by integer value or string representation.", default=logging.INFO, type=map_log_level)
 parser.add_argument("--azimuth-dp", help="Set how many decimal places the azimuth is taken too.", default=0, type=int)
 parser.add_argument("--elevation-dp", help="Set how many decimal places the elevation is taken too.", default=0, type=int)
-parser.add_argument("--delay","-d", help="Delay to limit the data flow into the websocket server.", default=0.1, type=int)
+parser.add_argument("--delay","-d", help="Delay to limit the data flow into the websocket server.", default=0, type=int)
 parser.add_argument("--test","-t", help="For testing it will not send requests to the driver.", action="store_true")
-parser.add_argument("--speed","-s", help="Set the speed factor o multiply the speed", default=0, )
+parser.add_argument("--speed","-s", help="Set the speed factor o multiply the speed", default=0.4)
+parser.add_argument("--smoothing","-sm", help="The amount of smoothing factor for speed to optimal position", default=1, type=float )
 
 
 parser.add_argument("--target-padding", "-p",help="""
@@ -58,20 +59,25 @@ TARGET_PADDING_PERCENTAGE = args.target_padding/100
 WS_HOST = args.ws_host  # IP address of the server
 WS_PORT = args.ws_port  # Port number to listen on
 
-CENTER_AZIMUTH_ANGLE = 90 # The center azimuth angle of the gun
 
 url = f"http://{args.host}:{args.port}"
 logging.info(f'Forwarding controller values to host at {url}')
 
 # Cache the controller state to prevent sending the same values over and over again
 cached_controller_state ={
-    'azimuth_angle': CENTER_AZIMUTH_ANGLE,
+    'azimuth_angle': 0, # The angle of the gun in the horizontal plane adjustment
     'is_clockwise': False,
     'speed': 0,
     'is_firing': False,
 } 
 
-def map_range(input_value: Union[int,float], min_input: Union[int,float], max_input: Union[int,float], min_output: Union[int,float], max_output: Union[int,float]) -> Union[int,float]:
+def map_range(
+    input_value: Union[int,float], 
+    min_input: Union[int,float], 
+    max_input: Union[int,float], 
+    min_output: Union[int,float], 
+    max_output: Union[int,float]
+    ) -> Union[int,float]:
     """
     Maps an input value from one range to another range.
 
@@ -91,6 +97,29 @@ def map_range(input_value: Union[int,float], min_input: Union[int,float], max_in
     """
     mapped_value = ((input_value - min_input) / (max_input - min_input)) * (max_output - min_output) + min_output
     return mapped_value
+
+
+def slow_start_fast_end_smoothing(x: float, p: float, max_value: int) -> float:
+    """
+    Maps an input value to an output value using a power function with a slow start and fast end.
+
+    The output value increases slowly at the beginning when the input value is small,
+    but increases more rapidly as the input value approaches the maximum value of 10.
+
+    Args:
+        x (float): The input value to be mapped, in the range of 0 to 10.
+        p (float): The exponent of the power function used to map the input value to the output value.
+            A larger value of p will result in a faster increase in the output value towards the end of the range.
+
+    Returns:
+        float: The mapped output value, in the range of 0 to 10.
+    """
+    
+    ratio = x / max_value
+    output = ratio ** p * max_value
+
+    return output if x >= 0 else -output
+
 
 
 already_sent_no_targets=False # Flag to prevent sending the same message over and over again
@@ -158,31 +187,28 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 print('Max distance from the middle right:', max_distance_from_the_middle_right)
                 
                 
-                guessed_azimuth_angle = round(
-                    map_range(
-                        current_distance_from_the_middle,
-                        max_distance_from_the_middle_left, 
-                        max_distance_from_the_middle_right ,
-                        -90 ,
-                        90), 
-                    args.azimuth_dp
+                predicted_azimuth_angle = map_range(
+                    current_distance_from_the_middle,
+                    max_distance_from_the_middle_left, 
+                    max_distance_from_the_middle_right ,
+                    -90 ,
+                    90
                 )
-                print('guessed_azimuth_angle:', guessed_azimuth_angle)
-        
-                def limit_value(value, minimum, maximum):
-                    if value < minimum:
-                        return minimum
-                    elif value > maximum:
-                        return maximum
-                    else:
-                        return value
-                new_azimuth = limit_value(cached_controller_state['azimuth_angle'] + guessed_azimuth_angle, 0, 180)
+                azimuth_speed_adjusted = -(predicted_azimuth_angle * float(args.speed))
+                print('azimuth_speed_adjusted', azimuth_speed_adjusted)
+                smoothed_speed_adjusted_azimuth = slow_start_fast_end_smoothing(azimuth_speed_adjusted, float(args.smoothing) + 1.0, 90)
+                print('smoothed_speed_adjusted_azimuth', smoothed_speed_adjusted_azimuth)
                 
-                print('new_azimuth:', new_azimuth)
+                elevation_speed_adjusted = map_range((view_height / 2) - ((view_height / 2) - abs(movement_vector[1])), 0, view_height / 2, 0 , 10) * float(args.speed)
+                smooth_elevation_speed_adjusted = slow_start_fast_end_smoothing(elevation_speed_adjusted, float(args.smoothing) + 1.0, 10)
+                
+                azimuth_formatted = round(smoothed_speed_adjusted_azimuth, args.azimuth_dp)
+                print('azimuth_formatted', azimuth_formatted)
+                
                 controller_state = cached_controller_state = {
-                    'azimuth_angle': new_azimuth,
+                    'azimuth_angle': azimuth_formatted,
                     'is_clockwise': movement_vector[1] > 0,
-                    'speed': round(map_range((view_height / 2) - ((view_height / 2) - abs(movement_vector[1])), 0, view_height / 2, 0 , 10), args.elevation_dp) * float(args.speed),
+                    'speed': round(elevation_speed_adjusted, args.elevation_dp),
                     'is_firing': is_on_target,
                 }
                 

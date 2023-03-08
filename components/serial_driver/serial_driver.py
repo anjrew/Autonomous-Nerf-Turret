@@ -30,6 +30,15 @@ FASTEST_HALF_STEP_MICROSECONDS = 1000
 SLOWEST_SPEED = 0
 FASTEST_SPEED = 10
 
+def limit_value(value, minimum=-90, maximum=90):
+    """Limits the value to the min and max values"""
+    if value < minimum:
+        return minimum
+    elif value > maximum:
+        return maximum
+    else:
+        return value
+
 def map_range(value=0, min_value=SLOWEST_HALF_STEP_MICROSECONDS, max_value=FASTEST_HALF_STEP_MICROSECONDS, new_min_value=SLOWEST_SPEED, new_max_value=FASTEST_SPEED):
     """Converts a value from on range to another
 
@@ -74,13 +83,12 @@ def encode(azimuth: int, is_clockwise: bool = True, speed: int = 0, is_firing: b
         >>> encode(90, True, 5)
         b'\x5f\x08'
     """
-    azimuth_byte = round((azimuth / 180.0) * 255.0)  # Scale the azimuth value to fit in a byte (0-255)
+    azimuth_degrees = limit_value(azimuth, -90, 90) + 90  # Convert the input angle to a range of 0-180 degrees
+    azimuth_byte = round((azimuth_degrees / 180.0) * 255.0)  # Scale the azimuth value to fit in a byte (0-255)
     encoded_value = 0
     if is_clockwise:
-        print('Setting is clockwise')
         encoded_value |= (1 << 7)  # Set the 8th bit to 1 for clockwise
         is_clockwise = bool(encoded_value & 0x80)
-        print('This was just set to: ', is_clockwise)
         
         
     encoded_value |= (speed & 0x0F)  # Mask the lower 4 bits for speed (0-10)

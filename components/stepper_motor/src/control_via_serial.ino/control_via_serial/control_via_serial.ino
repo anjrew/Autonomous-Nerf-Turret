@@ -26,6 +26,8 @@ byte meanHalfStepProcessingTimeUs = 69;
 */
 bool alternator = false;
 
+int azimuth_angle_deg = 90;
+
 
 // The limits of the values to be set for the motor half step
 const int SLOWEST_HALF_STEP_MICROSECONDS = 17000;
@@ -33,6 +35,8 @@ const int FASTEST_HALF_STEP_MICROSECONDS = 1000;
 
 const byte SLOWEST_SPEED = 0;
 const byte FASTEST_SPEED = 10;
+
+const byte MAX_AZIMUTH_DEG_RANGE= 180;
 
 Servo azimuthServo;  // create servo object to control a servo
 
@@ -43,6 +47,7 @@ struct MotorSettings {
     bool isFiring;
 };
 
+
 MotorSettings decode(byte *encoded_command) {
     MotorSettings motor_command;
     
@@ -52,7 +57,7 @@ MotorSettings decode(byte *encoded_command) {
     motor_command.isFiring = (encoded_value >> 2) & 1; // Get the 3rd bit for is_firing
     
     byte azimuth_byte = encoded_command[1];
-    motor_command.azimuth = round((azimuth_byte / 255.0) * 180.0); // Scale the azimuth byte back to 0-180
+    motor_command.azimuth = round((azimuth_byte / 255.0) * MAX_AZIMUTH_DEG_RANGE) - 90; // Scale the azimuth byte back to 0-180
     return motor_command;
 }
 
@@ -82,11 +87,18 @@ bool processSerialInput() {
     encodedValue[1] = Serial.read();
     
     // Decode the motor command
-    
     MotorSettings decodedValues = decode(encodedValue);
     int speed_in = decodedValues.speed;
     int stepUs = map_range(speed_in);
-    azimuthServo.write(decodedValues.azimuth);
+
+    int newAzimuth = azimuth_angle_deg +  decodedValues.azimuth;
+    if (newAzimuth >= 0 && newAzimuth <= MAX_AZIMUTH_DEG_RANGE) {
+      azimuthServo.write(newAzimuth);
+      Serial.print("New azimuth");
+      Serial.println(newAzimuth);
+      azimuth_angle_deg = newAzimuth;
+    }
+    
     digitalWrite(dirPin, decodedValues.isClockwise ? LOW : HIGH);
 
     digitalWrite(shootPin, decodedValues.isFiring ? HIGH: LOW);   
