@@ -47,7 +47,7 @@ MotorSettings decode(byte *encoded_command) {
     MotorSettings motor_command;
     
     byte encoded_value = encoded_command[0];
-    motor_command.isClockwise = (encoded_value >> 7) & 1; // Get the 8th bit for clockwise
+    motor_command.isClockwise = (encoded_value & 0x80) >> 7;; // Get the 8th bit for clockwise
     motor_command.speed = encoded_value & 0x0F; // Mask the lower 4 bits for speed
     motor_command.isFiring = (encoded_value >> 2) & 1; // Get the 3rd bit for is_firing
     
@@ -73,7 +73,7 @@ int map_range(int value = 0, int min_value = SLOWEST_HALF_STEP_MICROSECONDS, int
 
 bool processSerialInput() {
   
-    // Read the encoded motor command from serial input
+  // Read the encoded motor command from serial input
   byte encodedValue[2];
   
   if (Serial.available() >= 2) {
@@ -88,7 +88,8 @@ bool processSerialInput() {
     int stepUs = map_range(speed_in);
 //    Serial.println(decodedValues.azimuth);
     azimuthServo.write(decodedValues.azimuth);
-
+    Serial.print("isClockwise: ");
+    Serial.println(decodedValues.isClockwise);
     digitalWrite(dirPin, decodedValues.isClockwise ? HIGH: LOW);
 
     digitalWrite(shootPin, decodedValues.isFiring ? HIGH: LOW);   

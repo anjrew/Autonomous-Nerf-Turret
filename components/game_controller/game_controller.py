@@ -1,4 +1,3 @@
-import time
 from typing import Optional, Union
 import pygame
 import argparse
@@ -143,6 +142,7 @@ try:
                 'is_firing': fire_cache,
             }
             try:
+                print('Sending controller state to server: ', controller_state)
                 requests.post(url, json=controller_state)       
             except:
                 logging.error("Failed to send controller state to server.")

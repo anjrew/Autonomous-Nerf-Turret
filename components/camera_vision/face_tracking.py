@@ -13,8 +13,8 @@ parser.add_argument('--camera', '-c', type=int, default=0, help="Choose the came
 
 parser.add_argument('--crosshair_size', '-ch', type=int, default=10, help="The size of the crosshair" )
 
-parser.add_argument("--port", help="Set the mqtt server port.", default=6565, type=int)
-parser.add_argument("--host", help="Set the mqtt server hostname.", default="localhost")
+parser.add_argument("--port", help="Set the web socket server port to send messages to.", default=6565, type=int)
+parser.add_argument("--host", help="Set the web socket server hostname to send messages to.", default="localhost")
 parser.add_argument("--log-level", help="Set the logging level by integer value.", default=logging.DEBUG, type=int)
 
 args = parser.parse_args()

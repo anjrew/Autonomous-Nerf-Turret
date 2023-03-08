@@ -75,8 +75,14 @@ def encode(azimuth: int, is_clockwise: bool = True, speed: int = 0, is_firing: b
     azimuth_byte = round((azimuth / 180.0) * 255.0)  # Scale the azimuth value to fit in a byte (0-255)
     encoded_value = 0
     if is_clockwise:
+        print('Setting is clockwise')
         encoded_value |= (1 << 7)  # Set the 8th bit to 1 for clockwise
+        is_clockwise = bool(encoded_value & 0x80)
+        print('This was just set to: ', is_clockwise)
+        
+        
     encoded_value |= (speed & 0x0F)  # Mask the lower 4 bits for speed (0-10)
+    
     if is_firing:
         encoded_value |= (1 << 2)  # Set the 3rd bit to 1 for is_firing
     return bytes([encoded_value, azimuth_byte])
@@ -156,7 +162,7 @@ try:
                     return
 
             logging.debug
-            encoded_message = encode(json_data.get("azimuth_angle", 90), json_data.get("isClockwise", False), round(speed_in),json_data['is_firing'])
+            encoded_message = encode(json_data.get("azimuth_angle", 90), json_data.get("is_clockwise", False), round(speed_in),json_data['is_firing'])
             serialInst.write(encoded_message)#.to_bytes(1, "big"))
             
             # # Send a response
