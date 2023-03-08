@@ -29,6 +29,9 @@ parser.add_argument("--host", help="Set the web server server hostname. to send 
 parser.add_argument("--log-level", help="Set the logging level by integer value or string representation.", default=logging.INFO, type=map_log_level)
 parser.add_argument("--azimuth-dp", help="Set how many decimal places the azimuth is taken too.", default=0, type=int)
 parser.add_argument("--elevation-dp", help="Set how many decimal places the elevation is taken too.", default=0, type=int)
+parser.add_argument("--delay","-d", help="Delay to limit the data flow into the websocket server.", default=0.1, type=int)
+parser.add_argument("--test","-t", help="For testing it will not send requests to the driver.", action="store_true")
+parser.add_argument("--speed","-s", help="Set the speed factor o multiply the speed", default=0, type=int)
 
 
 parser.add_argument("--target-padding", "-p",help="""
@@ -55,8 +58,18 @@ TARGET_PADDING_PERCENTAGE = args.target_padding/100
 WS_HOST = args.ws_host  # IP address of the server
 WS_PORT = args.ws_port  # Port number to listen on
 
+CENTER_AZIMUTH_ANGLE = 90 # The center azimuth angle of the gun
+
 url = f"http://{args.host}:{args.port}"
 logging.info(f'Forwarding controller values to host at {url}')
+
+# Cache the controller state to prevent sending the same values over and over again
+cached_controller_state ={
+    'azimuth_angle': 90,
+    'is_clockwise': False,
+    'speed': 0,
+    'is_firing': False,
+} 
 
 def map_range(input_value: Union[int,float], min_input: Union[int,float], max_input: Union[int,float], min_output: Union[int,float], max_output: Union[int,float]) -> Union[int,float]:
     """
@@ -79,22 +92,30 @@ def map_range(input_value: Union[int,float], min_input: Union[int,float], max_in
     mapped_value = ((input_value - min_input) / (max_input - min_input)) * (max_output - min_output) + min_output
     return mapped_value
 
+
+already_sent_no_targets=False # Flag to prevent sending the same message over and over again
+
+## Set up this service as a websocket server
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     s.bind((WS_HOST, WS_PORT))
     s.listen()
     conn, addr = s.accept()
     with conn:
-        logging.info('Connected by', addr)
+        logging.info(f'Connected by {addr}')
         while True:
+            time.sleep(args.delay)
             data = conn.recv(1024)  # Receive data from the client
             if not data:
                 break
             
             json_data = json.loads(data.decode('utf-8')) # Decode the received data and parse it as a JSON object
             
-            center_x, center_y =  json_data['heading_vect']
-            
+            # Check if there are any targets in the frame
             if len(json_data['targets']) > 0:
+                print('Data obtained',data)
+                already_sent_no_targets=False 
+                center_x, center_y =  json_data['heading_vect']
+                
                 first_target = json_data['targets'][0] # Extract the first target from the targets list
                 # vec_delta = first_target['vec_delta'] # Extract the vec_delta data
                 id = first_target.get('id', None) # Extract the id data
@@ -126,18 +147,39 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
 
                 view_width = json_data['view_dimensions'][0]
                 view_height = json_data['view_dimensions'][1]
-                controller_state = {
-                    'azimuth_angle': round(map_range((view_width/2) + movement_vector[0], 0, view_width ,0 , 180), args.azimuth_dp),
-                    'is_clockwise': movement_vector[0] > 0,
+                
+                current_distance_from_the_middle = (view_width/2) + movement_vector[0]
+                max_distance_from_the_middle_left = -(view_width / 2)
+                max_distance_from_the_middle_right = view_width / 2
+                
+                print('Current distance from the middle:', current_distance_from_the_middle)
+                print('Max distance from the middle left:', max_distance_from_the_middle_left)
+                print('Max distance from the middle right:', max_distance_from_the_middle_right)
+                azimuth_angle = round(map_range(current_distance_from_the_middle, max_distance_from_the_middle_left, max_distance_from_the_middle_right ,0 , 180), args.azimuth_dp) - CENTER_AZIMUTH_ANGLE
+                print('azimuth_angle:', azimuth_angle)
+                controller_state = cached_controller_state = {
+                    'azimuth_angle': azimuth_angle,
+                    'is_clockwise': movement_vector[1] > 0,
                     'speed': round(map_range((view_height / 2) - ((view_height / 2) - abs(movement_vector[1])), 0, view_height / 2, 0 , 10), args.elevation_dp),
                     'is_firing': is_on_target,
                 }
                 
                 if logging.getLogger().isEnabledFor(logging.DEBUG):
                     print("Sending controller state:", controller_state)
+                
+                if not args.test:
+                    try:
+                        requests.post(url, json=controller_state)       
+                    except:
+                        logging.error("Failed to send controller state to server.")
+
                     
-                try:
-                    requests.post(url, json=controller_state)       
-                except:
-                    logging.error("Failed to send controller state to server.")
-                    time.sleep(3)
+            else:
+                if not already_sent_no_targets and not args.test:
+                    ## No targets detected, so stop the gun but hold its current position
+                    requests.post(url, json={
+                        **cached_controller_state,
+                        'speed': 0,
+                        'is_firing': False,
+                    })      
+                    already_sent_no_targets=True 

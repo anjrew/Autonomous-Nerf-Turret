@@ -14,6 +14,8 @@ parser.add_argument("--port", help="Set the http server port.", default=5565)
 parser.add_argument("--baud", help="Set the Baud Rate of the serial communication.", default=9600)
 parser.add_argument("--host", help="Set the http server hostname.", default="localhost")
 parser.add_argument("--log-level", help="Set the logging level by integer value.", default=logging.DEBUG, type=int)
+parser.add_argument("--delay", "-d",help="Delay to rate the data is sent to the Arduino in seconds", default=0, type=int)
+
 args = parser.parse_args()
 
 logging.basicConfig(level=args.log_level)
@@ -147,7 +149,7 @@ try:
             
             # Parse the JSON data
             json_data = json.loads(data)
-            logging.debug("Got Data:" + json.dumps(json_data))
+            logging.debug("Got Data: " + json.dumps(json_data))
             
             speed_in = json_data.get('speed', 0)
             
@@ -161,7 +163,6 @@ try:
                     """.encode())
                     return
 
-            logging.debug
             encoded_message = encode(json_data.get("azimuth_angle", 90), json_data.get("is_clockwise", False), round(speed_in),json_data['is_firing'])
             serialInst.write(encoded_message)#.to_bytes(1, "big"))
             

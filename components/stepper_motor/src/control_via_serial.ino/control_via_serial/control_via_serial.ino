@@ -86,11 +86,8 @@ bool processSerialInput() {
     MotorSettings decodedValues = decode(encodedValue);
     int speed_in = decodedValues.speed;
     int stepUs = map_range(speed_in);
-//    Serial.println(decodedValues.azimuth);
     azimuthServo.write(decodedValues.azimuth);
-    Serial.print("isClockwise: ");
-    Serial.println(decodedValues.isClockwise);
-    digitalWrite(dirPin, decodedValues.isClockwise ? HIGH: LOW);
+    digitalWrite(dirPin, decodedValues.isClockwise ? LOW : HIGH);
 
     digitalWrite(shootPin, decodedValues.isFiring ? HIGH: LOW);   
 

@@ -15,7 +15,11 @@ parser.add_argument('--crosshair_size', '-ch', type=int, default=10, help="The s
 
 parser.add_argument("--port", help="Set the web socket server port to send messages to.", default=6565, type=int)
 parser.add_argument("--host", help="Set the web socket server hostname to send messages to.", default="localhost")
+
 parser.add_argument("--log-level", help="Set the logging level by integer value.", default=logging.DEBUG, type=int)
+parser.add_argument("--delay", help="Delay to limit the data flow into the websocket server.", default=0.1, type=int)
+parser.add_argument("--headless", help="Wether to run the service in headless mode.", action='store_true', default=False)
+
 
 args = parser.parse_args()
 
@@ -29,13 +33,17 @@ PORT = args.port  # Port number to listen on
 # Set this value to change the Camera ID
 CAMERA_ID = args.camera
 CROSS_HAIR_SIZE = args.crosshair_size
+HEADLESS=args.headless
 
+if HEADLESS:
+    cv2.CAP_DSHOW = False
 
 cap = cv2.VideoCapture(CAMERA_ID)
+
 scaling_factor = 0.5
 process_this_frame = True
-face_locations = []
 sock = None
+face_locations = []
 
 def try_to_connect_to_server():
     logging.info(f"Connecting to host{HOST, PORT}")
@@ -44,19 +52,22 @@ def try_to_connect_to_server():
         # Create a new socket and connect to the server
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.connect((HOST, PORT))
+        logging.info(f"Successfully Connected to socket @ {HOST, PORT}")
     except:
-        time.sleep(5)
-        logging.error("Connecting socket failed. Attempting to try again")
-        try_to_connect_to_server()
+        # time.sleep(5)
+        sock = None
+        logging.error("Failed on trying to connect to socket. Attempting to try again")
+        # try_to_connect_to_server()
         pass
 
 
 while True:
+    time.sleep(args.delay)
     if not sock:
         try_to_connect_to_server()
         
     try:
-    
+        
         targets = [] # List of targets in the frame
         
         ret, frame = cap.read()
@@ -67,9 +78,8 @@ while True:
         center_x = width // 2
         center_y = height // 2
             
-    
         if process_this_frame:
-        
+            
             small_frame = cv2.resize(frame, (0, 0), fx=0.25, fy=0.25) #type: ignore
     
             face_locations = face_recognition.face_locations(small_frame)
@@ -90,8 +100,9 @@ while True:
             target_highlight_size = 5 if is_on_target else 1
             target_highlight_color = (0, 0, 255) if is_on_target else (0, 255, 0)
             
-            # Draw a box around the face
-            cv2.rectangle(frame, (left, top), (right, bottom), target_highlight_color, 2)
+            if not HEADLESS:
+                # Draw a box around the face
+                cv2.rectangle(frame, (left, top), (right, bottom), target_highlight_color, 2)
             
             box_center_x = (left + right) / 2
             box_center_y = (top + bottom) / 2
@@ -101,23 +112,25 @@ while True:
             
             distance = math.sqrt(movement_vector[0]**2 + movement_vector[1]**2)
             
-            # Draw a label with a name below the face
-            cv2.rectangle(frame, (left, bottom - 35), (right, bottom), target_highlight_color, cv2.FILLED)
-            font = cv2.FONT_HERSHEY_DUPLEX
             
             lock_text = "Lock" if is_on_target else f""
             
             targets.append({ "vec_delta": movement_vector, "locked": is_on_target, "box": [left, top, right, bottom]})
             
-            font_size = 445
-            
-            cv2.putText(frame, f"{lock_text} {movement_vector} {distance:.2f}", (left + 6, bottom - 6), font, box_width/font_size, (255, 255, 255), 1)
-            
-            # Draw a red horizontal line through the center
-            cv2.line(frame, (center_x - CROSS_HAIR_SIZE, center_y), (center_x + CROSS_HAIR_SIZE, center_y), target_highlight_color, target_highlight_size)
-            # Draw a red vertical line through the center
-            cv2.line(frame, (center_x, center_y - CROSS_HAIR_SIZE), (center_x, center_y + CROSS_HAIR_SIZE), target_highlight_color, target_highlight_size)
+            if not HEADLESS:
+                font_size = 445
+                # Draw a label with a name below the face
+                cv2.rectangle(frame, (left, bottom - 35), (right, bottom), target_highlight_color, cv2.FILLED)
+                font = cv2.FONT_HERSHEY_DUPLEX
+                
+                cv2.putText(frame, f"{lock_text} {movement_vector} {distance:.2f}", (left + 6, bottom - 6), font, box_width/font_size, (255, 255, 255), 1)
+                
+                # Draw a red horizontal line through the center
+                cv2.line(frame, (center_x - CROSS_HAIR_SIZE, center_y), (center_x + CROSS_HAIR_SIZE, center_y), target_highlight_color, target_highlight_size)
+                # Draw a red vertical line through the center
+                cv2.line(frame, (center_x, center_y - CROSS_HAIR_SIZE), (center_x, center_y + CROSS_HAIR_SIZE), target_highlight_color, target_highlight_size)
         
+        # print("len(targets)", len(targets))
         if len(targets) > 0:
             data = {
                 "targets": targets,
@@ -126,15 +139,12 @@ while True:
             }
             json_data = json.dumps(data).encode('utf-8') # Encode the JSON object as a byte string
             if sock:
-                try:
-                    sock.sendall(json_data) # Send the byte string to the server
-                except Exception as e:
-                    logging.error(f"Error sending data to server: {e}")
-                    try_to_connect_to_server()
-                    pass
-            else:
-                logging.error("No socket detected")
-                try_to_connect_to_server()
+                print('Sending data to server', json_data)
+                sock.sendall(json_data) # Send the byte string to the server
+                
+        else:
+            if sock:
+                sock.sendall(json.dumps({"targets": []}).encode('utf-8'))
             
         
         cv2.imshow('Face Detector', frame)
@@ -143,12 +153,18 @@ while True:
         ## S 'key'
         if c == 27:
             break
-    
-    except:
-        print("Socket connection lost. Retrying in 5 seconds...")
-        time.sleep(5)
+    except KeyboardInterrupt as e:
+        raise e 
+    except BrokenPipeError as e:
+        logging.error("Socket connection lost. Retrying in 5 seconds...")
         sock = None
-        try_to_connect_to_server()
+        pass 
+    except ConnectionResetError as e:
+        print("Socket connection lost. Retrying in 5 seconds...")
+        sock = None
+        # try_to_connect_to_server()
+        pass
+
         
 cap.release()
         
