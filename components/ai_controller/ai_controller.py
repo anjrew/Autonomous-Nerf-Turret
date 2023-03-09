@@ -27,28 +27,34 @@ parser.add_argument("--ws-port", help="Set the web socket server port to recieve
 parser.add_argument("--ws-host", help="Set the web socket server hostname to recieve messages from.", default="localhost")
 parser.add_argument("--port", help="Set the web server server port to send commands too.", default=5565, type=int)
 parser.add_argument("--host", help="Set the web server server hostname. to send commands too", default="localhost")
-parser.add_argument("--log-level", help="Set the logging level by integer value or string representation.", default=logging.INFO, type=map_log_level)
+parser.add_argument("--log-level", help="Set the logging level by integer value or string representation.", default=logging.WARNING, type=map_log_level)
 parser.add_argument("--azimuth-dp", help="Set how many decimal places the azimuth is taken too.", default=2, type=int)
 parser.add_argument("--elevation-dp", help="Set how many decimal places the elevation is taken too.", default=2, type=int)
 parser.add_argument("--delay","-d", help="Delay to limit the data flow into the websocket server.", default=0, type=int)
 parser.add_argument("--test","-t", help="For testing it will not send requests to the driver.", action="store_true")
-parser.add_argument("--speed","-s", help="Set the speed factor o multiply the speed", default=0.28)
+parser.add_argument("--speed","-s", help="Set the speed factor o multiply the speed", default=0.3)
 parser.add_argument("--smoothing","-sm", help="The amount of smoothing factor for speed to optimal position", default=1, type=float )
-
 
 parser.add_argument("--target-padding", "-p",help="""
                     Set the padding for when the gun will try and shoot relative to the edge of the target in %.
                     The amount of padding around the target bounding box in pixels that the gun will ignore before shooting
                     """, default=10, type=int)
 
-parser.add_argument('--accuracy-threshold', '-th', type=int, default=45, 
+parser.add_argument('--accuracy-threshold-x', '-atx', type=int, default=5, 
                     help="""
-                    The threshold of how accurate the gun will try to get the target in the center of the crosshair in pixels.
+                    The threshold of how accurate the gun will try to get the target in the center of the crosshair in pixels horizontally.
                     """ )
 
+parser.add_argument('--accuracy-threshold-y', '-aty', type=int, default=45, 
+                    help="""
+                    The threshold of how accurate the gun will try to get the target in the center of the crosshair in pixels vertically.
+                    """ )
+
+# TODO: Implement this feature
 # parser.add_argument('--vert-offset', '-v', type=int, default=5, 
 #                     help="""
-#                     The vertical offset the gun will aim for from the center of the crosshair in pixels so gravity is taken into account.
+#                     The percentage of vertical offset the gun will aim for from the center of the crosshair in negative correlation to the size of the target box so gravity is taken into account. 
+#                     This means that the smaller the target the further it must be form the gun and therefore the higher the gun will aim.
 #                     """ )
 
 
@@ -57,7 +63,7 @@ args = parser.parse_args()
 logging.basicConfig(level=args.log_level)
 
 TARGET_PADDING_PERCENTAGE = args.target_padding/100
-ACCURACY_THRESHOLD= args.accuracy_threshold/100
+TARGET_PADDING_PERCENTAGE = args.target_padding/100
 WS_HOST = args.ws_host  # IP address of the server
 WS_PORT = args.ws_port  # Port number to listen on
 
@@ -134,6 +140,9 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         logging.info(f'Connected by {addr}')
         while True:
             time.sleep(args.delay)
+            start_time = time.time()
+
+            
             data = conn.recv(1024)  # Receive data from the client
             if not data:
                 break
@@ -199,9 +208,9 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 azimuth_formatted = round(smoothed_speed_adjusted_azimuth, args.azimuth_dp)
                 
                 controller_state = cached_controller_state = {
-                    'azimuth_angle': 0 if abs(movement_vector[0]) <= args.accuracy_threshold else azimuth_formatted,
+                    'azimuth_angle': 0 if abs(movement_vector[0]) <= args.accuracy_threshold_x else azimuth_formatted,
                     'is_clockwise': movement_vector[1] > 0,
-                    'speed': 0 if abs(movement_vector[1]) <= args.accuracy_threshold else round(elevation_speed_adjusted / 2 , args.elevation_dp),
+                    'speed': 0 if abs(movement_vector[1]) <= args.accuracy_threshold_y else round(elevation_speed_adjusted / 2 , args.elevation_dp),
                     'is_firing': is_on_target,
                 }
                 
@@ -213,7 +222,6 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                     except:
                         logging.error("Failed to send controller state to server.")
 
-                    
             else:
                 if not already_sent_no_targets and not args.test:
                     ## No targets detected, so stop the gun but hold its current position
@@ -223,3 +231,6 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                         'is_firing': False,
                     })      
                     already_sent_no_targets=True 
+            
+            # Record the time taken to process the frame
+            logging.debug("Frame processed in " + str(time.time() - start_time) + " seconds")       
