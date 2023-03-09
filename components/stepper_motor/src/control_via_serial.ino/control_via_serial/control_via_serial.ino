@@ -94,8 +94,6 @@ bool processSerialInput() {
     int newAzimuth = azimuth_angle_deg +  decodedValues.azimuth;
     if (newAzimuth >= 0 && newAzimuth <= MAX_AZIMUTH_DEG_RANGE) {
       azimuthServo.write(newAzimuth);
-      Serial.print("New azimuth");
-      Serial.println(newAzimuth);
       azimuth_angle_deg = newAzimuth;
     }
     

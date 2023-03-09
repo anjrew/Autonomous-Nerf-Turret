@@ -172,7 +172,14 @@ try:
                     return
 
             encoded_message = encode(json_data.get("azimuth_angle", 90), json_data.get("is_clockwise", False), round(speed_in),json_data['is_firing'])
-            serialInst.write(encoded_message)#.to_bytes(1, "big"))
+            try:
+                serialInst.write(encoded_message)#.to_bytes(1, "big"))
+            except Exception as e:
+                logging.error("An exception was thrown:" + str(e))
+                if serialInst: serialInst.close()
+                if webServer: webServer.server_close()
+                logging.error("Server stopped and Serial Port closed")
+
             
             # # Send a response
             self.send_response(200)
@@ -188,7 +195,8 @@ try:
       
 
 except Exception as e:
-    print("An exception was thrown:" , e)
+    logging.error("An exception was thrown:" + str(e))
     if serialInst: serialInst.close()
     if webServer: webServer.server_close()
-    print("Server stopped and Serial Port closed")
+    logging.error("Server stopped and Serial Port closed")
+    raise e

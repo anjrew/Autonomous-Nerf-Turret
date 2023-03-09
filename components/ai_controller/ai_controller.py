@@ -32,7 +32,7 @@ parser.add_argument("--azimuth-dp", help="Set how many decimal places the azimut
 parser.add_argument("--elevation-dp", help="Set how many decimal places the elevation is taken too.", default=2, type=int)
 parser.add_argument("--delay","-d", help="Delay to limit the data flow into the websocket server.", default=0, type=int)
 parser.add_argument("--test","-t", help="For testing it will not send requests to the driver.", action="store_true")
-parser.add_argument("--speed","-s", help="Set the speed factor o multiply the speed", default=0.4)
+parser.add_argument("--speed","-s", help="Set the speed factor o multiply the speed", default=0.28)
 parser.add_argument("--smoothing","-sm", help="The amount of smoothing factor for speed to optimal position", default=1, type=float )
 
 
@@ -41,7 +41,7 @@ parser.add_argument("--target-padding", "-p",help="""
                     The amount of padding around the target bounding box in pixels that the gun will ignore before shooting
                     """, default=10, type=int)
 
-parser.add_argument('--accuracy-threshold', '-th', type=int, default=40, 
+parser.add_argument('--accuracy-threshold', '-th', type=int, default=45, 
                     help="""
                     The threshold of how accurate the gun will try to get the target in the center of the crosshair in pixels.
                     """ )
@@ -119,7 +119,6 @@ def slow_start_fast_end_smoothing(x: float, p: float, max_value: int) -> float:
     
     ratio = x / max_value
     output = ratio ** p * max_value
-    print("Testing here", x , x >= 0 , output)
     return output if x >= 0 else -abs(output)
 
 
@@ -143,7 +142,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             
             # Check if there are any targets in the frame
             if len(json_data['targets']) > 0:
-                print('Data obtained',data)
+                logging.debug('Data obtained:' + json.dumps(data.decode('utf-8')))
                 already_sent_no_targets=False 
                 center_x, center_y =  json_data['heading_vect']
                 
@@ -192,25 +191,21 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                     90
                 )
                 azimuth_speed_adjusted = -(predicted_azimuth_angle * float(args.speed))
-                print('azimuth_speed_adjusted', azimuth_speed_adjusted)
                 smoothed_speed_adjusted_azimuth = slow_start_fast_end_smoothing(azimuth_speed_adjusted, float(args.smoothing) + 1.0, 90)
-                print('smoothed_speed_adjusted_azimuth', smoothed_speed_adjusted_azimuth)
                 
                 elevation_speed_adjusted = map_range((view_height / 2) - ((view_height / 2) - abs(movement_vector[1])), 0, view_height / 2, 0 , 10) * float(args.speed)
                 smooth_elevation_speed_adjusted = slow_start_fast_end_smoothing(elevation_speed_adjusted, float(args.smoothing) + 1.0, 10)
                 
                 azimuth_formatted = round(smoothed_speed_adjusted_azimuth, args.azimuth_dp)
-                print('azimuth_formatted', azimuth_formatted)
                 
                 controller_state = cached_controller_state = {
                     'azimuth_angle': 0 if abs(movement_vector[0]) <= args.accuracy_threshold else azimuth_formatted,
                     'is_clockwise': movement_vector[1] > 0,
-                    'speed': 0 if abs(movement_vector[1]) <= args.accuracy_threshold else round(elevation_speed_adjusted, args.elevation_dp),
+                    'speed': 0 if abs(movement_vector[1]) <= args.accuracy_threshold else round(elevation_speed_adjusted / 2 , args.elevation_dp),
                     'is_firing': is_on_target,
                 }
                 
-                if logging.getLogger().isEnabledFor(logging.DEBUG):
-                    print("Sending controller state:", controller_state)
+                logging.debug("Sending controller state: " + json.dumps(controller_state))
                 
                 if not args.test:
                     try:

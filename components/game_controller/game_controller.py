@@ -3,6 +3,7 @@ import pygame
 import argparse
 import requests
 import logging
+import json
 
 
 parser = argparse.ArgumentParser()
@@ -26,7 +27,7 @@ pygame.joystick.init()
 
 # Get the number of connected joysticks
 joystick_count = pygame.joystick.get_count()
-print(f'Found {joystick_count} joystick{ "s" if joystick_count != 1 else "" }')
+logging.info(f'Found {joystick_count} joystick{ "s" if joystick_count != 1 else "" }')
 
 selectionIdx = None
 joystick = Optional[pygame.joystick.JoystickType]
@@ -54,7 +55,7 @@ joystick = pygame.joystick.Joystick(int(selectionIdx))
 
 # Select the joystick you want to use
 joystick.init()
-print('Initialized ', joystick.get_name())
+logging.info('Initialized ' + joystick.get_name())
 
 
 def map_range(input_value: Union[int,float], min_input: Union[int,float], max_input: Union[int,float], min_output: Union[int,float], max_output: Union[int,float]) -> Union[int,float]:
@@ -129,10 +130,6 @@ try:
                         if azimuth_angle != azimuth_cache:
                             azimuth_cache = azimuth_angle
                             something_changed =True
-                               
-                    
-            if event.type == pygame.JOYHATMOTION:
-                print(event)
      
         if something_changed:
             controller_state = {
@@ -142,14 +139,14 @@ try:
                 'is_firing': fire_cache,
             }
             try:
-                print('Sending controller state to server: ', controller_state)
+                logging.debug('Sending controller state to server: ' + json.dumps(controller_state))
                 requests.post(url, json=controller_state)       
             except:
                 logging.error("Failed to send controller state to server.")
         
             
 except Exception as e:
-    print(e)
     # Close the joystick and quit Pygame
     joystick.quit()
     pygame.quit()
+    raise e

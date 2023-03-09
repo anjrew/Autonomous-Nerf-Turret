@@ -97,7 +97,7 @@ while True:
                 is_on_target=True
             
             target_highlight_size = 5 if is_on_target else 1
-            target_highlight_color = (0, 0, 255) if is_on_target else (0, 255, 0)
+            target_highlight_color = (0, 0, 255) if is_on_target else (0, 100, 0)
             
             if not HEADLESS:
                 # Draw a box around the face
@@ -129,7 +129,6 @@ while True:
                 # Draw a red vertical line through the center
                 cv2.line(frame, (center_x, center_y - CROSS_HAIR_SIZE), (center_x, center_y + CROSS_HAIR_SIZE), target_highlight_color, target_highlight_size)
         
-        # print("len(targets)", len(targets))
         if len(targets) > 0:
             data = {
                 "targets": targets,
@@ -138,7 +137,7 @@ while True:
             }
             json_data = json.dumps(data).encode('utf-8') # Encode the JSON object as a byte string
             if sock:
-                print('Sending data to server', json_data)
+                logging.debug('Sending data to the AI controller: ' + json.dumps(json_data))
                 sock.sendall(json_data) # Send the byte string to the server
                 
         else:
@@ -155,13 +154,12 @@ while True:
     except KeyboardInterrupt as e:
         raise e 
     except BrokenPipeError as e:
-        logging.error("Socket connection lost. Retrying in 5 seconds...")
+        logging.error("Socket pipe broken. Retrying in 5 seconds...")
         sock = None
         pass 
     except ConnectionResetError as e:
-        print("Socket connection lost. Retrying in 5 seconds...")
+        logging.error("Socket connection lost. Retrying in 5 seconds...")
         sock = None
-        # try_to_connect_to_server()
         pass
 
         
