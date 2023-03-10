@@ -85,14 +85,7 @@ def encode(azimuth: int, is_clockwise: bool, speed: int, is_firing: bool) -> byt
     assert type(is_firing) == bool, "is_firing must be an is_firing"
     
     azimuth_byte = encode_azimuth_val_to_byte(azimuth)  # Scale the azimuth value to fit in a byte (0-255)
-    encoded_value = 0b00000000
-    if is_clockwise:
-        encoded_value |= (1 << 7)  # Set the 8th bit to 1 for clockwise
-        
-    encoded_value |= (speed & 0b00001111)  # Mask the lower 7-4(4) bits for speed (0-10)
-   
-    if is_firing:
-        encoded_value |= (1 << 2)  # Set the 3rd bit to 1 for is_firing
+    encoded_value = encode_vals_to_byte(is_clockwise, speed, is_firing)  # Encode the other values into a single byte
     return bytes([encoded_value, azimuth_byte])
 
 

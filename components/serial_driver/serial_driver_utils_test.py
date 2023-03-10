@@ -25,28 +25,29 @@ def test_encode_azimuth_to_binary(id: int, azimuth:int, expected_output:int):
     assert encoded_command == expected_output, f"({id}) Encoding Failed: Expected {bin(expected_output)} but got {bin(encoded_command)}"
 
 
-@pytest.mark.parametrize("is_clockwise, speed, is_firing, expected_output, id", [
+@pytest.mark.parametrize("id, is_clockwise, speed, is_firing, expected_output", assign_id_to_tests([
     ## These are the args in order passed to the test function with the expected values in the object
-    (True, 0, False,  0b10000000, 1),
-    (False, 0, False, 0b00000000, 2), 
-    (False, 0, True,  0b01000000, 3), 
-    (True, 0, True,   0b11000000, 4),
-    (True, 1, True,   0b11000001, 5),
-    (True, 1, False,  0b10000001, 6),
-    (False, 1, False, 0b00000001, 7),
-    (False, 2, False, 0b00000010, 8),
-    (False, 3, False, 0b00000011, 9),
-    (False, 4, False, 0b00000100, 10),
-    (True, 4, False,  0b10000100, 11),
-    (True, 4, True,   0b11000100, 12),
-    (False, 4, True,  0b01000100, 13),
-    (False, 5, True,  0b01000101, 14),
-    (False, 6, True,  0b01000110, 15),
-    (False, 7, True,  0b01000111, 16),
-    (False, 8, True,  0b01001000, 16),
-    (False, 9, True,  0b01001001, 17),
-    (False, 10, True, 0b01001010, 18),
-])
+    (True, 0, False,  0b10000000),
+    (False, 0, False, 0b00000000), 
+    (False, 0, True,  0b01000000), 
+    (True, 0, True,   0b11000000),
+    (True, 1, True,   0b11000001),
+    (True, 1, False,  0b10000001),
+    (False, 1, False, 0b00000001),
+    (False, 2, False, 0b00000010),
+    (False, 3, False, 0b00000011),
+    (False, 4, False, 0b00000100),
+    (True, 4, False,  0b10000100),
+    (True, 4, True,   0b11000100),
+    (False, 4, True,  0b01000100),
+    (False, 5, True,  0b01000101),
+    (False, 6, True,  0b01000110),
+    (False, 7, True,  0b01000111),
+    (False, 8, True,  0b01001000),
+    (False, 9, True,  0b01001001),
+    (False, 10, True, 0b01001010),
+    (False, 7, True,  0b01000111),
+]))
 def test_encode_vals_to_binary(is_clockwise: bool, speed: int, is_firing: bool, expected_output:int, id:int):
     encoded_command = encode_vals_to_byte(is_clockwise, speed, is_firing)
     # encoded, azimuth_byte
@@ -54,11 +55,12 @@ def test_encode_vals_to_binary(is_clockwise: bool, speed: int, is_firing: bool, 
 
 
 
-@pytest.mark.parametrize("azimuth, is_clockwise, speed, is_firing, expected_output, id", [
+@pytest.mark.parametrize("id, azimuth, is_clockwise, speed, is_firing, expected_output", assign_id_to_tests([
     ## These are the args in order passed to the test function with the expected values in the object
-    (0, True, 0, False, [0b10000000, 0b10000000], 1),
-    (10, True, 0, False, [0b10000000, 0b10001110], 2),
-])
+    (0, True, 0, False,     [0b10000000, 0b01011010]),
+    (90, True, 0, False,    [0b10000000, 0b10110100]),
+    (90, False, 7, True,    [0b01000111, 0b10110100]),
+]))
 def test_encode_all_to_binary(azimuth, is_clockwise, speed, is_firing, expected_output, id):
     encoded_command = encode(azimuth, is_clockwise, speed, is_firing)
     
