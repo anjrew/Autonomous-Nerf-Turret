@@ -2,10 +2,25 @@ import time
 import cv2
 import face_recognition
 from argparse import ArgumentParser
+import argparse
 import math
 import logging
 import socket
 import json
+
+# Define the conversion function
+def map_log_level(level_str) -> int:
+    if type(level_str) == int or level_str.isdigit():
+        return int(level_str)
+    elif level_str.isalpha():
+        level_name = level_str.upper()
+        try:
+            level = logging.getLevelName(level_name)
+            return level
+        except ValueError:
+            raise argparse.ArgumentTypeError(f"Invalid logging level: {level_str}")
+    else:
+        raise argparse.ArgumentTypeError(f"Invalid logging level: {level_str}")
 
 parser = ArgumentParser(description="Track faces with bounding boxes")
 
@@ -16,7 +31,7 @@ parser.add_argument('--crosshair_size', '-ch', type=int, default=10, help="The s
 parser.add_argument("--port", help="Set the web socket server port to send messages to.", default=6565, type=int)
 parser.add_argument("--host", help="Set the web socket server hostname to send messages to.", default="localhost")
 
-parser.add_argument("--log-level", help="Set the logging level by integer value.", default=logging.DEBUG, type=int)
+parser.add_argument("--log-level", "-ll" , help="Set the logging level by integer value.", default=logging.WARNING, type=map_log_level)
 parser.add_argument("--delay", help="Delay to limit the data flow into the websocket server.", default=0, type=int)
 parser.add_argument("--headless", help="Wether to run the service in headless mode.", action='store_true', default=False)
 
@@ -45,7 +60,7 @@ process_this_frame = True
 sock = None
 face_locations = []
 
-def try_to_connect_to_server():
+def try_to_create_socket():
     logging.info(f"Connecting to host{HOST, PORT}")
     try:
         global sock
@@ -63,8 +78,10 @@ def try_to_connect_to_server():
 
 while True:
     time.sleep(args.delay)
+    start_time = time.time()
+
     if not sock:
-        try_to_connect_to_server()
+        try_to_create_socket()
         
     try:
         targets = [] # List of targets in the frame
@@ -137,7 +154,7 @@ while True:
             }
             json_data = json.dumps(data).encode('utf-8') # Encode the JSON object as a byte string
             if sock:
-                logging.debug('Sending data to the AI controller: ' + json.dumps(json_data))
+                logging.debug('Sending data to the AI controller: ' + json.dumps(data))
                 sock.sendall(json_data) # Send the byte string to the server
                 
         else:
@@ -151,6 +168,9 @@ while True:
         ## S 'key'
         if c == 27:
             break
+        
+           
+            
     except KeyboardInterrupt as e:
         raise e 
     except BrokenPipeError as e:
@@ -161,7 +181,9 @@ while True:
         logging.error("Socket connection lost. Retrying in 5 seconds...")
         sock = None
         pass
-
+    finally:
+        # Record the time taken to process the frame
+        logging.debug("Frame processed in " + str(time.time() - start_time) + " seconds")
         
 cap.release()
         

@@ -5,15 +5,29 @@ import argparse
 import serial.tools.list_ports
 import json
 import logging
+import time
 
-
+# Define the conversion function
+def map_log_level(level_str) -> int:
+    if type(level_str) == int or level_str.isdigit():
+        return int(level_str)
+    elif level_str.isalpha():
+        level_name = level_str.upper()
+        try:
+            level = logging.getLevelName(level_name)
+            return level
+        except ValueError:
+            raise argparse.ArgumentTypeError(f"Invalid logging level: {level_str}")
+    else:
+        raise argparse.ArgumentTypeError(f"Invalid logging level: {level_str}")
+    
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--set-port-man", action="store_true",dest="is_port_man", help="Set the serial port manually instead of using the default port through the command line prompt.")
 parser.add_argument("--port", help="Set the http server port.", default=5565)
 parser.add_argument("--baud", help="Set the Baud Rate of the serial communication.", default=9600)
 parser.add_argument("--host", help="Set the http server hostname.", default="localhost")
-parser.add_argument("--log-level", help="Set the logging level by integer value.", default=logging.DEBUG, type=int)
+parser.add_argument("--log-level", "-ll" ,help="Set the logging level by integer value.", default=logging.WARNING, type=map_log_level)
 parser.add_argument("--delay", "-d",help="Delay to rate the data is sent to the Arduino in seconds", default=0, type=int)
 
 args = parser.parse_args()
@@ -83,6 +97,7 @@ def encode(azimuth: int, is_clockwise: bool = True, speed: int = 0, is_firing: b
         >>> encode(90, True, 5)
         b'\x5f\x08'
     """
+    
     azimuth_degrees = limit_value(azimuth, -90, 90) + 90  # Convert the input angle to a range of 0-180 degrees
     azimuth_byte = round((azimuth_degrees / 180.0) * 255.0)  # Scale the azimuth value to fit in a byte (0-255)
     encoded_value = 0
@@ -91,7 +106,7 @@ def encode(azimuth: int, is_clockwise: bool = True, speed: int = 0, is_firing: b
         is_clockwise = bool(encoded_value & 0x80)
         
         
-    encoded_value |= (speed & 0x0F)  # Mask the lower 4 bits for speed (0-10)
+    encoded_value |= (round(speed) & 0x0F)  # Mask the lower 4 bits for speed (0-10)
     
     if is_firing:
         encoded_value |= (1 << 2)  # Set the 3rd bit to 1 for is_firing
@@ -148,8 +163,9 @@ try:
                              The json can also have a key of 'isClockwise' with a value of true or false for the direction of the motor.
                              """)
         
-        # { 'isClockwise': True }
+
         def do_POST(self):
+            start_time = time.time()
             # Get the content type and content length of the request
             content_length = int(self.headers.get('content-length', 0))
             # Read the request data
@@ -173,17 +189,25 @@ try:
 
             encoded_message = encode(json_data.get("azimuth_angle", 90), json_data.get("is_clockwise", False), round(speed_in),json_data['is_firing'])
             try:
-                serialInst.write(encoded_message)#.to_bytes(1, "big"))
+                serialInst.write(encoded_message)
+                # # Send a response
+                self.send_response(200)
+                self.end_headers()
+                
             except Exception as e:
-                logging.error("An exception was thrown:" + str(e))
+                logging.error("An exception was thrown:" + str(e) + " " + str(type(e)))
                 if serialInst: serialInst.close()
                 if webServer: webServer.server_close()
                 logging.error("Server stopped and Serial Port closed")
+                self.send_response(500)
+                self.end_headers()
+            finally: 
+                # Record the time taken to process the frame
+                logging.debug("Frame processed in " + str(time.time() - start_time) + " seconds")
+
 
             
-            # # Send a response
-            self.send_response(200)
-            self.end_headers()
+            
             
 
     if __name__ == "__main__":

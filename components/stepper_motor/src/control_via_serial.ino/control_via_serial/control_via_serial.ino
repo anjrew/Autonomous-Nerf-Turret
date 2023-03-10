@@ -32,9 +32,18 @@ int azimuth_angle_deg = 90;
 // The limits of the values to be set for the motor half step
 const int SLOWEST_HALF_STEP_MICROSECONDS = 17000;
 const int FASTEST_HALF_STEP_MICROSECONDS = 1000;
+const int SLOWEST_STEP_SPEED = 1e6; // one second  in milli seconds which is achived by making 1 step at slowest possible seed and then waiting until 1 second has passed
+
+// We use the slowest speed allows minus fastest speed possible in the motor
+// Not the slowest speed here is slower than the slowest step speed because we can quickly step and then wait.
+// 1e6 is a million micro seconds which is 1 second
+const int STEP_MICRO_SECONDS_RANGE = SLOWEST_STEP_SPEED - FASTEST_HALF_STEP_MICROSECONDS;
+
 
 const byte SLOWEST_SPEED = 0;
 const byte FASTEST_SPEED = 10;
+// The speed range that is expected to come from the serial message
+const byte ORDINAL_SPEED_RANGE = FASTEST_SPEED - SLOWEST_SPEED;
 
 const byte MAX_AZIMUTH_DEG_RANGE= 180;
 
@@ -54,6 +63,8 @@ MotorSettings decode(byte *encoded_command) {
     byte encoded_value = encoded_command[0];
     motor_command.isClockwise = (encoded_value & 0x80) >> 7;; // Get the 8th bit for clockwise
     motor_command.speed = encoded_value & 0x0F; // Mask the lower 4 bits for speed
+    Serial.print("The speed obatined from the decoder is: ");
+    Serial.println(motor_command.speed);
     motor_command.isFiring = (encoded_value >> 2) & 1; // Get the 3rd bit for is_firing
     
     byte azimuth_byte = encoded_command[1];
@@ -62,17 +73,17 @@ MotorSettings decode(byte *encoded_command) {
 }
 
 
-int map_range(int value = 0, int min_value = SLOWEST_HALF_STEP_MICROSECONDS, int max_value = FASTEST_HALF_STEP_MICROSECONDS, int new_min_value = SLOWEST_SPEED, int new_max_value = FASTEST_SPEED) {
-    
-    int new_range = new_max_value - new_min_value;
+int map_range(int value = 0) {
 
-    int original_range = max_value - min_value;
+    float scaling_factor = (float)ORDINAL_SPEED_RANGE / (float)STEP_MICRO_SECONDS_RANGE;
 
-    float scaling_factor = (float)original_range / new_range;
-
-    float original_value = ((value - new_min_value) * scaling_factor) + min_value;
-
-    return int(original_value);
+    float original_value = ((float)(value - SLOWEST_SPEED) * scaling_factor) + SLOWEST_STEP_SPEED;
+    int val = int(original_value);
+    Serial.print("Returning mapped: ");
+    Serial.print(val);
+    Serial.print(" FROM ");
+    Serial.println(value) ;
+    return val;
 }
 
 
@@ -101,13 +112,7 @@ bool processSerialInput() {
 
     digitalWrite(shootPin, decodedValues.isFiring ? HIGH: LOW);   
 
-    if (stepUs < SLOWEST_HALF_STEP_MICROSECONDS && stepUs >= FASTEST_HALF_STEP_MICROSECONDS) {
-      stepUs = stepUs;
-    } else {
-      stepUs = 0;
-    }
-  
-    timerIntervalUs = stepUs;
+    timerIntervalUs = stepUs < FASTEST_HALF_STEP_MICROSECONDS ? FASTEST_HALF_STEP_MICROSECONDS : stepUs;
    
     meanSerialProcessingTimeUs = (meanSerialProcessingTimeUs + micros() - startOfSerialProcess) / 2;
 
@@ -131,6 +136,24 @@ void setup() {
   // Setup pin to shoot
   pinMode(shootPin, OUTPUT);
 
+//  Serial.print("Current configuration");
+//  Serial.print("SLOWEST_HALF_STEP_MICROSECONDS: ");
+//  Serial.println(SLOWEST_HALF_STEP_MICROSECONDS);
+//  Serial.print(" - FASTEST_HALF_STEP_MICROSECONDS: ");
+//  Serial.println(FASTEST_HALF_STEP_MICROSECONDS);
+//  Serial.print(" - SLOWEST_STEP_SPEED: ");
+//  Serial.println(SLOWEST_STEP_SPEED);
+//  Serial.print(" - STEP_MICRO_SECONDS_RANGE: ");
+//  Serial.println(STEP_MICRO_SECONDS_RANGE);
+//  Serial.print(" - SLOWEST_SPEED: ");
+//  Serial.println(SLOWEST_SPEED);
+//  Serial.print(" - FASTEST_SPEED: ");
+//  Serial.println(FASTEST_SPEED);
+//  Serial.print(" - ORDINAL_SPEED_RANGE: ");
+//  Serial.println(ORDINAL_SPEED_RANGE);
+//  Serial.print(" - MAX_AZIMUTH_DEG_RANGE: ");
+//  Serial.println(MAX_AZIMUTH_DEG_RANGE);
+
   Serial.println("Send Commands !");
 }
 
@@ -138,16 +161,29 @@ void setup() {
 void loop() {
   
   bool had_serial_input = processSerialInput();
-
-  if (timerIntervalUs > 1) {
-
-    byte delay_time = had_serial_input ? meanSerialProcessingTimeUs : 0;
-    
+  byte delay_time = had_serial_input ? meanSerialProcessingTimeUs : 0;
+  Serial.print("timerIntervalUs " );
+  Serial.println(timerIntervalUs );
+  // Use this logic if the value is slower than the stepper motor can handle
+  if (timerIntervalUs > SLOWEST_HALF_STEP_MICROSECONDS) {
+    Serial.println('s');
+    digitalWrite(stepPin, alternator ? HIGH : LOW );
+    alternator = !alternator;
+    delayMicroseconds(SLOWEST_HALF_STEP_MICROSECONDS);
+    digitalWrite(stepPin, alternator ? HIGH : LOW );
+    alternator = !alternator; 
+    int secondWaitTime = timerIntervalUs - SLOWEST_HALF_STEP_MICROSECONDS - delay_time;
+    delayMicroseconds(secondWaitTime);
+     
+  } else if (timerIntervalUs > 1) {
+    Serial.println('g');
     unsigned long interval_step = timerIntervalUs - delay_time;
 
     delayMicroseconds(interval_step);
     digitalWrite(stepPin, alternator ? HIGH : LOW );
     alternator = !alternator;
+  } else {
+     Serial.println('x');
   }
 
 }
