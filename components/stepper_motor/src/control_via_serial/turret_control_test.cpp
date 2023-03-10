@@ -1,9 +1,7 @@
 #include <gtest/gtest.h>
-#include "motor_control.h"
+#include "turret_control.h"
 #include <stdint.h>
 #include <iostream>
-
-
 
 
 TEST(DecodeTest, Azimuth) {

@@ -6,10 +6,10 @@
 
 
 /**
- * BaseTurretSettings struct represents the base settings for a motor
+ * BaseTurretSettings struct represents the base settings for a turret
  *
- * @param isClockwise A boolean indicating the direction of the elevation motor. True means clockwise, False means anti-clockwise.
- * @param speed The speed of the elevation motor.
+ * @param isClockwise A boolean indicating the direction of the elevation turret. True means clockwise, False means anti-clockwise.
+ * @param speed The speed of the elevation turret.
  * @param isFiring A boolean indicating whether the gun is firing.
  */
 struct BaseTurretSettings {
@@ -21,10 +21,10 @@ struct BaseTurretSettings {
 /**
  * TurretSettings struct extends the BaseTurretSettings struct to include azimuth.
  *
- * @param isClockwise A boolean indicating the direction of the motor. True means clockwise, False means anti-clockwise.
- * @param speed The speed of the motor.
- * @param isFiring A boolean indicating whether the motor is firing.
- * @param azimuth The azimuth angle for the motor.
+ * @param isClockwise A boolean indicating the direction of the turret. True means clockwise, False means anti-clockwise.
+ * @param speed The speed of the turret.
+ * @param isFiring A boolean indicating whether the turret is firing.
+ * @param azimuth The azimuth angle for the turret.
  */
 struct TurretSettings:BaseTurretSettings {
     int azimuth;
@@ -41,10 +41,10 @@ int decodeAzimuth(uint8_t encoded_value) {
 }
 
 /**
- * Decode the motor settings from the encoded command uint8_t.
+ * Decode the turret settings from the encoded command uint8_t.
  *
  * @param encoded_command The encoded command uint8_t.
- * @returns The decoded motor settings.
+ * @returns The decoded turret settings.
  */
 BaseTurretSettings decodeValue(uint8_t encoded_command) {
     BaseTurretSettings settings; 
@@ -67,26 +67,26 @@ int mapRange(int value, int valRange, int newRange, int minVal, int minNewVal) {
 
 
 TurretSettings decode(uint8_t *encoded_command) {
-    TurretSettings motor_command;
+    TurretSettings turret_command;
     
     uint8_t encoded_value = encoded_command[0];
     // Serial.print("encoded_value: ");
     // Serial.print(encoded_value, BIN);
-    motor_command.isClockwise = bool((encoded_value & 0b10000000) >> 7); // Get the 8th bit for clockwise
-    motor_command.isFiring = bool((encoded_value & 0b01000000) >> 6);  // Check the 7th bit for is_firing
-    motor_command.speed = (encoded_value & 0b00001111); // Mask the lower 4 bits for speed
+    turret_command.isClockwise = bool((encoded_value & 0b10000000) >> 7); // Get the 8th bit for clockwise
+    turret_command.isFiring = bool((encoded_value & 0b01000000) >> 6);  // Check the 7th bit for is_firing
+    turret_command.speed = (encoded_value & 0b00001111); // Mask the lower 4 bits for speed
     // Serial.print(" - speed decoder: ");
-    // Serial.print(motor_command.speed);
+    // Serial.print(turret_command.speed);
   
     
     // Serial.print(" - isFiring  ");
-    // Serial.print(motor_command.isFiring);
+    // Serial.print(turret_command.isFiring);
     
     uint8_t azimuth_uint8_t = encoded_command[1];
-    motor_command.azimuth =(encoded_command[1] & 0b11111111) - 90; // Scale the azimuth uint8_t back to 0-180
+    turret_command.azimuth =(encoded_command[1] & 0b11111111) - 90; // Scale the azimuth uint8_t back to 0-180
     // Serial.print(" - azimuth  ");
-    // Serial.print(motor_command.azimuth);
-    return motor_command;
+    // Serial.print(turret_command.azimuth);
+    return turret_command;
 }
 
 #endif

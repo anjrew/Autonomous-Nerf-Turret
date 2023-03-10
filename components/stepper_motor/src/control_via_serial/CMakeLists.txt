@@ -19,13 +19,13 @@ FetchContent_MakeAvailable(googletest)
 enable_testing()
 
 add_executable(
-  motor_control_test
-  motor_control_test.cpp
+  turret_control_test
+  turret_control_test.cpp
 )
 target_link_libraries(
-  motor_control_test
+  turret_control_test
   GTest::gtest_main
 )
 
 include(GoogleTest)
-gtest_discover_tests(motor_control_test)
+gtest_discover_tests(turret_control_test)
