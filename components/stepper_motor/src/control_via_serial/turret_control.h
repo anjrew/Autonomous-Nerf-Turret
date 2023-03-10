@@ -55,14 +55,22 @@ BaseTurretSettings decodeValue(uint8_t encoded_command) {
 }
 
 
-int mapRange(int value, int valRange, int newRange, int minVal, int minNewVal) {
+int mapRange(int value, int value_min, int value_max, int new_min_value, int new_max_value) {
+    int max_value = std::max(value_min, value_max);
+    int min_value = std::min(value_min, value_max);
 
-   float scaling_factor = (float)valRange / (float)newRange;
+    if (value < min_value || value > max_value) {
+        throw std::invalid_argument("The given value must be within the value_min and value_max range");;
+    } 
 
-   float original_value = ((float)(value - minVal) * scaling_factor) + minNewVal;
-   int val = int(original_value);
+    int original_range = value_max - value_min;
+    int new_range = new_max_value - new_min_value;
+    float scaling_factor = static_cast<float>(original_range) / static_cast<float>(new_range);
+    int place_in_original_range = value - value_min;
+    int scaled = static_cast<int>(place_in_original_range / scaling_factor);
+    int mapped_value = scaled + new_min_value;
 
-   return val;
+    return mapped_value;
 }
 
 

@@ -36,7 +36,7 @@ int azimuth_angle_deg = 90;
 // The limits of the values to be set for the motor half step
 const int SLOWEST_HALF_STEP_MICROSECONDS = 17000;
 const int FASTEST_HALF_STEP_MICROSECONDS = 1000;
-const int SLOWEST_STEP_SPEED = 1e6; // one second  in milli seconds which is achived by making 1 step at slowest possible seed and then waiting until 1 second has passed
+const int SLOWEST_STEP_SPEED = 1e6; // one second  in milli seconds which is achieved by making 1 step at slowest possible seed and then waiting until 1 second has passed
 
 // We use the slowest speed allows minus fastest speed possible in the motor
 // Not the slowest speed here is slower than the slowest step speed because we can quickly step and then wait.
@@ -67,20 +67,21 @@ bool processSerialInput() {
     
     // Decode the motor command
     TurretSettings decodedValues = decode(serialBuffer);
-    int speed_in = decodedValues.speed;
-    int stepUs = mapRange(speed_in);
+    int speedIn = decodedValues.speed;
+    int stepUs = mapRange(speedIn);
 
     int newAzimuth = azimuth_angle_deg +  decodedValues.azimuth;
     if (newAzimuth >= 0 && newAzimuth <= MAX_AZIMUTH_DEG_RANGE) {
       azimuthServo.write(newAzimuth);
       azimuth_angle_deg = newAzimuth;
     }
+    timerIntervalUs = stepUs < FASTEST_HALF_STEP_MICROSECONDS ? FASTEST_HALF_STEP_MICROSECONDS : stepUs;
+
     
     digitalWrite(dirPin, decodedValues.isClockwise ? LOW : HIGH);
 
     digitalWrite(shootPin, decodedValues.isFiring ? HIGH: LOW);   
 
-    timerIntervalUs = stepUs < FASTEST_HALF_STEP_MICROSECONDS ? FASTEST_HALF_STEP_MICROSECONDS : stepUs;
    
     meanSerialProcessingTimeUs = (meanSerialProcessingTimeUs + micros() - startOfSerialProcess) / 2;
 

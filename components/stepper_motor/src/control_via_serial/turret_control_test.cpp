@@ -8,8 +8,6 @@ TEST(DecodeTest, Azimuth) {
 
     const uint8_t numOfCases = 3;
 
- 
-
     uint8_t testBytes[numOfCases] = {
         0b00000000,
         0b10110100,
@@ -31,7 +29,6 @@ TEST(DecodeTest, Azimuth) {
       std::cout << "The testVal is: " << testVal << std::endl;
       std::cout << "The expectedVal is: " << expectedVal << std::endl;
       std::cout << "The resultVal is: " << resultVal << std::endl;
-
 
       ASSERT_EQ( resultVal,  expectedVal);
     }  
@@ -63,6 +60,85 @@ TEST(DecodeTest, BaseValues) {
     }  
 }
 
+
+
+
+TEST(MapRangeTest, MapsValueToMiddleOfOutputRange) {
+    int input_value = 50;
+    int min_value = 0;
+    int max_value = 100;
+    int new_min_value = 0;
+    int new_max_value = 10;
+    int expected_output = 5;
+
+    EXPECT_EQ(mapRange(input_value, min_value, max_value, new_min_value, new_max_value), expected_output);
+}
+
+TEST(MapRangeTest, MapsValueToLowEndOfOutputRange) {
+    int input_value = 0;
+    int min_value = 0;
+    int max_value = 100;
+    int new_min_value = 0;
+    int new_max_value = 10;
+    int expected_output = 0;
+
+    EXPECT_EQ(mapRange(input_value, min_value, max_value, new_min_value, new_max_value), expected_output);
+}
+
+TEST(MapRangeTest, MapsValueToHighEndOfOutputRange) {
+    int input_value = 100;
+    int min_value = 0;
+    int max_value = 100;
+    int new_min_value = 0;
+    int new_max_value = 10;
+    int expected_output = 10;
+
+    EXPECT_EQ(mapRange(input_value, min_value, max_value, new_min_value, new_max_value), expected_output);
+}
+
+TEST(MapRangeTest, MapsNegativeValueToOutputRange) {
+    int input_value = -90;
+    int min_value = -90;
+    int max_value = 90;
+    int new_min_value = 0;
+    int new_max_value = 180;
+    int expected_output = 0;
+
+    EXPECT_EQ(mapRange(input_value, min_value, max_value, new_min_value, new_max_value), expected_output);
+}
+
+TEST(MapRangeTest, MapsValueToOutputRange) {
+    int input_value = 90;
+    int min_value = -90;
+    int max_value = 90;
+    int new_min_value = 0;
+    int new_max_value = 180;
+    int expected_output = 180;
+
+    EXPECT_EQ(mapRange(input_value, min_value, max_value, new_min_value, new_max_value), expected_output);
+}
+
+TEST(MapRangeTest, MapsValueOutsideInputRangeToOutputRange) {
+    int input_value = 1000;
+    int min_value = 0;
+    int max_value = 100;
+    int new_min_value = 0;
+    int new_max_value = 10;
+    int expected_output = 10;
+
+    EXPECT_THROW(mapRange(input_value, min_value, max_value, new_min_value, new_max_value), std::invalid_argument);
+}
+
+TEST(MapRangeTest, MapsValueOutsideInputRangeToLowEndOfOutputRange) {
+    int input_value = 0;
+    int min_value = 1000;
+    int max_value = 0;
+    int new_min_value = 0;
+    int new_max_value = 10;
+    int expected_output = 10;
+
+    EXPECT_EQ(mapRange(input_value, min_value, max_value, new_min_value, new_max_value), expected_output);
+}
 
 int main(int argc, char **argv) {
     testing::InitGoogleTest(&argc, argv);
