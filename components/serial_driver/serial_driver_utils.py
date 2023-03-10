@@ -16,6 +16,7 @@ def map_log_level(level_str) -> int:
     else:
         raise argparse.ArgumentTypeError(f"Invalid logging level: {level_str}")
     
+    
 # def limit_value(value: Union[int,float], minimum=-90, maximum=90):
 def limit_value(value: Union[int,float], minimum:Union[int,float], maximum: Union[int,float]) -> Union[int,float]:
     """Limits the value to the min and max values"""
@@ -58,7 +59,7 @@ def map_range(
     return round(mapped_value)
 
 
-def encode(azimuth: int, is_clockwise: bool = True, speed: int = 0, is_firing: bool = False) -> bytes:
+def encode(azimuth: int, is_clockwise: bool, speed: int, is_firing: bool) -> bytes:
     """
     Encodes a motor command as two bytes.
 
@@ -83,19 +84,72 @@ def encode(azimuth: int, is_clockwise: bool = True, speed: int = 0, is_firing: b
     assert type(is_clockwise) == bool, "is_clockwise must be an bool"
     assert type(is_firing) == bool, "is_firing must be an is_firing"
     
-    azimuth_degrees = limit_value(azimuth, -90, 90) + 90  # Convert the input angle to a range of 0-180 degrees
-    azimuth_byte = round((azimuth_degrees / 180.0) * 255.0)  # Scale the azimuth value to fit in a byte (0-255)
-    encoded_value = 0
+    azimuth_byte = encode_azimuth_val_to_byte(azimuth)  # Scale the azimuth value to fit in a byte (0-255)
+    encoded_value = 0b00000000
     if is_clockwise:
         encoded_value |= (1 << 7)  # Set the 8th bit to 1 for clockwise
-        is_clockwise = bool(encoded_value & 0x80)
         
-        
-    encoded_value |= (round(speed) & 0x0F)  # Mask the lower 4 bits for speed (0-10)
+    encoded_value |= (speed & 0b00001111)  # Mask the lower 7-4(4) bits for speed (0-10)
    
     if is_firing:
         encoded_value |= (1 << 2)  # Set the 3rd bit to 1 for is_firing
     return bytes([encoded_value, azimuth_byte])
+
+
+def encode_vals_to_byte(is_clockwise: bool, speed: int, is_firing: bool):
+    """
+    Encodes motor command values as a single byte.
+
+    This function takes in three values that define a motor command: a boolean value
+    indicating whether the motor should turn clockwise (`is_clockwise`), an integer
+    value representing the speed of the motor (`speed`), and a boolean value indicating
+    whether the motor should be fired (`is_firing`). These values are encoded into a
+    single byte using bitwise operations, and the resulting byte is returned.
+
+    Parameters:
+        is_clockwise (bool): Whether the motor should turn clockwise (True) or counterclockwise (False).
+        speed (int): The speed of the motor, from 0 (off) to 10 (maximum speed).
+        is_firing (bool): Whether the motor should be fired (True) or not (False).
+
+    Returns:
+        int: A single byte representing the encoded motor command.
+
+    Example:
+        >>> encode_vals_to_byte(True, 5, False)
+        160
+    """
+    encoded_value = 0b00000000
+    if is_clockwise:
+        encoded_value |= (1 << 7)  # Set the 8th bit to 1 for clockwise
+        
+    if is_firing:
+        encoded_value |= (1 << 6)  # Set the 7th bit to 1 for is_firing
+        
+    encoded_value |= (speed & 0b00001111)  # Mask the lower 1-4(4) bits for speed (0-10)
+   
+    return encoded_value
+
+def encode_azimuth_val_to_byte(azimuth: int) -> int:
+    """
+    Encodes an azimuth value as a single byte.
+
+    The input azimuth value is first converted to a range of 0-180 degrees using the
+    `limit_value()` function. The resulting angle is then scaled to fit in a single
+    byte (0-255) and rounded to the nearest integer.
+
+    Parameters:
+        azimuth (int): The azimuth value to encode, in degrees.
+
+    Returns:
+        int: A single byte representing the encoded azimuth value.
+
+    Example:
+        >>> encode_azimuth_val_to_byte(90)
+        143
+    """
+    # Convert the input angle to a range of 0-180 degrees so it can fit in a byte rather than a signed value
+    azimuth_degrees = round(limit_value(azimuth, -90, 90) + 90) 
+    return azimuth_degrees
 
 
 def decode(encoded_motor_command: bytes) -> dict:
@@ -122,4 +176,4 @@ def decode(encoded_motor_command: bytes) -> dict:
     
     azimuth_degrees = round((azimuth_byte / 255.0) * 180.0) - 90  # Scale the azimuth value back to its original range (-90 to 90)
     
-    return {'azimuth': azimuth_degrees, 'is_clockwise': is_clockwise, 'speed': speed, 'is_firing': is_firing}
+    return { 'azimuth': azimuth_degrees, 'is_clockwise': is_clockwise, 'speed': speed, 'is_firing': is_firing }
