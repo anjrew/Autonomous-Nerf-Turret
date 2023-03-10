@@ -1,9 +1,6 @@
 #include <stdint.h>
 
 
-#ifndef MOTOR_CONTROL_H
-#define MOTOR_CONTROL_H
-
 
 /**
  * BaseTurretSettings struct represents the base settings for a turret
@@ -18,7 +15,7 @@ struct BaseTurretSettings {
     bool isFiring;
 }; 
 
-/**
+/** TODO: implement inheritance
  * TurretSettings struct extends the BaseTurretSettings struct to include azimuth.
  *
  * @param isClockwise A boolean indicating the direction of the turret. True means clockwise, False means anti-clockwise.
@@ -26,7 +23,10 @@ struct BaseTurretSettings {
  * @param isFiring A boolean indicating whether the turret is firing.
  * @param azimuth The azimuth angle for the turret.
  */
-struct TurretSettings:BaseTurretSettings {
+struct TurretSettings {
+    bool isClockwise;
+    int speed;
+    bool isFiring;
     int azimuth;
 };
 
@@ -54,6 +54,15 @@ BaseTurretSettings decodeValue(uint8_t encoded_command) {
     return settings;
 }
 
+TurretSettings decode(uint8_t *encoded_command) {
+    TurretSettings turretCommand;
+    turretCommand.azimuth = decodeAzimuth(encoded_command[0]);
+    BaseTurretSettings encodedValue = decodeValue(encoded_command[1]);
+    turretCommand.isClockwise =encodedValue.isClockwise;
+    turretCommand.speed =encodedValue.speed;
+    turretCommand.isFiring =encodedValue.isFiring;
+    return turretCommand;
+}
 
 int mapRange(int value, int value_min, int value_max, int new_min_value, int new_max_value) {
     int max_value = std::max(value_min, value_max);
@@ -74,27 +83,3 @@ int mapRange(int value, int value_min, int value_max, int new_min_value, int new
 }
 
 
-TurretSettings decode(uint8_t *encoded_command) {
-    TurretSettings turret_command;
-    
-    uint8_t encoded_value = encoded_command[0];
-    // Serial.print("encoded_value: ");
-    // Serial.print(encoded_value, BIN);
-    turret_command.isClockwise = bool((encoded_value & 0b10000000) >> 7); // Get the 8th bit for clockwise
-    turret_command.isFiring = bool((encoded_value & 0b01000000) >> 6);  // Check the 7th bit for is_firing
-    turret_command.speed = (encoded_value & 0b00001111); // Mask the lower 4 bits for speed
-    // Serial.print(" - speed decoder: ");
-    // Serial.print(turret_command.speed);
-  
-    
-    // Serial.print(" - isFiring  ");
-    // Serial.print(turret_command.isFiring);
-    
-    uint8_t azimuth_uint8_t = encoded_command[1];
-    turret_command.azimuth =(encoded_command[1] & 0b11111111) - 90; // Scale the azimuth uint8_t back to 0-180
-    // Serial.print(" - azimuth  ");
-    // Serial.print(turret_command.azimuth);
-    return turret_command;
-}
-
-#endif

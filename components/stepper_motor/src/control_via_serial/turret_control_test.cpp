@@ -60,6 +60,35 @@ TEST(DecodeTest, BaseValues) {
     }  
 }
 
+TEST(DecodeTest, AllValues) {
+    const uint8_t numOfCases = 5;
+
+    uint8_t testBytes[numOfCases][2] = {
+        { 0b00000000, 0b10000000 },
+        { 0b10110100, 0b11000001 },
+        { 0b01011010, 0b01001000 },
+        { 0b00000000, 0b01000011 },
+        { 0b00000000, 0b10000011 }
+    };
+
+
+    TurretSettings expectedResults[numOfCases] = {
+        {true , 0, false, -90 },
+        {true , 1, true,  90  },
+        {false, 8, true,  0   },
+        {false, 3, true, -90 },
+        {true, 3, false, -90 }
+    };
+
+    for (int i = 0; i < numOfCases; i++) {
+        TurretSettings vals = decode(testBytes[i]);
+        ASSERT_EQ(vals.azimuth, expectedResults[i].azimuth);
+        ASSERT_EQ(vals.isClockwise, expectedResults[i].isClockwise);
+        ASSERT_EQ(vals.isFiring, expectedResults[i].isFiring);
+        ASSERT_EQ(vals.speed, expectedResults[i].speed);
+    }  
+}
+
 
 
 
