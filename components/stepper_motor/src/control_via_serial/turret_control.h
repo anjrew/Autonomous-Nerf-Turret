@@ -1,4 +1,6 @@
 #include <stdint.h>
+//#include <stdexcept>
+
 
 
 
@@ -65,11 +67,14 @@ TurretSettings decode(uint8_t *encoded_command) {
 }
 
 int mapRange(int value, int value_min, int value_max, int new_min_value, int new_max_value) {
-    int max_value = std::max(value_min, value_max);
-    int min_value = std::min(value_min, value_max);
-
+//    int max_value = std::max(value_min, value_max);
+//    int min_value = std::min(value_min, value_max);
+    int max_value = max(value_min, value_max);
+    int min_value = min(value_min, value_max);
+    
     if (value < min_value || value > max_value) {
-        throw std::invalid_argument("The given value must be within the value_min and value_max range");;
+        // throw std::invalid_argument("The given value must be within the value_min and value_max range");;
+        static_assert("The given value must be within the value_min and value_max range");;
     } 
 
     int original_range = value_max - value_min;
@@ -81,5 +86,3 @@ int mapRange(int value, int value_min, int value_max, int new_min_value, int new
 
     return mapped_value;
 }
-
-

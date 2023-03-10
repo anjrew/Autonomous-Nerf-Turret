@@ -1,7 +1,6 @@
 /*Example sketch to control a stepper motor with A4988 stepper motor driver and Arduino without a library. More info: https://www.makerguides.com */
-#include <ArduinoJson.h>
 #include <Servo.h>
-#include "motor_control.h"
+#include "turret_control.h"
 #include <stdint.h>
 
 
@@ -68,7 +67,8 @@ bool processSerialInput() {
     // Decode the motor command
     TurretSettings decodedValues = decode(serialBuffer);
     int speedIn = decodedValues.speed;
-    int stepUs = mapRange(speedIn);
+    // int value, int value_min, int value_max, int new_min_value, int new_max_value
+    int stepUs = mapRange(speedIn, SLOWEST_SPEED, FASTEST_SPEED, SLOWEST_STEP_SPEED, FASTEST_HALF_STEP_MICROSECONDS);
 
     int newAzimuth = azimuth_angle_deg +  decodedValues.azimuth;
     if (newAzimuth >= 0 && newAzimuth <= MAX_AZIMUTH_DEG_RANGE) {
@@ -84,6 +84,15 @@ bool processSerialInput() {
 
    
     meanSerialProcessingTimeUs = (meanSerialProcessingTimeUs + micros() - startOfSerialProcess) / 2;
+//    Serial.print(" - azimuth: ");
+//    Serial.print(decodedValues.azimuth);
+//    Serial.print(" - azimuth: ");
+//    Serial.print(decodedValues.azimuth);
+//    Serial.print(" - isClockwise: ");
+//    Serial.print(decodedValues.isClockwise);
+//    Serial.print(" - speed: ");
+//    Serial.print(decodedValues.speed);
+//    Serial.println(decodedValues.isFiring);
 
     return true;
   } else {
@@ -131,11 +140,11 @@ void loop() {
   
   bool had_serial_input = processSerialInput();
   uint8_t delay_time = had_serial_input ? meanSerialProcessingTimeUs : 0;
-  Serial.print("timerIntervalUs " );
-  Serial.println(timerIntervalUs );
+//  Serial.print("timerIntervalUs " );
+//  Serial.println(timerIntervalUs );
   // Use this logic if the value is slower than the stepper motor can handle
   if (timerIntervalUs > SLOWEST_HALF_STEP_MICROSECONDS) {
-    Serial.println('s');
+//    Serial.println('s');
     digitalWrite(stepPin, alternator ? HIGH : LOW );
     alternator = !alternator;
     delayMicroseconds(SLOWEST_HALF_STEP_MICROSECONDS);
@@ -145,14 +154,14 @@ void loop() {
     delayMicroseconds(secondWaitTime);
      
   } else if (timerIntervalUs > 1) {
-    Serial.println('g');
+//    Serial.println('g');
     unsigned long interval_step = timerIntervalUs - delay_time;
 
     delayMicroseconds(interval_step);
     digitalWrite(stepPin, alternator ? HIGH : LOW );
     alternator = !alternator;
   } else {
-     Serial.println('x');
+//     Serial.println('x');
   }
 
 }
