@@ -212,6 +212,8 @@ while True:
             azimuth_speed_adjusted = -(predicted_azimuth_angle * float(args.speed))
             smoothed_speed_adjusted_azimuth = slow_start_fast_end_smoothing(azimuth_speed_adjusted, float(args.smoothing) + 1.0, 90)
             
+            ## TODO: Find out why the view height  and box height mus be divided by 4 instead of 2 here. I think it maybe something todo with 
+            ## the way the way the face prediction is done by reducing the image size by 4. Did not have time to check but found this empirically. 
             elevation_speed_adjusted = map_range(abs(movement_vector[1]), 0, (view_height/4) - (box_height/4), 0 , 10) * float(args.speed)
             smooth_elevation_speed_adjusted = slow_start_fast_end_smoothing(elevation_speed_adjusted, float(args.smoothing) + 1.0, 10)
             

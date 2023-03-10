@@ -169,16 +169,22 @@ while True:
         if c == 27:
             break
         
-           
+         
             
     except KeyboardInterrupt as e:
-        raise e 
+        raise e
+    except AttributeError as e:
+        logging.error("Camera failed. Retrying in 5 seconds...")
+        time.sleep(5)
+        pass
     except BrokenPipeError as e:
         logging.error("Socket pipe broken. Retrying in 5 seconds...")
+        time.sleep(5)
         sock = None
         pass 
     except ConnectionResetError as e:
         logging.error("Socket connection lost. Retrying in 5 seconds...")
+        time.sleep(5)
         sock = None
         pass
     finally:

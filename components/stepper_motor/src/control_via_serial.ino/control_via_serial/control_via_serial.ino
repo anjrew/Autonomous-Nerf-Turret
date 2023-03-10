@@ -61,14 +61,21 @@ MotorSettings decode(byte *encoded_command) {
     MotorSettings motor_command;
     
     byte encoded_value = encoded_command[0];
+//    Serial.print("The encoded value is: ");
+    Serial.println(encoded_value);
     motor_command.isClockwise = (encoded_value & 0x80) >> 7;; // Get the 8th bit for clockwise
     motor_command.speed = encoded_value & 0x0F; // Mask the lower 4 bits for speed
-    Serial.print("The speed obatined from the decoder is: ");
+    Serial.print("speed decoder ");
     Serial.println(motor_command.speed);
+  
     motor_command.isFiring = (encoded_value >> 2) & 1; // Get the 3rd bit for is_firing
+    Serial.print("isFiring  ");
+    Serial.println(motor_command.isFiring);
     
     byte azimuth_byte = encoded_command[1];
     motor_command.azimuth = round((azimuth_byte / 255.0) * MAX_AZIMUTH_DEG_RANGE) - 90; // Scale the azimuth byte back to 0-180
+    Serial.print("azimuth  ");
+    Serial.println(motor_command.azimuth);
     return motor_command;
 }
 
