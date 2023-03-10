@@ -62,20 +62,22 @@ MotorSettings decode(byte *encoded_command) {
     
     byte encoded_value = encoded_command[0];
 //    Serial.print("The encoded value is: ");
-    Serial.println(encoded_value);
-    motor_command.isClockwise = (encoded_value & 0x80) >> 7;; // Get the 8th bit for clockwise
-    motor_command.speed = encoded_value & 0x0F; // Mask the lower 4 bits for speed
-    Serial.print("speed decoder ");
-    Serial.println(motor_command.speed);
+    Serial.print("encoded_value: ");
+    Serial.print(encoded_value);
+    motor_command.isClockwise = bool((encoded_value & 0b10000000) >> 7); // Get the 8th bit for clockwise
+    motor_command.isFiring = bool((encoded_value & 0b01000000) >> 6);  // Check the 7th bit for is_firing
+    motor_command.speed = (encoded_value & 0b00001111); // Mask the lower 4 bits for speed
+    Serial.print(" - speed decoder: ");
+    Serial.print(motor_command.speed);
   
-    motor_command.isFiring = (encoded_value >> 2) & 1; // Get the 3rd bit for is_firing
-    Serial.print("isFiring  ");
-    Serial.println(motor_command.isFiring);
+    
+    Serial.print(" - isFiring  ");
+    Serial.print(motor_command.isFiring);
     
     byte azimuth_byte = encoded_command[1];
-    motor_command.azimuth = round((azimuth_byte / 255.0) * MAX_AZIMUTH_DEG_RANGE) - 90; // Scale the azimuth byte back to 0-180
-    Serial.print("azimuth  ");
-    Serial.println(motor_command.azimuth);
+    motor_command.azimuth =(encoded_command[1] & 0b11111111) - 90; // Scale the azimuth byte back to 0-180
+    Serial.print(" - azimuth  ");
+    Serial.print(motor_command.azimuth);
     return motor_command;
 }
 
@@ -97,15 +99,16 @@ int map_range(int value = 0) {
 bool processSerialInput() {
   
   // Read the encoded motor command from serial input
-  byte encodedValue[2];
+  byte serialBuffer[2];
   
   if (Serial.available() >= 2) {
     unsigned long startOfSerialProcess = micros();
-    encodedValue[0] = Serial.read();
-    encodedValue[1] = Serial.read();
+    byte serialBufferfer[2];  // create a buffer to store the read bytes
+
+    Serial.readBytes(serialBuffer, 2);  // read two bytes into the buffer
     
     // Decode the motor command
-    MotorSettings decodedValues = decode(encodedValue);
+    MotorSettings decodedValues = decode(serialBufferfer);
     int speed_in = decodedValues.speed;
     int stepUs = map_range(speed_in);
 

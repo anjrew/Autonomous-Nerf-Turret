@@ -122,6 +122,28 @@ def encode_vals_to_byte(is_clockwise: bool, speed: int, is_firing: bool):
    
     return encoded_value
 
+
+def decode_byte_to_motor_vals(encoded_value: int):
+    """
+    Decodes a byte value to motor values in Python.
+
+    Args:
+        encoded_value (int): An integer representing the byte value to decode.
+
+    Returns:
+        dict: A dictionary with the decoded motor values, including keys for 'is_clockwise', 'speed', and 'is_firing'.
+
+    Example:
+        >>> decode_byte_to_motor_vals(0b10101000)
+        {'is_clockwise': True, 'speed': 8, 'is_firing': False}
+    """
+    is_clockwise = bool((encoded_value & 0b10000000) >> 7)  # Check the 8th bit for clockwise
+    is_firing = bool((encoded_value & 0b01000000) >> 6)  # Check the 7th bit for is_firing
+    speed = (encoded_value & 0b00001111) # Mask the lower 4 bits for speed (0-10)
+    
+    return { 'is_clockwise': is_clockwise, 'speed': speed, 'is_firing': is_firing }
+
+
 def encode_azimuth_val_to_byte(azimuth: int) -> int:
     """
     Encodes an azimuth value as a single byte.
@@ -145,6 +167,22 @@ def encode_azimuth_val_to_byte(azimuth: int) -> int:
     return azimuth_degrees
 
 
+def decode_byte_to_azimuth(byte: int) -> int: 
+    """
+    Decodes a byte value to an azimuth in Python.
+
+    Args:
+        byte (int): An integer representing the byte value to decode.
+
+    Returns:
+        int: The azimuth value encoded in the lower 4 bits of the byte.
+
+    Example:
+        >>> decode_byte_to_azimuth(0b01010100)
+        4
+    """
+    return (byte & 0b11111111) - 90  # Mask the lower 4 bits for azimuth (0-180)
+
 def decode(encoded_motor_command: bytes) -> dict:
     """
     Decodes a two-byte motor command and returns its values as a dictionary.
@@ -163,10 +201,12 @@ def decode(encoded_motor_command: bytes) -> dict:
     
     encoded_value, azimuth_byte = encoded_motor_command
     
-    is_clockwise = bool(encoded_value & 0x80)  # Check the 8th bit for clockwise
-    speed = encoded_value & 0x0F  # Mask the lower 4 bits for speed (0-10)
-    is_firing = bool(encoded_value & 0b00000100) >> 2  # Check the 3rd bit for is_firing
+    decoded_motor_vals = decode_byte_to_motor_vals(encoded_value)
     
-    azimuth_degrees = round((azimuth_byte / 255.0) * 180.0) - 90  # Scale the azimuth value back to its original range (-90 to 90)
     
-    return { 'azimuth': azimuth_degrees, 'is_clockwise': is_clockwise, 'speed': speed, 'is_firing': is_firing }
+    return { 
+        'azimuth': decode_byte_to_azimuth(azimuth_byte), 
+        'is_clockwise': decoded_motor_vals['is_clockwise'], 
+        'speed': decoded_motor_vals['speed'], 
+        'is_firing': decoded_motor_vals['is_firing'] 
+    }

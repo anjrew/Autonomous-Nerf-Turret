@@ -62,7 +62,7 @@ class SerialDriverServer(BaseHTTPRequestHandler):
                 return
 
         encoded_message = encode(round(json_data.get("azimuth_angle", 0)), json_data.get("is_clockwise", False), round(speed_in), json_data['is_firing'])
-        logging.debug("Encoded Message: " + str(encoded_message))
+        logging.debug("Encoded Message HEX: " + str(encoded_message) + "  BINARY: " + str(bin(encoded_message[0])) + " " + str(bin(encoded_message[1])))
         try:
             serial_inst.write(encoded_message)
             # # Send a response

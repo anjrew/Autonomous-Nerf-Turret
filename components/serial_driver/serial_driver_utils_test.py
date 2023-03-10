@@ -1,6 +1,13 @@
 import pytest
 
-from serial_driver_utils import encode, encode_vals_to_byte, encode_azimuth_val_to_byte, decode, map_range
+from serial_driver_utils \
+    import encode,\
+        encode_vals_to_byte,\
+        encode_azimuth_val_to_byte,\
+        decode, \
+        map_range, \
+        decode_byte_to_motor_vals, \
+        decode_byte_to_azimuth
 
 
 def assign_id_to_tests(tests: list):
@@ -9,6 +16,8 @@ def assign_id_to_tests(tests: list):
     """
     return [ (f"TEST: {i + 1}", *test ) for i, test in enumerate(tests)]
         
+        
+# ================= ENCODING TESTS =================
         
 
 @pytest.mark.parametrize("id, azimuth, expected_output", assign_id_to_tests([
@@ -69,13 +78,51 @@ def test_encode_all_to_binary(azimuth, is_clockwise, speed, is_firing, expected_
     assert encoded_command[1] == expected_output[1], f"({id}) Azimuth_byte Failed: Expected {bin(expected_output[1])} but got {bin(encoded_command[1])}"
 
 
-@pytest.mark.parametrize("azimuth, is_clockwise,speed, is_firing, expected_output, id", [
+# ================= DECODING TESTS =================
+
+
+@pytest.mark.parametrize("id, byte, expected_output", assign_id_to_tests([
     ## These are the args in order passed to the test function with the expected values in the object
-    (90, True, 5, False, {'azimuth': 90, 'is_clockwise': True, 'speed': 5, 'is_firing': False}, 1),
-    (0, False, 10, True, {'azimuth': -90, 'is_clockwise': False, 'speed': 10, 'is_firing': True}, 2),
-    (180, True, 0, True, {'azimuth': 90, 'is_clockwise': True, 'speed': 0, 'is_firing': True}, 3),
+    (0b10000000,     { 'is_clockwise': True, 'speed': 0, 'is_firing': False}),
+    (0b11000001,     { 'is_clockwise': True, 'speed': 1, 'is_firing': True}),
+    (0b01001000,     { 'is_clockwise': False, 'speed': 8, 'is_firing': True}),
+    (0b00000011,     { 'is_clockwise': False, 'speed': 3, 'is_firing': False}),
+   
+]))
+def test_decode_byte_to_motor_vals(id:int, byte: int, expected_output:dict):
+    decoded_command = decode_byte_to_motor_vals(byte)
+    
+    is_clockwise_result = decoded_command['is_clockwise']
+    speed_result = decoded_command['speed']
+    is_firing_result = decoded_command['is_firing']
+    # encoded, azimuth_byte
+    assert is_clockwise_result == expected_output['is_clockwise'], f"{id}: is_clockwise should be {expected_output['is_clockwise']} but was {is_clockwise_result}"
+    assert speed_result == expected_output['speed'], f"{id}: Speed should be {expected_output['speed']} but was {speed_result}"
+    assert is_firing_result == expected_output['is_firing'], f"{id}: is_firing should be {expected_output['is_firing']} but was {is_firing_result}"
+
+
+@pytest.mark.parametrize("id, byte, expected_output", assign_id_to_tests([
+    ## These are the args in order passed to the test function with the expected values in the object
+     ## These are the args in order passed to the test function with the expected values in the object
+    (0b00000000, -90 ),
+    (0b10110100, 90 ),
+    (0b01011010, 0 ),
+   
+]))
+def test_decode_byte_to_azimuth(id:int, byte: int, expected_output:dict):
+    decoded_val = decode_byte_to_azimuth(byte)
+
+    # encoded, azimuth_byte
+    assert decoded_val == expected_output, f"{id}: Decoded should be {expected_output} but was {decoded_val}"
+   
+
+@pytest.mark.parametrize("id, azimuth, is_clockwise,speed, is_firing, expected_output",  assign_id_to_tests([
+    ## These are the args in order passed to the test function with the expected values in the object
+    (90, True, 5, False, {'azimuth': 90, 'is_clockwise': True, 'speed': 5, 'is_firing': False}),
+    (0, False, 10, True, {'azimuth': 0, 'is_clockwise': False, 'speed': 10, 'is_firing': True}),
+    (90, True, 0, True, {'azimuth': 90, 'is_clockwise': True, 'speed': 0, 'is_firing': True}),
     # Add more test cases here
-])
+]))
 def test_encode_decode_compatibility(azimuth, is_clockwise, speed, is_firing, expected_output, id):
     encoded_command = encode(azimuth, is_clockwise, speed, is_firing)
     decoded_command = decode(encoded_command)
@@ -85,10 +132,14 @@ def test_encode_decode_compatibility(azimuth, is_clockwise, speed, is_firing, ex
     is_firing_result = decoded_command['is_firing']
     
     assert azimuth_result == expected_output['azimuth'], f"{id}: Azimuth should be {expected_output['azimuth']} but was {azimuth_result}"
-    assert is_clockwise_result == expected_output[f'{id}: is_clockwise'], f"is_clockwise should be {expected_output['is_clockwise']} but was {is_clockwise_result}"
+    assert is_clockwise_result == expected_output['is_clockwise'], f"is_clockwise should be {expected_output['is_clockwise']} but was {is_clockwise_result}"
     assert speed_result == expected_output['speed'], f"{id}: Speed should be {expected_output['speed']} but was {speed_result}"
     assert is_firing_result == expected_output['is_firing'], f"{id}: is_firing should be {expected_output['is_firing']} but was {is_firing_result}"
 
+
+
+
+# ================= RANGE TESTS =================
 
 
 def test_map_range():
