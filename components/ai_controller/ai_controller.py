@@ -194,7 +194,7 @@ while True:
             
                 
                 predicted_azimuth_angle = map_range(
-                    current_distance_from_the_middle,
+                    current_distance_from_the_middle - args.accuracy_threshold_x,
                     max_distance_from_the_middle_left, 
                     max_distance_from_the_middle_right ,
                     -30 ,
@@ -205,15 +205,15 @@ while True:
                 
                 ## TODO: Find out why the view height  and box height mus be divided by 4 instead of 2 here. I think it maybe something todo with 
                 ## the way the way the face prediction is done by reducing the image size by 4. Did not have time to check but found this empirically. 
-                elevation_speed_adjusted = map_range(abs(movement_vector[1]), 0, (view_height/4) - (box_height/4), 0 , args.max_elevation_speed) * float(args.speed)
+                elevation_speed_adjusted = map_range(abs(movement_vector[1]) - args.accuracy_threshold_y, 0, (view_height/4) - (box_height/4), 0 , args.max_elevation_speed) * float(args.speed)
                 smooth_elevation_speed_adjusted = slow_start_fast_end_smoothing(elevation_speed_adjusted, float(args.smoothing) + 1.0, 10)
                 
                 azimuth_formatted = round(smoothed_speed_adjusted_azimuth, args.azimuth_dp)
                 
                 controller_state = cached_controller_state = {
-                    'azimuth_angle': 0 if abs(movement_vector[0]) <= args.accuracy_threshold_x else azimuth_formatted,
+                    'azimuth_angle': azimuth_formatted,
                     'is_clockwise': movement_vector[1] > 0,
-                    'speed': 0 if abs(movement_vector[1]) <= args.accuracy_threshold_y else round(elevation_speed_adjusted / 2 , args.elevation_dp),
+                    'speed': round(elevation_speed_adjusted / 2 , args.elevation_dp),
                     'is_firing': is_on_target,
                 }
                 
