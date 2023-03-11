@@ -59,3 +59,7 @@ Here are some key points after testing the motor at different half step speeds
   - Max Revolutions per minute = 60 seconds/0.16 seconds = 375 revolutions per minute (RPM)
 
 - In summery the min/max RPM is ~9rpm/375rpm 
+
+## Sources of information
+ - See the [Documentation folder](./documentation/)
+ - For info on the 2N3904 Resistor see [this](https://www.homemade-circuits.com/understanding-transistor-2n3904/) link
