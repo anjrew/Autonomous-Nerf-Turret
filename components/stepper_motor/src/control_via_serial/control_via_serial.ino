@@ -31,7 +31,7 @@ int azimuth_angle_deg = 90;
 // The limits of the values to be set for the motor half step
 const int SLOWEST_HALF_STEP_MILLISECONDS = 16;
 const int FASTEST_HALF_STEP_MILLISECONDS = 1;
-const int SLOWEST_STEP_SPEED = 80; // in milli seconds which is achieved by making 1 step at slowest possible seed and then waiting until 1 second has passed
+const int SLOWEST_STEP_SPEED = 70; // in milli seconds which is achieved by making 1 step at slowest possible seed and then waiting until 1 second has passed
 
 
 const uint8_t SLOWEST_SPEED = 0;
