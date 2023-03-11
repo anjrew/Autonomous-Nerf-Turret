@@ -35,18 +35,13 @@ int azimuth_angle_deg = 90;
 // The limits of the values to be set for the motor half step
 const int SLOWEST_HALF_STEP_MICROSECONDS = 17000;
 const int FASTEST_HALF_STEP_MICROSECONDS = 1000;
-const int SLOWEST_STEP_SPEED = 1e6; // one second  in milli seconds which is achieved by making 1 step at slowest possible seed and then waiting until 1 second has passed
+const int SLOWEST_STEP_SPEED = 2e6; // one second  in milli seconds which is achieved by making 1 step at slowest possible seed and then waiting until 1 second has passed
 
-// We use the slowest speed allows minus fastest speed possible in the motor
-// Not the slowest speed here is slower than the slowest step speed because we can quickly step and then wait.
-// 1e6 is a million micro seconds which is 1 second
-const int STEP_MICRO_SECONDS_RANGE = SLOWEST_STEP_SPEED - FASTEST_HALF_STEP_MICROSECONDS;
 
 
 const uint8_t SLOWEST_SPEED = 0;
 const uint8_t FASTEST_SPEED = 10;
-// The speed range that is expected to come from the serial message
-const uint8_t ORDINAL_SPEED_RANGE = FASTEST_SPEED - SLOWEST_SPEED;
+
 
 const uint8_t MAX_AZIMUTH_DEG_RANGE= 180;
 
@@ -73,6 +68,10 @@ bool processSerialInput() {
       timerIntervalUs = 0;
     } else {
       int stepUs = mapRange(speedIn, SLOWEST_SPEED, FASTEST_SPEED, SLOWEST_STEP_SPEED, FASTEST_HALF_STEP_MICROSECONDS);
+      Serial.print("Mapped Speed: ");
+      Serial.print(speedIn);
+      Serial.print(" to stepUs Speed: ");
+      Serial.println(stepUs);
       timerIntervalUs = stepUs < FASTEST_HALF_STEP_MICROSECONDS ? FASTEST_HALF_STEP_MICROSECONDS : stepUs;
     }
     
@@ -143,6 +142,8 @@ void setup() {
 
 
 void loop() {
+  Serial.print("T:");
+  Serial.println(timerIntervalUs);
   
   bool had_serial_input = processSerialInput();
   uint8_t delay_time = had_serial_input ? meanSerialProcessingTimeUs : 0;
@@ -151,7 +152,7 @@ void loop() {
 
   // Use this logic if the value is slower than the stepper motor can handle
   if (timerIntervalUs > SLOWEST_HALF_STEP_MICROSECONDS) {
-//    Serial.println('s');
+    Serial.println('s');
     digitalWrite(stepPin, alternator ? HIGH : LOW );
     alternator = !alternator;
     delayMicroseconds(SLOWEST_HALF_STEP_MICROSECONDS);

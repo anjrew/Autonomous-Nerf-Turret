@@ -1,5 +1,8 @@
+/* You have to move this in and out of the control_via_serial folder to make it work and run the command in there */
+
+
 #include <gtest/gtest.h>
-#include "./control_via_serial/turret_control.h"
+#include "turret_control.h"
 #include <stdint.h>
 #include <iostream>
 
@@ -165,6 +168,17 @@ TEST(MapRangeTest, MapsValueOutsideInputRangeToLowEndOfOutputRange) {
     int new_min_value = 0;
     int new_max_value = 10;
     int expected_output = 10;
+
+    EXPECT_EQ(mapRange(input_value, min_value, max_value, new_min_value, new_max_value), expected_output);
+}
+
+TEST(MapRangeTest, MapsValueToLowerValueOfOne) {
+    int input_value = 1;
+    int min_value = 0;
+    int max_value = 10;
+    int new_min_value = 2e6;
+    int new_max_value = 1000;
+    int expected_output = 1.8001e6;
 
     EXPECT_EQ(mapRange(input_value, min_value, max_value, new_min_value, new_max_value), expected_output);
 }

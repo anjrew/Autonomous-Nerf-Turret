@@ -42,6 +42,7 @@ int decodeAzimuth(uint8_t encoded_value) {
     return encoded_value - 90;
 }
 
+
 /**
  * Decode the turret settings from the encoded command uint8_t.
  *
@@ -56,6 +57,7 @@ BaseTurretSettings decodeValue(uint8_t encoded_command) {
     return settings;
 }
 
+
 TurretSettings decode(uint8_t *encoded_command) {
     TurretSettings turretCommand;
     turretCommand.azimuth = decodeAzimuth(encoded_command[0]);
@@ -66,6 +68,7 @@ TurretSettings decode(uint8_t *encoded_command) {
     return turretCommand;
 }
 
+
 int mapRange(int value, int value_min, int value_max, int new_min_value, int new_max_value) {
 //    int max_value = std::max(value_min, value_max);
 //    int min_value = std::min(value_min, value_max);
@@ -74,7 +77,7 @@ int mapRange(int value, int value_min, int value_max, int new_min_value, int new
     
     if (value < min_value || value > max_value) {
         // throw std::invalid_argument("The given value must be within the value_min and value_max range");;
-        static_assert("The given value must be within the value_min and value_max range");;
+        static_assert("The given value must be within the value_min and value_max range");
     } 
 
     int original_range = value_max - value_min;
