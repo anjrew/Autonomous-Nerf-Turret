@@ -28,8 +28,6 @@ def limit_value(value: Union[int,float], minimum:Union[int,float], maximum: Unio
         return value
     
 
-
-# def map_range(value=0, min_value=SLOWEST_HALF_STEP_MICROSECONDS, max_value=FASTEST_HALF_STEP_MICROSECONDS, new_min_value=SLOWEST_SPEED, new_max_value=FASTEST_SPEED):
 def map_range(
     value:Union[int,float], 
     value_min: Union[int,float], 
@@ -86,7 +84,7 @@ def encode(azimuth: int, is_clockwise: bool, speed: int, is_firing: bool) -> byt
     
     azimuth_byte = encode_azimuth_val_to_byte(azimuth)  # Scale the azimuth value to fit in a byte (0-255)
     encoded_value = encode_vals_to_byte(is_clockwise, speed, is_firing)  # Encode the other values into a single byte
-    return bytes([encoded_value, azimuth_byte])
+    return bytes([azimuth_byte, encoded_value ])
 
 
 def encode_vals_to_byte(is_clockwise: bool, speed: int, is_firing: bool):
