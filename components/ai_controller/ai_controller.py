@@ -142,97 +142,98 @@ while True:
         if not connection:
             try_to_bind_to_socket()
         
-    
-        data = connection.recv(1024)  # Receive data from the client
-        if not data:
-            break
-        
-        json_data = json.loads(data.decode('utf-8')) # Decode the received data and parse it as a JSON object
-        
-        # Check if there are any targets in the frame
-        if len(json_data['targets']) > 0:
-            logging.debug('Data obtained:' + json.dumps(data.decode('utf-8')))
-            already_sent_no_targets=False 
-            center_x, center_y =  json_data['heading_vect']
-            
-            first_target = json_data['targets'][0] # Extract the first target from the targets list
-            # vec_delta = first_target['vec_delta'] # Extract the vec_delta data
-            id = first_target.get('id', None) # Extract the id data
-            
-            left, top, right, bottom = first_target['box']
-            
-            # calculate box coordinates
-            box_center_x = (left + right) / 2
-            box_center_y = (top + bottom) / 2
-            box_width = right - left
-            box_height = bottom - top
-
-            # Get movement vector to align gun with center of target
-            movement_vector = [box_center_x - center_x, box_center_y - center_y]
-            
-            # Add padding as a percentage of the original dimensions
-            padding_width = box_width * TARGET_PADDING_PERCENTAGE
-            padding_height = box_height * TARGET_PADDING_PERCENTAGE
-
-            # Calculate box coordinates
-            padded_left = left + padding_width
-            padded_right = right - padding_width
-            padded_top = top + padding_height
-            padded_bottom = bottom - padding_height
-                
-            is_on_target = False  
-            if padded_top <= center_y <= padded_bottom and padded_left <= center_x <= padded_right:
-                is_on_target=True      
-
-            view_width = json_data['view_dimensions'][0]
-            view_height = json_data['view_dimensions'][1]
-            
-            current_distance_from_the_middle = movement_vector[0]
-            max_distance_from_the_middle_left = -(view_width / 2)
-            max_distance_from_the_middle_right = view_width / 2
-        
-            
-            predicted_azimuth_angle = map_range(
-                current_distance_from_the_middle,
-                max_distance_from_the_middle_left, 
-                max_distance_from_the_middle_right ,
-                -30 ,
-                30
-            )
-            azimuth_speed_adjusted = -(predicted_azimuth_angle * float(args.speed))
-            smoothed_speed_adjusted_azimuth = slow_start_fast_end_smoothing(azimuth_speed_adjusted, float(args.smoothing) + 1.0, 90)
-            
-            ## TODO: Find out why the view height  and box height mus be divided by 4 instead of 2 here. I think it maybe something todo with 
-            ## the way the way the face prediction is done by reducing the image size by 4. Did not have time to check but found this empirically. 
-            elevation_speed_adjusted = map_range(abs(movement_vector[1]), 0, (view_height/4) - (box_height/4), 0 , 5) * float(args.speed)
-            smooth_elevation_speed_adjusted = slow_start_fast_end_smoothing(elevation_speed_adjusted, float(args.smoothing) + 1.0, 10)
-            
-            azimuth_formatted = round(smoothed_speed_adjusted_azimuth, args.azimuth_dp)
-            
-            controller_state = cached_controller_state = {
-                'azimuth_angle': 0 if abs(movement_vector[0]) <= args.accuracy_threshold_x else azimuth_formatted,
-                'is_clockwise': movement_vector[1] > 0,
-                'speed': 0 if abs(movement_vector[1]) <= args.accuracy_threshold_y else round(elevation_speed_adjusted / 2 , args.elevation_dp),
-                'is_firing': is_on_target,
-            }
-            
-            logging.debug("Sending controller state: " + json.dumps(controller_state))
-            
-            if not args.test:
-                try:
-                    requests.post(url, json=controller_state)       
-                except:
-                    logging.error("Failed to send controller state to server.")
-
         else:
-            if not already_sent_no_targets and not args.test:
-                ## No targets detected, so stop the gun but hold its current position
-                requests.post(url, json={
-                    **cached_controller_state,
-                    'speed': 0,
-                    'is_firing': False,
-                })      
-                already_sent_no_targets=True 
+    
+            data = connection.recv(1024)  # Receive data from the client
+            if not data:
+                continue
+            
+            json_data = json.loads(data.decode('utf-8')) # Decode the received data and parse it as a JSON object
+            
+            # Check if there are any targets in the frame
+            if len(json_data['targets']) > 0:
+                logging.debug('Data obtained:' + json.dumps(data.decode('utf-8')))
+                already_sent_no_targets=False 
+                center_x, center_y =  json_data['heading_vect']
+                
+                first_target = json_data['targets'][0] # Extract the first target from the targets list
+                # vec_delta = first_target['vec_delta'] # Extract the vec_delta data
+                id = first_target.get('id', None) # Extract the id data
+                
+                left, top, right, bottom = first_target['box']
+                
+                # calculate box coordinates
+                box_center_x = (left + right) / 2
+                box_center_y = (top + bottom) / 2
+                box_width = right - left
+                box_height = bottom - top
+
+                # Get movement vector to align gun with center of target
+                movement_vector = [box_center_x - center_x, box_center_y - center_y]
+                
+                # Add padding as a percentage of the original dimensions
+                padding_width = box_width * TARGET_PADDING_PERCENTAGE
+                padding_height = box_height * TARGET_PADDING_PERCENTAGE
+
+                # Calculate box coordinates
+                padded_left = left + padding_width
+                padded_right = right - padding_width
+                padded_top = top + padding_height
+                padded_bottom = bottom - padding_height
+                    
+                is_on_target = False  
+                if padded_top <= center_y <= padded_bottom and padded_left <= center_x <= padded_right:
+                    is_on_target=True      
+
+                view_width = json_data['view_dimensions'][0]
+                view_height = json_data['view_dimensions'][1]
+                
+                current_distance_from_the_middle = movement_vector[0]
+                max_distance_from_the_middle_left = -(view_width / 2)
+                max_distance_from_the_middle_right = view_width / 2
+            
+                
+                predicted_azimuth_angle = map_range(
+                    current_distance_from_the_middle,
+                    max_distance_from_the_middle_left, 
+                    max_distance_from_the_middle_right ,
+                    -30 ,
+                    30
+                )
+                azimuth_speed_adjusted = -(predicted_azimuth_angle * float(args.speed))
+                smoothed_speed_adjusted_azimuth = slow_start_fast_end_smoothing(azimuth_speed_adjusted, float(args.smoothing) + 1.0, 90)
+                
+                ## TODO: Find out why the view height  and box height mus be divided by 4 instead of 2 here. I think it maybe something todo with 
+                ## the way the way the face prediction is done by reducing the image size by 4. Did not have time to check but found this empirically. 
+                elevation_speed_adjusted = map_range(abs(movement_vector[1]), 0, (view_height/4) - (box_height/4), 0 , 5) * float(args.speed)
+                smooth_elevation_speed_adjusted = slow_start_fast_end_smoothing(elevation_speed_adjusted, float(args.smoothing) + 1.0, 10)
+                
+                azimuth_formatted = round(smoothed_speed_adjusted_azimuth, args.azimuth_dp)
+                
+                controller_state = cached_controller_state = {
+                    'azimuth_angle': 0 if abs(movement_vector[0]) <= args.accuracy_threshold_x else azimuth_formatted,
+                    'is_clockwise': movement_vector[1] > 0,
+                    'speed': 0 if abs(movement_vector[1]) <= args.accuracy_threshold_y else round(elevation_speed_adjusted / 2 , args.elevation_dp),
+                    'is_firing': is_on_target,
+                }
+                
+                logging.debug("Sending controller state: " + json.dumps(controller_state))
+                
+                if not args.test:
+                    try:
+                        requests.post(url, json=controller_state)       
+                    except:
+                        logging.error("Failed to send controller state to server.")
+
+            else:
+                if not already_sent_no_targets and not args.test:
+                    ## No targets detected, so stop the gun but hold its current position
+                    requests.post(url, json={
+                        **cached_controller_state,
+                        'speed': 0,
+                        'is_firing': False,
+                    })      
+                    already_sent_no_targets=True 
     
     except KeyboardInterrupt as e:
         requests.post(url, json={

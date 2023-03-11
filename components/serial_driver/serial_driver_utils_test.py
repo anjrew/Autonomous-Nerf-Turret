@@ -66,9 +66,9 @@ def test_encode_vals_to_binary(is_clockwise: bool, speed: int, is_firing: bool, 
 
 @pytest.mark.parametrize("id, azimuth, is_clockwise, speed, is_firing, expected_output", assign_id_to_tests([
     ## These are the args in order passed to the test function with the expected values in the object
-    (0, True, 0, False,     [0b10000000, 0b01011010]),
-    (90, True, 0, False,    [0b10000000, 0b10110100]),
-    (90, False, 7, True,    [0b01000111, 0b10110100]),
+    (0, True, 0, False,     [0b01011010, 0b10000000 ]),
+    (90, True, 0, False,    [0b10110100, 0b10000000 ]),
+    (90, False, 7, True,    [0b10110100, 0b01000111 ]),
 ]))
 def test_encode_all_to_binary(azimuth, is_clockwise, speed, is_firing, expected_output, id):
     encoded_command = encode(azimuth, is_clockwise, speed, is_firing)

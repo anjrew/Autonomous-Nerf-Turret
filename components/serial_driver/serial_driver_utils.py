@@ -197,7 +197,7 @@ def decode(encoded_motor_command: bytes) -> dict:
     """
     assert len(encoded_motor_command) == 2, "Encoded motor command must be two bytes long"
     
-    encoded_value, azimuth_byte = encoded_motor_command
+    azimuth_byte, encoded_value = encoded_motor_command
     
     decoded_motor_vals = decode_byte_to_motor_vals(encoded_value)
     
