@@ -21,3 +21,5 @@ __pycache__/
 *~
 *.bak
 .dist
+components/stepper_motor/src/control_via_serial/build
+components/stepper_motor/src/control_via_serial/control_via_serial.ino.standard.hex

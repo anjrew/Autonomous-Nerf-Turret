@@ -67,15 +67,21 @@ bool processSerialInput() {
     // Decode the motor command
     TurretSettings decodedValues = decode(serialBuffer);
     int speedIn = decodedValues.speed;
-    // int value, int value_min, int value_max, int new_min_value, int new_max_value
-    int stepUs = mapRange(speedIn, SLOWEST_SPEED, FASTEST_SPEED, SLOWEST_STEP_SPEED, FASTEST_HALF_STEP_MICROSECONDS);
+
+    if (speedIn < 1) {
+      // If the speed is zero then set interval to zero so it is ignored in the loop
+      timerIntervalUs = 0;
+    } else {
+      int stepUs = mapRange(speedIn, SLOWEST_SPEED, FASTEST_SPEED, SLOWEST_STEP_SPEED, FASTEST_HALF_STEP_MICROSECONDS);
+      timerIntervalUs = stepUs < FASTEST_HALF_STEP_MICROSECONDS ? FASTEST_HALF_STEP_MICROSECONDS : stepUs;
+    }
+    
 
     int newAzimuth = azimuth_angle_deg +  decodedValues.azimuth;
     if (newAzimuth >= 0 && newAzimuth <= MAX_AZIMUTH_DEG_RANGE) {
       azimuthServo.write(newAzimuth);
       azimuth_angle_deg = newAzimuth;
     }
-    timerIntervalUs = stepUs < FASTEST_HALF_STEP_MICROSECONDS ? FASTEST_HALF_STEP_MICROSECONDS : stepUs;
 
     
     digitalWrite(dirPin, decodedValues.isClockwise ? LOW : HIGH);
@@ -86,8 +92,8 @@ bool processSerialInput() {
     meanSerialProcessingTimeUs = (meanSerialProcessingTimeUs + micros() - startOfSerialProcess) / 2;
 //    Serial.print(" - azimuth: ");
 //    Serial.print(decodedValues.azimuth);
-//    Serial.print(" - azimuth: ");
-//    Serial.print(decodedValues.azimuth);
+    Serial.print(" - speed: ");
+    Serial.println(decodedValues.speed);
 //    Serial.print(" - isClockwise: ");
 //    Serial.print(decodedValues.isClockwise);
 //    Serial.print(" - speed: ");
@@ -142,6 +148,7 @@ void loop() {
   uint8_t delay_time = had_serial_input ? meanSerialProcessingTimeUs : 0;
 //  Serial.print("timerIntervalUs " );
 //  Serial.println(timerIntervalUs );
+
   // Use this logic if the value is slower than the stepper motor can handle
   if (timerIntervalUs > SLOWEST_HALF_STEP_MICROSECONDS) {
 //    Serial.println('s');
@@ -161,7 +168,9 @@ void loop() {
     digitalWrite(stepPin, alternator ? HIGH : LOW );
     alternator = !alternator;
   } else {
-//     Serial.println('x');
+    Serial.println('m');
+      // If timer interval is Zero then just do nothing
+      
   }
 
 }

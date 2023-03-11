@@ -4,7 +4,7 @@ A project dedicated to creating a fully autonomous, AI-powered Nerf gun. The tur
 
 ## Getting started
 
-This project was built on top of these two main dependencies:
+This project was built on MacOS on top of these two main dependencies:
 
  - bash
  - conda

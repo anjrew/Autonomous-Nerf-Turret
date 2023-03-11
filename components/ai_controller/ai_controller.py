@@ -5,21 +5,7 @@ import json
 from typing import Union
 import requests
 import time
-import math
-
-# Define the conversion function
-def map_log_level(level_str) -> int:
-    if type(level_str) == int or level_str.isdigit():
-        return int(level_str)
-    elif level_str.isalpha():
-        level_name = level_str.upper()
-        try:
-            level = logging.getLevelName(level_name)
-            return level
-        except ValueError:
-            raise argparse.ArgumentTypeError(f"Invalid logging level: {level_str}")
-    else:
-        raise argparse.ArgumentTypeError(f"Invalid logging level: {level_str}")
+from ai_controller_utils import assert_in_int_range, map_log_level
 
 
 parser = argparse.ArgumentParser()
@@ -35,6 +21,10 @@ parser.add_argument("--test", "-t", help="For testing it will not send requests 
 parser.add_argument("--speed", "-s", help="Set the factor to multiply the elevation speed", default=1)
 parser.add_argument("--smoothing", "-sm", help="The amount of smoothing factor for speed to optimal position", default=1, type=float)
 parser.add_argument("--max-azimuth-angle", "-ma", help="The maximum angle that the turret will try to turn in one step on the azimuth plane", default=1, type=int)
+parser.add_argument("--max-elevation-speed", "-mes", 
+                    help="The maximum speed at which the elevation of the gun angle can change as an integrer value between [1-10]", 
+                    default=1, 
+                    type=lambda x: assert_in_int_range(int(x), 1, 10), )
 
 parser.add_argument("--target-padding", "-p",help="""
                     Set the padding for when the gun will try and shoot relative to the edge of the target in %.
@@ -214,7 +204,7 @@ while True:
             
             ## TODO: Find out why the view height  and box height mus be divided by 4 instead of 2 here. I think it maybe something todo with 
             ## the way the way the face prediction is done by reducing the image size by 4. Did not have time to check but found this empirically. 
-            elevation_speed_adjusted = map_range(abs(movement_vector[1]), 0, (view_height/4) - (box_height/4), 0 , 10) * float(args.speed)
+            elevation_speed_adjusted = map_range(abs(movement_vector[1]), 0, (view_height/4) - (box_height/4), 0 , 5) * float(args.speed)
             smooth_elevation_speed_adjusted = slow_start_fast_end_smoothing(elevation_speed_adjusted, float(args.smoothing) + 1.0, 10)
             
             azimuth_formatted = round(smoothed_speed_adjusted_azimuth, args.azimuth_dp)
