@@ -31,7 +31,7 @@ parser.add_argument('--crosshair_size', '-ch', type=int, default=10, help="The s
 parser.add_argument("--port", help="Set the web socket server port to send messages to.", default=6565, type=int)
 parser.add_argument("--host", help="Set the web socket server hostname to send messages to.", default="localhost")
 
-parser.add_argument("--log-level", "-ll" , help="Set the logging level by integer value.", default=logging.WARNING, type=map_log_level)
+parser.add_argument("--log-level", "-ll" , help="Set the logging level by integer value.", default=logging.INFO, type=map_log_level)
 parser.add_argument("--delay", help="Delay to limit the data flow into the websocket server.", default=0, type=int)
 parser.add_argument("--headless", help="Wether to run the service in headless mode.", action='store_true', default=False)
 

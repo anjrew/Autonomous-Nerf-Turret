@@ -19,19 +19,21 @@ parser.add_argument("--elevation-dp", help="Set how many decimal places the elev
 parser.add_argument("--delay", "-d", help="Delay to limit the data flow into the websocket server.", default=0, type=int)
 parser.add_argument("--test", "-t", help="For testing it will not send requests to the driver.", action="store_true")
 parser.add_argument("--speed", "-s", help="Set the factor to multiply the elevation speed", default=1)
-parser.add_argument("--smoothing", "-sm", help="The amount of smoothing factor for speed to optimal position", default=1, type=float)
-parser.add_argument("--max-azimuth-angle", "-ma", help="The maximum angle that the turret will try to turn in one step on the azimuth plane", default=1, type=int)
+parser.add_argument("--x-smoothing", "-smx", help="The amount of smoothing factor for speed to optimal position on the azimuth angle", default=1, type=int)
+parser.add_argument("--y-smoothing", "-smy", help="The amount of smoothing factor for speed to optimal position on the elevation angle", default=1, type=int)
+parser.add_argument("--max-azimuth-angle", "-ma", help="The maximum angle that the turret will try to turn in one step on the azimuth plane", default=45, type=int)
 parser.add_argument("--max-elevation-speed", "-mes", 
                     help="The maximum speed at which the elevation of the gun angle can change as an integrer value between [1-10]", 
                     default=10, 
                     type=lambda x: assert_in_int_range(int(x), 1, 10), )
+
 
 parser.add_argument("--target-padding", "-p",help="""
                     Set the padding for when the gun will try and shoot relative to the edge of the target in %.
                     The amount of padding around the target bounding box in pixels that the gun will ignore before shooting
                     """, default=10, type=int)
 
-parser.add_argument('--accuracy-threshold-x', '-atx', type=int, default=5, 
+parser.add_argument('--accuracy-threshold-x', '-atx', type=int, default=1, 
                     help="""
                     The threshold of how accurate the gun will try to get the target in the center of the crosshair in pixels horizontally.
                     """ )
@@ -197,16 +199,16 @@ while True:
                     current_distance_from_the_middle - args.accuracy_threshold_x,
                     max_distance_from_the_middle_left, 
                     max_distance_from_the_middle_right ,
-                    -30 ,
-                    30
+                    -args.max_azimuth_angle ,
+                    args.max_azimuth_angle
                 )
                 azimuth_speed_adjusted = -(predicted_azimuth_angle * float(args.speed))
-                smoothed_speed_adjusted_azimuth = slow_start_fast_end_smoothing(azimuth_speed_adjusted, float(args.smoothing) + 1.0, 90)
+                smoothed_speed_adjusted_azimuth = slow_start_fast_end_smoothing(azimuth_speed_adjusted, float(args.x_smoothing) + 1.0, 90)
                 
                 ## TODO: Find out why the view height  and box height mus be divided by 4 instead of 2 here. I think it maybe something todo with 
                 ## the way the way the face prediction is done by reducing the image size by 4. Did not have time to check but found this empirically. 
                 elevation_speed_adjusted = map_range(abs(movement_vector[1]) - args.accuracy_threshold_y, 0, (view_height/4) - (box_height/4), 0 , args.max_elevation_speed) * float(args.speed)
-                smooth_elevation_speed_adjusted = slow_start_fast_end_smoothing(elevation_speed_adjusted, float(args.smoothing) + 1.0, 10)
+                smooth_elevation_speed_adjusted = slow_start_fast_end_smoothing(elevation_speed_adjusted, float(args.y_smoothing) + 1.0, 10)
                 
                 azimuth_formatted = round(smoothed_speed_adjusted_azimuth, args.azimuth_dp)
                 

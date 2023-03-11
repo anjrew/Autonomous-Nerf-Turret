@@ -33,9 +33,9 @@ int azimuth_angle_deg = 90;
 
 
 // The limits of the values to be set for the motor half step
-const int SLOWEST_HALF_STEP_MICROSECONDS = 17000;
+const int SLOWEST_HALF_STEP_MICROSECONDS = 16000;
 const int FASTEST_HALF_STEP_MICROSECONDS = 1000;
-const int SLOWEST_STEP_SPEED = 2e6; // one second  in milli seconds which is achieved by making 1 step at slowest possible seed and then waiting until 1 second has passed
+const int SLOWEST_STEP_SPEED = 1e6; // one second  in milli seconds which is achieved by making 1 step at slowest possible seed and then waiting until 1 second has passed
 
 
 
@@ -67,11 +67,11 @@ bool processSerialInput() {
       // If the speed is zero then set interval to zero so it is ignored in the loop
       timerIntervalUs = 0;
     } else {
-      int stepUs = mapRange(speedIn, SLOWEST_SPEED, FASTEST_SPEED, SLOWEST_STEP_SPEED, FASTEST_HALF_STEP_MICROSECONDS);
-      Serial.print("Mapped Speed: ");
-      Serial.print(speedIn);
-      Serial.print(" to stepUs Speed: ");
-      Serial.println(stepUs);
+     unsigned long stepUs = mapRange(speedIn, SLOWEST_SPEED, FASTEST_SPEED, SLOWEST_STEP_SPEED, FASTEST_HALF_STEP_MICROSECONDS);
+//      Serial.print("Mapped Speed: ");
+//      Serial.print(speedIn);
+//      Serial.print(" to stepUs Speed: ");
+//      Serial.println(stepUs);
       timerIntervalUs = stepUs < FASTEST_HALF_STEP_MICROSECONDS ? FASTEST_HALF_STEP_MICROSECONDS : stepUs;
     }
     
@@ -91,10 +91,10 @@ bool processSerialInput() {
     meanSerialProcessingTimeUs = (meanSerialProcessingTimeUs + micros() - startOfSerialProcess) / 2;
 //    Serial.print(" - azimuth: ");
 //    Serial.print(decodedValues.azimuth);
-    Serial.print(" - speed: ");
-    Serial.println(decodedValues.speed);
+//    Serial.print(" - speed: ");
+//    Serial.println(decodedValues.speed);
 //    Serial.print(" - isClockwise: ");
-//    Serial.print(decodedValues.isClockwise);
+//    Serial.println(decodedValues.isClockwise);
 //    Serial.print(" - speed: ");
 //    Serial.print(decodedValues.speed);
 //    Serial.println(decodedValues.isFiring);
@@ -142,8 +142,8 @@ void setup() {
 
 
 void loop() {
-  Serial.print("T:");
-  Serial.println(timerIntervalUs);
+//  Serial.print("T:");
+//  Serial.println(timerIntervalUs);
   
   bool had_serial_input = processSerialInput();
   uint8_t delay_time = had_serial_input ? meanSerialProcessingTimeUs : 0;
@@ -152,14 +152,19 @@ void loop() {
 
   // Use this logic if the value is slower than the stepper motor can handle
   if (timerIntervalUs > SLOWEST_HALF_STEP_MICROSECONDS) {
-    Serial.println('s');
+//    Serial.println('s');
     digitalWrite(stepPin, alternator ? HIGH : LOW );
     alternator = !alternator;
-    delayMicroseconds(SLOWEST_HALF_STEP_MICROSECONDS);
+    delayMicroseconds(FASTEST_HALF_STEP_MICROSECONDS);
     digitalWrite(stepPin, alternator ? HIGH : LOW );
     alternator = !alternator; 
-    int secondWaitTime = timerIntervalUs - SLOWEST_HALF_STEP_MICROSECONDS - delay_time;
+    int secondWaitTime = timerIntervalUs - FASTEST_HALF_STEP_MICROSECONDS - delay_time;
     delayMicroseconds(secondWaitTime);
+    Serial.print('w');
+    Serial.println(secondWaitTime);
+    Serial.print('t');
+    Serial.println(secondWaitTime);
+
      
   } else if (timerIntervalUs > 1) {
 //    Serial.println('g');
@@ -169,7 +174,7 @@ void loop() {
     digitalWrite(stepPin, alternator ? HIGH : LOW );
     alternator = !alternator;
   } else {
-    Serial.println('m');
+    Serial.println('n');
       // If timer interval is Zero then just do nothing
       
   }
