@@ -5,7 +5,7 @@ import json
 from typing import Union
 import requests
 import time
-from ai_controller_utils import assert_in_int_range, map_log_level, slow_start_fast_end_smoothing
+from ai_controller_utils import assert_in_int_range, map_log_level, slow_start_fast_end_smoothing, map_range
 
 
 parser = argparse.ArgumentParser()
@@ -71,11 +71,6 @@ cached_controller_state ={
     'speed': 0,
     'is_firing': False,
 } 
-
-
-
-
-
 
 already_sent_no_targets=False # Flag to prevent sending the same message over and over again
 connection = None
