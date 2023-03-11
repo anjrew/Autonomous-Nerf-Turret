@@ -1,5 +1,6 @@
 import argparse
 import logging
+from typing import Union
 
 def assert_in_int_range(value: int, min_val: int, max_val: int) -> int:
     """
@@ -81,3 +82,54 @@ def map_log_level(level_str: str) -> int:
        
     else:
         raise argparse.ArgumentTypeError(f"Invalid logging level: {level_str}")
+    
+    
+    
+def slow_start_fast_end_smoothing(x: float, p: float, max_value: int) -> float:
+    """
+    Maps an input value to an output value using a power function with a slow start and fast end.
+
+    The output value increases slowly at the beginning when the input value is small,
+    but increases more rapidly as the input value approaches the maximum value of 10.
+
+    Args:
+        x (float): The input value to be mapped, in the range of 0 to 10.
+        p (float): The exponent of the power function used to map the input value to the output value.
+            A larger value of p will result in a faster increase in the output value towards the end of the range.
+
+    Returns:
+        float: The mapped output value, in the range of 0 to 10.
+    """
+    
+    ratio = x / max_value
+    output = ratio ** p * max_value
+    return output if x >= 0 else -abs(output)
+
+
+def map_range(
+    input_value: Union[int,float], 
+    min_input: Union[int,float], 
+    max_input: Union[int,float], 
+    min_output: Union[int,float], 
+    max_output: Union[int,float]
+    ) -> Union[int,float]:
+    """
+    Maps an input value from one range to another range.
+
+    Parameters:
+        input_value (float): The input value to be mapped to the output range.
+        min_input (float): The minimum value of the input range.
+        max_input (float): The maximum value of the input range.
+        min_output (float): The minimum value of the output range.
+        max_output (float): The maximum value of the output range.
+
+    Returns:
+        float: The mapped value in the output range.
+
+    Example:
+        >>> map_range(-0.5, -1, 1, 0, 180)
+        90.0
+    """
+    mapped_value = ((input_value - min_input) / (max_input - min_input)) * (max_output - min_output) + min_output
+    return mapped_value
+
