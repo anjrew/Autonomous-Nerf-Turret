@@ -1,12 +1,20 @@
+# Standard library imports
+import argparse
+import os
+import socket
+import sys
 import time
+
+# Third-party imports
 import cv2
 import face_recognition
-from argparse import ArgumentParser
-import argparse
-import math
-import logging
-import socket
 import json
+import logging
+import math
+
+# Local/application-specific imports
+from argparse import ArgumentParser
+
 
 # Define the conversion function
 def map_log_level(level_str) -> int:
@@ -33,12 +41,44 @@ parser.add_argument("--host", help="Set the web socket server hostname to send m
 
 parser.add_argument("--log-level", "-ll" , help="Set the logging level by integer value.", default=logging.INFO, type=map_log_level)
 parser.add_argument("--delay", help="Delay to limit the data flow into the websocket server.", default=0, type=int)
-parser.add_argument("--headless", help="Wether to run the service in headless mode.", action='store_true', default=False)
+parser.add_argument("--headless", help="Whether to run the service in headless mode.", action='store_true', default=False)
+parser.add_argument("--id-targets", "-it",help="Whether to only shoot targets that are stored in the './data/targets' folder.", action='store_true', default=False)
+parser.add_argument("--test", "-t",help="Test without trying to emit data.", action='store_true', default=False)
+parser.add_argument("--benchmark", "-b",help="Wether to measure the script performance and output in the logs.", action='store_true', default=False)
 
 
 args = parser.parse_args()
 
 logging.basicConfig(level=args.log_level)
+
+target_images = []
+target_names = [ ]
+
+if args.id_targets:
+
+    script_path = os.path.abspath(sys.argv[0])
+    script_dir = os.path.dirname(script_path)
+    targets_dir = f"{script_dir}/data/targets"
+    
+    for file in os.listdir(targets_dir):
+             
+        target_names.append(file.split('.')[0])
+        target_images.append(
+            face_recognition.face_encodings(
+                cv2.cvtColor(
+                    cv2.imread(
+                        f"{targets_dir}/{file}"
+                    ),
+                    cv2.COLOR_BGR2RGB
+                )
+            )[0]
+        )
+        
+    logging.info(f" ßLabeling targets {target_names}")
+            
+          
+        
+
 
 ## Setup ready to send data to subscribers
 HOST = args.host  # IP address of the server
@@ -60,10 +100,10 @@ process_this_frame = True
 sock = None
 face_locations = []
 
+
 def try_to_create_socket():
     logging.info(f"Connecting to host{HOST, PORT}")
     try:
-        global sock
         # Create a new socket and connect to the server
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.connect((HOST, PORT))
@@ -80,13 +120,14 @@ while True:
     time.sleep(args.delay)
     start_time = time.time()
 
-    if not sock:
+    if not sock and not args.test:
         try_to_create_socket()
         
     try:
         targets = [] # List of targets in the frame
         
         ret, frame = cap.read()
+        
         # Get the image height and width
         height, width, _ = frame.shape
         
@@ -119,7 +160,7 @@ while True:
             if not HEADLESS:
                 # Draw a box around the face
                 cv2.rectangle(frame, (left, top), (right, bottom), target_highlight_color, 2)
-            
+                
             box_center_x = (left + right) / 2
             box_center_y = (top + bottom) / 2
             box_width = right - left
@@ -128,21 +169,48 @@ while True:
             
             distance = math.sqrt(movement_vector[0]**2 + movement_vector[1]**2)
             
-            
             lock_text = "Lock" if is_on_target else f""
+             
+            target = { "vec_delta": movement_vector, "locked": is_on_target, "box": [left, top, right, bottom]}
             
-            targets.append({ "vec_delta": movement_vector, "locked": is_on_target, "box": [left, top, right, bottom]})
+            if args.id_targets:
+                width = right-left
+                height = bottom-top
+                sub_image = frame[top:top+height, left:left+width]
+                # sub_image = cv2.resize(sub_image,(width, height) )
+                img = cv2.cvtColor(   
+                        sub_image,
+                        cv2.COLOR_BGR2RGB
+                    )
+                img_encoding = face_recognition.face_encodings(
+                    img
+                )
+                
+                if len(img_encoding) >  0:
+                    matched_results = face_recognition.compare_faces(target_images, img_encoding[0])
+                    if True in matched_results:
+                        # Do something with the index of the matching face
+                        result = matched_results.index(True)
+                        
+                        target["id"] = target_names[result]
+                    else:
+                        logging.debug("Target not recognized")
+                
+                
+            targets.append(target)
             
             if not HEADLESS:
                 font_size = 445
+                
                 # Draw a label with a name below the face
                 cv2.rectangle(frame, (left, bottom - 35), (right, bottom), target_highlight_color, cv2.FILLED)
                 font = cv2.FONT_HERSHEY_DUPLEX
-                
-                cv2.putText(frame, f"{lock_text} {movement_vector} {distance:.2f}", (left + 6, bottom - 6), font, box_width/font_size, (255, 255, 255), 1)
+                box_text = target.get("id") if target.get("id") else f"{lock_text} {movement_vector} {distance:.2f}"
+                cv2.putText(frame, box_text, (left + 6, bottom - 6), font, box_width/font_size, (255, 255, 255), 1)
                 
                 # Draw a red horizontal line through the center
                 cv2.line(frame, (center_x - CROSS_HAIR_SIZE, center_y), (center_x + CROSS_HAIR_SIZE, center_y), target_highlight_color, target_highlight_size)
+                
                 # Draw a red vertical line through the center
                 cv2.line(frame, (center_x, center_y - CROSS_HAIR_SIZE), (center_x, center_y + CROSS_HAIR_SIZE), target_highlight_color, target_highlight_size)
         
@@ -153,24 +221,25 @@ while True:
                 "view_dimensions": [width, height],
             }
             json_data = json.dumps(data).encode('utf-8') # Encode the JSON object as a byte string
-            if sock:
-                logging.debug('Sending data to the AI controller: ' + json.dumps(data))
+            
+            
+            logging.debug(f'{ "Mock: "if args.test else ""}Sending data to the AI controller:' + json.dumps(data))
+            if sock and not args.test:
                 sock.sendall(json_data) # Send the byte string to the server
                 
         else:
-            if sock:
+            if sock and not args.test:
                 sock.sendall(json.dumps({"targets": []}).encode('utf-8'))
             
-        
-        cv2.imshow('Face Detector', frame)
+        if not HEADLESS:
+            cv2.imshow('Face Detector', frame)
 
         c = cv2.waitKey(1)
         ## S 'key'
         if c == 27:
             break
         
-         
-            
+        
     except KeyboardInterrupt as e:
         raise e
     except AttributeError as e:
@@ -189,7 +258,9 @@ while True:
         pass
     finally:
         # Record the time taken to process the frame
-        logging.debug("Frame processed in " + str(time.time() - start_time) + " seconds")
+        if args.benchmark:
+            logging.debug("Frame processed in " + str(time.time() - start_time) + " seconds")
+        pass
         
 cap.release()
         

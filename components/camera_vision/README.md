@@ -2,7 +2,7 @@
 
 This code includes computer vision algorithms for object detection and tracking. 
 
-# Dependencies
+## Dependencies
 
 The project will need the following to be installed before even starting to install packages with pip:
 
@@ -10,7 +10,7 @@ The project will need the following to be installed before even starting to inst
 - bash
 - [CMake](https://cmake.org/download/)
 
-# Get Started
+## Get Started
 
 **Make sure to run the following commands in the project root directory.**
 
@@ -24,3 +24,7 @@ source bin/init.sh
 ```bash
 source bin/activate.sh
 ```
+
+
+## Info
+  - A [video](https://www.youtube.com/watch?v=5yPeKQzCPdI&list=PLVlbw1IZ2gnswgwYW9jXkEz43f3j7qs25&index=77) of how to use the face recognition library 
