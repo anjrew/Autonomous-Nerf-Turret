@@ -27,3 +27,11 @@ This project has a domain driven design where each domain lies in a folder in th
 For example:
   - The **camera_vision** folder contains files related to the computer vision tasks associated with face tracking.
   - The **stepper_motor** folder contains files related to the task of moving and controlling the stepper motor through the Arduino
+
+
+  # Versions
+
+  - 1 - Stepperonline Nema 17 Stepper Motor, 45 Ncm, 1.5 A, 12 V, 39 mm, 4-Wire 1.8 Deg Stepper Motor with 1 m Wire for 3D Printers:
+    - When firing under full load with stepper servo and gun the circuit pulls around 1.8A when running and 2.1A when starting up
+    - Of this the gun motors take up around 1.1A at full speed and 1.9A when starting up
+    - On stand still the circuit uses 0.08A

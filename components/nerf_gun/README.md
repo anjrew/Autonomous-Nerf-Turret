@@ -6,3 +6,4 @@ The Nerf gun used is a [Hyper-Fire Elite](https://www.amazon.de/-/en/Hasbro-N-St
 
 Info:
  - [Video](https://www.youtube.com/watch?v=H6EAR7Sc_Ms) on modification showing how to dismantle and wiring information
+ - [5v Relay](https://www.reichelt.de/de/de/entwicklerboards-relais-modul-5-v-srd-05vdc-sl-c-debo-relay-5v-p239148.html?PROVID=2788&gclid=Cj0KCQiAjbagBhD3ARIsANRrqEvTZoFxTnqKTfu6W9pBwd2Onr0hAUs83Ro2GquPKLDHp_INWmbvadoaAgRVEALw_wcB&&r=1)

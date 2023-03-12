@@ -63,3 +63,4 @@ Here are some key points after testing the motor at different half step speeds
 ## Sources of information
  - See the [Documentation folder](./documentation/)
  - For info on the 2N3904 Resistor see [this](https://www.homemade-circuits.com/understanding-transistor-2n3904/) link
+ - [Servo Motor](https://www.amazon.de/dp/B09WRBHSVD?ref=ppx_yo2ov_dt_b_product_details&th=1) for azimuth 

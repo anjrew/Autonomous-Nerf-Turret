@@ -7,7 +7,7 @@
 // Define stepper motor connections and steps per revolution:
 #define dirPin 2
 #define stepPin 3
-#define shootPin 13
+#define shootPin 10
 #define azimuthServoPin 9
 #define stepsPerRevolution 200
 
