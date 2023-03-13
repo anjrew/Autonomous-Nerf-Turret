@@ -21,7 +21,11 @@ __pycache__/
 *~
 *.bak
 .dist
+
+
+*.pt
 components/stepper_motor/src/control_via_serial/build
 components/stepper_motor/src/control_via_serial/control_via_serial.ino.standard.hex
 components/camera_vision/data/targets/*
 components/camera_vision/yolov3.weights
+components/camera_vision/yolo_object_detection/runs

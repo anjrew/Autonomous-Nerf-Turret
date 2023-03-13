@@ -5,8 +5,11 @@
         "JOYBUTTONDOWN",
         "JOYBUTTONUP",
         "JOYHATMOTION",
+        "ultralytics",
+        "xyxy",
         "yolo",
-        "YOLO"
+        "YOLO",
+        "yolov"
     ],
     "C_Cpp.errorSquiggles": "disabled",
     "files.associations": {

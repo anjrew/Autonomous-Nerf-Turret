@@ -14,21 +14,8 @@ import math
 
 # Local/application-specific imports
 from argparse import ArgumentParser
+from face_tracking_utils import map_log_level
 
-
-# Define the conversion function
-def map_log_level(level_str) -> int:
-    if type(level_str) == int or level_str.isdigit():
-        return int(level_str)
-    elif level_str.isalpha():
-        level_name = level_str.upper()
-        try:
-            level = logging.getLevelName(level_name)
-            return level
-        except ValueError:
-            raise argparse.ArgumentTypeError(f"Invalid logging level: {level_str}")
-    else:
-        raise argparse.ArgumentTypeError(f"Invalid logging level: {level_str}")
 
 parser = ArgumentParser(description="Track faces with bounding boxes")
 
@@ -78,8 +65,6 @@ if args.id_targets:
             
           
         
-
-
 ## Setup ready to send data to subscribers
 HOST = args.host  # IP address of the server
 PORT = args.port  # Port number to listen on
@@ -110,11 +95,11 @@ def try_to_create_socket():
         web_socket_client_connection.connect((HOST, PORT))
         logging.info(f"Successfully Connected to socket @ {HOST, PORT}")
     except Exception as e:
-        # time.sleep(5)
+        time.sleep(1)
         web_socket_client_connection = None
         logging.error("Failed on trying to connect to socket. Attempting to try again")
         print(e)
-        # try_to_connect_to_server()
+        
         pass
 
 start_time=None
@@ -163,6 +148,7 @@ while True:
             target_highlight_color = (0, 0, 255) if is_on_target else (0, 100, 0)
             
             if not HEADLESS:
+                
                 # Draw a box around the face
                 cv2.rectangle(frame, (left, top), (right, bottom), target_highlight_color, 2)
                 
@@ -182,7 +168,6 @@ while True:
                 t_width = right-left
                 t_height = bottom-top
                 sub_image = frame[top:top+t_height, left:left+t_width]
-                # sub_image = cv2.resize(sub_image,(width, height) )
                 img = cv2.cvtColor(   
                         sub_image,
                         cv2.COLOR_BGR2RGB
