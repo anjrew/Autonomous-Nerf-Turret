@@ -28,3 +28,4 @@ source bin/activate.sh
 
 ## Info
   - A [video](https://www.youtube.com/watch?v=5yPeKQzCPdI&list=PLVlbw1IZ2gnswgwYW9jXkEz43f3j7qs25&index=77) of how to use the face recognition library 
+  - A guide on setting up the [YOLO object detection](https://towardsdatascience.com/yolo-object-detection-with-opencv-and-python-21e50ac599e9) 

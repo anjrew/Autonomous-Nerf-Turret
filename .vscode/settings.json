@@ -4,7 +4,9 @@
         "JOYAXISMOTION",
         "JOYBUTTONDOWN",
         "JOYBUTTONUP",
-        "JOYHATMOTION"
+        "JOYHATMOTION",
+        "yolo",
+        "YOLO"
     ],
     "C_Cpp.errorSquiggles": "disabled",
     "files.associations": {

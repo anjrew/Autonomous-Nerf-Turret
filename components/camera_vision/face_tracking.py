@@ -74,7 +74,7 @@ if args.id_targets:
             )[0]
         )
         
-    logging.info(f" ßLabeling targets {target_names}")
+    logging.info(f" Labeling targets {target_names}")
             
           
         
@@ -103,7 +103,7 @@ face_locations = []
 
 def try_to_create_socket():
     global web_socket_client_connection
-    logging.info(f"Connecting to web socket host @{HOST, PORT}")
+    logging.info(f"Connecting to web socket host @ {HOST, PORT}")
     try:
         # Create a new socket and connect to the server
         web_socket_client_connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -179,9 +179,9 @@ while True:
             target = { "vec_delta": movement_vector, "locked": is_on_target, "box": [left, top, right, bottom]}
             
             if args.id_targets:
-                width = right-left
-                height = bottom-top
-                sub_image = frame[top:top+height, left:left+width]
+                t_width = right-left
+                t_height = bottom-top
+                sub_image = frame[top:top+t_height, left:left+t_width]
                 # sub_image = cv2.resize(sub_image,(width, height) )
                 img = cv2.cvtColor(   
                         sub_image,

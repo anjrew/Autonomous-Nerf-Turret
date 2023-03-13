@@ -4,6 +4,8 @@ import socket
 import json
 import requests
 import time
+import traceback
+
 from ai_controller_utils import assert_in_int_range, map_log_level, slow_start_fast_end_smoothing, map_range
 
 
@@ -25,7 +27,7 @@ parser.add_argument("--max-azimuth-angle", "-ma", help="The maximum angle that t
 parser.add_argument("--max-elevation-speed", "-mes", 
                     help="The maximum speed at which the elevation of the gun angle can change as an integrer value between [1-10]", 
                     default=10, 
-                    type=lambda x: assert_in_int_range(int(x), 1, 10), )
+                    type=lambda x: assert_in_int_range(int(x), 1, 10), ) # type: ignore
 
 parser.add_argument("--benchmark", "-b",help="Wether to measure the script performance and output in the logs.", action='store_true', default=False)
 
@@ -101,7 +103,6 @@ def try_to_bind_to_socket():
 
 
 start_time=None
-
 while True:
     time.sleep(args.delay)
     if args.benchmark:
@@ -126,19 +127,25 @@ while True:
                 
                 target_index = 0
                 
-                if len(args.targets) > 0:
+                has_targets_to_shoot = len(args.targets) > 0
+                cancel_on_no_valid_target = has_targets_to_shoot
+                if has_targets_to_shoot:
                     # Filter the targets by the target ids
-                     for i, target in enumerate(json_data['targets']):
-                        if target['id'] in args.targets:
+                    for i, target in enumerate(json_data['targets']):
+                        found_target_id = target.get('id', '')
+                        target_match = found_target_id in args.targets
+                        if target_match:
                             target_index = i
+                            cancel_on_no_valid_target = False
+                            break
                         else: 
-                            logging.info("Unknown target id: " + target['id'])
-                            continue
+                            logging.info("Unknown target id: " + found_target_id)
+                            
+                if cancel_on_no_valid_target:
+                    continue
                 
                 target = json_data['targets'][target_index] # Extract the first target from the targets list
                 # vec_delta = first_target['vec_delta'] # Extract the vec_delta data
-                id = target.get('id', None) # Extract the id data
-                
                 left, top, right, bottom = target['box']
                 
                 # calculate box coordinates
@@ -171,7 +178,6 @@ while True:
                 max_distance_from_the_middle_left = -(view_width / 2)
                 max_distance_from_the_middle_right = view_width / 2
             
-                
                 predicted_azimuth_angle = map_range(
                     current_distance_from_the_middle - args.accuracy_threshold_x,
                     max_distance_from_the_middle_left, 
@@ -185,7 +191,9 @@ while True:
                 
                 ## TODO: Find out why the view height  and box height mus be divided by 4 instead of 2 here. I think it maybe something todo with 
                 ## the way the way the face prediction is done by reducing the image size by 4. Did not have time to check but found this empirically. 
-                elevation_speed_adjusted = map_range(abs(movement_vector[1]) - args.accuracy_threshold_y, 0, (view_height/4) - (box_height/4), 0 , args.max_elevation_speed) * float(args.y_speed)
+                
+                max_elevation = (view_height/4) - (box_height/4)
+                elevation_speed_adjusted = map_range(abs(movement_vector[1]) - args.accuracy_threshold_y, 0, max_elevation, 0 , args.max_elevation_speed) * float(args.y_speed)
                 smooth_elevation_speed_adjusted = slow_start_fast_end_smoothing(elevation_speed_adjusted, float(args.y_smoothing) + 1.0, 10)
                 
                 
@@ -255,7 +263,7 @@ while True:
         pass
     except Exception as e:
         logging.error("An unknown error occurred: " + str(e) + ". Retrying in 5 seconds...") 
-        print(e)
+        traceback.print_exc()
         sock = None
         time.sleep(5)
         pass

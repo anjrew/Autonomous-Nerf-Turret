@@ -130,6 +130,8 @@ def map_range(
         >>> map_range(-0.5, -1, 1, 0, 180)
         90.0
     """
-    mapped_value = ((input_value - min_input) / (max_input - min_input)) * (max_output - min_output) + min_output
+    bottom_input = input_value - min_input
+    input_range = max_input - min_input
+    mapped_value = (bottom_input / input_range) * (max_output - min_output) + min_output
     return mapped_value
 
