@@ -27,6 +27,9 @@ parser.add_argument("--max-elevation-speed", "-mes",
                     default=10, 
                     type=lambda x: assert_in_int_range(int(x), 1, 10), )
 
+parser.add_argument("--benchmark", "-b",help="Wether to measure the script performance and output in the logs.", action='store_true', default=False)
+
+
 parser.add_argument('--targets', nargs='+', type=str, help='List of target ids to track', default=[])
 
 parser.add_argument('--search',  action='store_true', help='If this flag is set the gun will try to find targets if there are none currently in sight', default=False)
@@ -97,10 +100,12 @@ def try_to_bind_to_socket():
     logging.info(f'Connected by {addr}')
 
 
+start_time=None
 
 while True:
     time.sleep(args.delay)
-    start_time = time.time()
+    if args.benchmark:
+        start_time = time.time()
     try:
         if not connection:
             try_to_bind_to_socket()
@@ -255,7 +260,7 @@ while True:
         time.sleep(5)
         pass
     finally:
-        # Record the time taken to process the frame
-        logging.debug("Frame processed in " + str(time.time() - start_time) + " seconds")
+        if start_time and  args.benchmark:
+            logging.debug("Frame processed in " + str(time.time() - start_time) + " seconds")
         pass
     
