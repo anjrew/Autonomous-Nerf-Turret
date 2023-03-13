@@ -64,3 +64,4 @@ Here are some key points after testing the motor at different half step speeds
  - See the [Documentation folder](./documentation/)
  - For info on the 2N3904 Resistor see [this](https://www.homemade-circuits.com/understanding-transistor-2n3904/) link
  - [Servo Motor](https://www.amazon.de/dp/B09WRBHSVD?ref=ppx_yo2ov_dt_b_product_details&th=1) for azimuth 
+ - [LM2596 Buck Converter](https://www.amazon.de/Yizhet-LM2596-Buck-Converter-3-0/dp/B0823P6PW6/ref=sr_1_1_sspa?crid=NU4899MSJCM5&keywords=buck%2Bwandler%2B12v%2Bauf%2B6v&qid=1678690421&refinements=p_85%3A20943776031%2Cp_72%3A419117031&rnid=419116031&rps=1&sprefix=buck%2Bconverter%2B12v%2Bto%2B6v%2Caps%2C105&sr=8-1-spons&sp_csd=d2lkZ2V0TmFtZT1zcF9hdGY&th=1)

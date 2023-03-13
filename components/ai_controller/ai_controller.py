@@ -27,6 +27,9 @@ parser.add_argument("--max-elevation-speed", "-mes",
                     default=10, 
                     type=lambda x: assert_in_int_range(int(x), 1, 10), )
 
+parser.add_argument('--targets', nargs='+', type=str, help='List of target ids to track', default=[])
+
+parser.add_argument('--search',  action='store_true', help='If this flag is set the gun will try to find targets if there are none currently in sight', default=False)
 
 parser.add_argument("--target-padding", "-p",help="""
                     Set the padding for when the gun will try and shoot relative to the edge of the target in %.
@@ -62,7 +65,10 @@ WS_PORT = args.ws_port  # Port number to listen on
 
 
 url = f"http://{args.host}:{args.port}"
+
 logging.info(f'Forwarding controller values to host at {url}')
+if args.targets:
+    logging.info(f'Tracking targets with ids: {args.targets}')
 
 # Cache the controller state to prevent sending the same values over and over again
 cached_controller_state ={
@@ -74,6 +80,11 @@ cached_controller_state ={
 
 already_sent_no_targets=False # Flag to prevent sending the same message over and over again
 connection = None
+
+search = {
+    'clockwise': True,
+    'heading': 0,
+}
     
 def try_to_bind_to_socket():
     """Try to bind to the socket and accept the connection"""
@@ -108,11 +119,22 @@ while True:
                 already_sent_no_targets=False 
                 center_x, center_y =  json_data['heading_vect']
                 
-                first_target = json_data['targets'][0] # Extract the first target from the targets list
-                # vec_delta = first_target['vec_delta'] # Extract the vec_delta data
-                id = first_target.get('id', None) # Extract the id data
+                target_index = 0
                 
-                left, top, right, bottom = first_target['box']
+                if len(args.targets) > 0:
+                    # Filter the targets by the target ids
+                     for i, target in enumerate(json_data['targets']):
+                        if target['id'] in args.targets:
+                            target_index = i
+                        else: 
+                            logging.info("Unknown target id: " + target['id'])
+                            continue
+                
+                target = json_data['targets'][target_index] # Extract the first target from the targets list
+                # vec_delta = first_target['vec_delta'] # Extract the vec_delta data
+                id = target.get('id', None) # Extract the id data
+                
+                left, top, right, bottom = target['box']
                 
                 # calculate box coordinates
                 box_center_x = (left + right) / 2
@@ -178,7 +200,23 @@ while True:
                         logging.error("Failed to send controller state to server.")
 
             else:
-                if not already_sent_no_targets and not args.test:
+                if args.search:
+                   
+                    requests.post(url, json={
+                        **cached_controller_state,
+                        'azimuth_angle': 1 if search["clockwise"] else -1,
+                        'speed': 0,
+                        'is_firing': False,
+                    }) 
+                      
+                    if search['heading'] > 180:
+                        search['heading'] = 0
+                        search["clockwise"] = not search["clockwise"]
+                    else:
+                        search['heading'] += 1                  
+                        
+                    
+                elif not already_sent_no_targets and not args.test:
                     ## No targets detected, so stop the gun but hold its current position
                     requests.post(url, json={
                         **cached_controller_state,

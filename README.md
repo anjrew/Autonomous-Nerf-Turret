@@ -5,9 +5,9 @@ A project dedicated to creating a fully autonomous, AI-powered Nerf gun. The tur
 ## Getting started
 
 This project was built on MacOS on top of these two main dependencies:
-
- - bash
- - conda
+  - bash
+  - conda
+  - [CMake](https://cmake.org/download/)
 
  If these are installed then run the following command in the project root to get the rest of the dependencies and setup the virtual environment:
  ```bash
