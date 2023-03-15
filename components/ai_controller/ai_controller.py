@@ -5,6 +5,11 @@ import json
 import requests
 import time
 import traceback
+import os
+
+import sys
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/..')
+
 
 from ai_controller_utils import assert_in_int_range, map_log_level, slow_start_fast_end_smoothing, map_range
 
@@ -23,7 +28,7 @@ parser.add_argument("--x-speed", "-xs", help="Set the limit for the the azimuth 
 parser.add_argument("--y-speed", "-ys", help="Set the factor to multiply the elevation speed", default=1)
 parser.add_argument("--x-smoothing", "-smx", help="The amount of smoothing factor for speed to optimal position on the azimuth angle", default=1, type=int)
 parser.add_argument("--y-smoothing", "-smy", help="The amount of smoothing factor for speed to optimal position on the elevation angle", default=1, type=int)
-parser.add_argument("--max-azimuth-angle", "-ma", help="The maximum angle that the turret will try to turn in one step on the azimuth plane", default=45, type=int)
+parser.add_argument("--max-azimuth-angle", "-ma", help="The maximum angle that the turret will try to turn in one step on the azimuth plane", default=40, type=int)
 parser.add_argument("--max-elevation-speed", "-mes", 
                     help="The maximum speed at which the elevation of the gun angle can change as an integrer value between [1-10]", 
                     default=10, 
@@ -32,7 +37,8 @@ parser.add_argument("--max-elevation-speed", "-mes",
 parser.add_argument("--benchmark", "-b",help="Wether to measure the script performance and output in the logs.", action='store_true', default=False)
 
 
-parser.add_argument('--targets', nargs='+', type=str, help='List of target ids to track', default=[])
+parser.add_argument('--targets', nargs='+', type=str, 
+                    help='List of target ids to track. This will only be valid if a target type of \'person\' is selected', default=[])
 
 parser.add_argument('--search',  action='store_true', help='If this flag is set the gun will try to find targets if there are none currently in sight', default=False)
 
@@ -51,6 +57,13 @@ parser.add_argument('--accuracy-threshold-y', '-aty', type=int, default=30,
                     The threshold of how accurate the gun will try to get the target in the center of the crosshair in pixels vertically.
                     """ )
 
+parser.add_argument('--target-type', '-ty', type=str, default='person', 
+                    help="""
+                    The type of object to the .
+                    """ )
+
+
+
 # TODO: Implement this feature
 # parser.add_argument('--vert-offset', '-v', type=int, default=5, 
 #                     help="""
@@ -60,6 +73,11 @@ parser.add_argument('--accuracy-threshold-y', '-aty', type=int, default=30,
 
 
 args = parser.parse_args()
+
+if args.target_type != 'face' and len(args.targets) > 0 :
+    raise argparse.ArgumentTypeError(
+        f'You can only track specific targets if the target type is set to \'face\', but it is set to \'{args.target_type}\'')
+
 
 logging.basicConfig(level=args.log_level)
 

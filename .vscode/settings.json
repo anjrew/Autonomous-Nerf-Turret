@@ -5,6 +5,7 @@
         "JOYBUTTONDOWN",
         "JOYBUTTONUP",
         "JOYHATMOTION",
+        "nerf",
         "ultralytics",
         "xyxy",
         "yolo",

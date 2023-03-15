@@ -20,6 +20,10 @@ source bin/init.sh
  ```
 
 
+## Important info
+
+The files and folders in this project depend on each other and this means that the folder structure is important. If any folder structure or file is changed it could break some functionality.
+
 ## Project structure
 
 This project has a domain driven design where each domain lies in a folder in the root of the project. Each domain folder contains files that relate to the part of the project associated with that domain

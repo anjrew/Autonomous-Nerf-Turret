@@ -46,10 +46,10 @@ class ObjectDetector:
                     right = box[2]
                     bottom = box[3]
                     confidence = box[4]
-                    
+                  
                     results.append({
                         'box': [ int(left), int(top), int(right), int(bottom) ],
-                        'mask': detection.masks[i].numpy(),
+                        'mask': detection.masks[i].numpy().data,
                         'class_name': self.class_names[int(box[5])],
                         'confidence': box[4]
                     })
@@ -124,11 +124,11 @@ if __name__ == '__main__':
             
                 target_highlight_color = detector.get_color_for_class_name(id)
 
-                # mask = np.array(result['mask'], dtype=np.int8)
-                mask = np.array(cv2.resize(result['mask'], frame.shape[1], frame.shape[0]), dtype=np.int8)
+                mask = np.array(cv2.resize(result['mask'], (frame.shape[1], frame.shape[0])), dtype=np.int8)
                 # Draw a mask
                 if len(mask.shape) == 2:
-                    mask = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
+                    print("Recoloring mask",type(result['mask']))
+                    mask = cv2.cvtColor(mask * 1./255, cv2.COLOR_GRAY2BGR)
                 
                 
                 frame = cv2.bitwise_and(frame ,mask)
