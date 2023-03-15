@@ -3,11 +3,12 @@ import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../..')
 
 import time
-from typing import List, Union
+from typing import List, Tuple, Union
 import numpy as np
 from ultralytics import YOLO
 from nerf_turret_utils.args_utils import map_log_level
 import logging
+from yolo_object_detection.utils import draw_object_mask, draw_object_box
 
 
 
@@ -23,13 +24,13 @@ class ObjectDetector:
         self._class_name_id = { v:k for k, v in self.class_names.items() }
         
         
-    def get_color_for_class_name(self, class_name: str) -> np.ndarray:
+    def get_color_for_class_name(self, class_name: str) -> Tuple[int, int, int]:
         """Gets the color for a particular class by name"""                
-        return detector.colors[self._class_name_id[class_name]]
+        return self.colors[self._class_name_id[class_name]]
 
 
     # def perform_yolov8_segmentation(uri: str) -> List[YoloResults]:
-    def perform_yolov8_segmentation(self, source: Union[str, int, np.ndarray], confidence: float, save=False, save_txt=False) -> List[dict]:
+    def detect(self, source: Union[str, int, np.ndarray], confidence: float = 0.7, save=False, save_txt=False) -> List[dict]:
         """
         Performs YOLOv8 segmentation on an image or video frame.
 
@@ -78,6 +79,9 @@ class ObjectDetector:
 
 
     
+
+
+
 if __name__ == '__main__':
     
     from argparse import ArgumentParser
@@ -89,7 +93,7 @@ if __name__ == '__main__':
     parser.add_argument("--log-level", "-ll", help="Set the logging level by integer value. Default INFO", default=logging.INFO, type=map_log_level)
     parser.add_argument("--confidence", "-c", help="Set the confidence from low(0) to high (1) as a float for detection. Default 0.8", default=0.8, type=float)
     parser.add_argument("--camera", "-cam", help="Weather or not to use the camera for testing purposes", action='store_true', default=False)
-    parser.add_argument("--skip-frames", "-sk", help="Skip x amount of frames to increase performance", type=int, default=0)
+    parser.add_argument("--skip-frames", "-sk", help="Skip x amount of frames to process to increase performance", type=int, default=0)
     parser.add_argument("--model-name", "-mn", help="The model name to use for detection", type=str)
     parser.add_argument("--image-compression", "-ic", 
                         help="The amount to compress the image. Eg give a value o2 2 and the image for inference will have half the pixels", type=int, default=1)
@@ -119,6 +123,7 @@ if __name__ == '__main__':
             frame_count += 1
             
             ret, frame = cap.read()
+            
             if not ret:
                 logging.warning("Could not connect to the camera. Trying again in 3 seconds...")
                 # If could not connect to camera go to the next frame
@@ -134,7 +139,7 @@ if __name__ == '__main__':
                 if args.image_compression > 1:
                     process_frame = cv2.resize(frame, (0, 0), fx=1/args.image_compression, fy=1/args.image_compression) #type: ignore
                 
-                results = detector.perform_yolov8_segmentation(process_frame, args.confidence)
+                results = detector.detect(process_frame, args.confidence)
                 
             for result in results:
                 
@@ -154,50 +159,26 @@ if __name__ == '__main__':
                 mask = result.get('mask', np.array([]))
                 
                 if args.draw_mask:
-                    mask = cv2.resize(mask, (frame.shape[1], frame.shape[0]))
-                    # Draw a mask
-                    if len(mask.shape) == 2:
-
-                        # Create a color mask using the segmented area
-                        color_mask = np.zeros_like(frame)
-                        color_mask[mask == 1] = target_highlight_color  # Set the color for the segmented area
-
-                        # Blend the color mask with the original image
-                        alpha = 0.5  # Adjust the alpha value for the blending
-                        beta = 1 - alpha
-                        frame = cv2.addWeighted(frame, alpha, color_mask, beta, 0)
+                    frame = draw_object_mask(frame, target_highlight_color, mask)
                     
                     
                 if args.draw_box:
+                    frame =  draw_object_box(frame, left, top, right, bottom,f'{id} {confidence:.2f}', target_highlight_color)
                     
-                    # Draw a bounding box
-                    cv2.rectangle(frame, (int(left), int(top)), (int(right), int(bottom)), target_highlight_color, 2)
-                    
-                    # Draw a label with a name below the face
-                    cv2.rectangle(frame, (left, top - 55), (right, top), target_highlight_color, cv2.FILLED)
-                    
-                    font_size = 445
-                    font = cv2.FONT_HERSHEY_DUPLEX
-                    box_text = f'{id} {confidence:.2f}'
-                    cv2.putText(frame, box_text, (left + 6, top - 6), font, box_width/font_size, (255, 255, 255) if False else (10, 10, 10), 1)
-                
-                
                 # Get the center position of the image
-                center = (frame.shape[1]//2, frame.shape[0]//2)
+                center = (frame.shape[1]//2, frame.shape[0]//2) 
 
                 # Check if the center position is within the segmented masked area
                 is_on_target = mask[center[1], center[0]] == 1
                 
-                if args.draw_crosshair:
+                if args.draw_crosshair and frame:
                     # Draw a crosshair at the center of the image
-                    center = (frame.shape[1]//2, frame.shape[0]//2)
+                    center = (frame.shape[1]//2, frame.shape[0]//2) 
                     length = 20
                     color = (0, 0, 255) if is_on_target else (0, 255, 0) # Set the color to red
                     thickness = 2
                     cv2.line(frame, (center[0]-length, center[1]), (center[0]+length, center[1]), color, thickness)
                     cv2.line(frame, (center[0], center[1]-length), (center[0], center[1]+length), color, thickness)
-
-                
                 
             cv2.imshow('YOLO Detector', frame)
             c = cv2.waitKey(1)
@@ -207,7 +188,7 @@ if __name__ == '__main__':
             
     else:
     
-        results = detector.perform_yolov8_segmentation("https://ultralytics.com/images/bus.jpg", args.confidence)
+        results = detector.detect("https://ultralytics.com/images/bus.jpg", args.confidence)
         # print("Results here", results)
         for result in results:
             print('\n', result)

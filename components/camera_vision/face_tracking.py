@@ -3,6 +3,8 @@ import socket
 import time
 import os
 import sys
+from typing import Optional
+
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/..')
 
 # Third-party imports
@@ -16,6 +18,9 @@ import math
 from argparse import ArgumentParser
 from nerf_turret_utils.args_utils import map_log_level
 from face_tracking_utils import get_face_location_details, get_target_id, find_faces_in_frame, draw_face_box
+from yolo_object_detection.object_detection import ObjectDetector
+from yolo_object_detection.utils import draw_object_mask, draw_object_box
+
 
 
 parser = ArgumentParser(description="Track faces with bounding boxes")
@@ -35,6 +40,7 @@ parser.add_argument("--test", "-t",help="Test without trying to emit data.", act
 parser.add_argument("--benchmark", "-b",help="Wether to measure the script performance and output in the logs.", action='store_true', default=False)
 parser.add_argument("--image-compression", "-ic", 
                         help="The amount to compress the image. Eg give a value of 2 and the image for inference will have half the pixels", type=int, default=4)
+parser.add_argument("--skip-frames", "-sk", help="Skip x amount of frames to process to increase performance", type=int, default=0)
 
 parser.add_argument("--detect-faces", "-df", 
                         help="Weather or not to detect faces", type=bool, default=True)
@@ -53,7 +59,7 @@ target_images = []
 target_names = [ ]
 
 if args.id_targets:
-
+    """Load the target images and use them to build the target names"""
     script_path = os.path.abspath(sys.argv[0])
     script_dir = os.path.dirname(script_path)
     targets_dir = f"{script_dir}/data/targets"
@@ -74,7 +80,11 @@ if args.id_targets:
         
     logging.info(f" Labeling targets {target_names}")
             
-          
+
+object_detector: Optional[ObjectDetector]        
+if args.detect_objects:
+    object_detector = ObjectDetector() 
+                       
 ## Setup ready to send data to subscribers
 HOST = args.host  # IP address of the server
 PORT = args.port  # Port number to listen on
@@ -95,6 +105,10 @@ process_this_frame = True
 web_socket_client_connection = None
 face_locations = []
 
+skip_frames =  args.skip_frames + 1
+frame_count = 0
+
+
 
 def try_to_create_socket():
     global web_socket_client_connection
@@ -112,12 +126,10 @@ def try_to_create_socket():
         
         pass
 
+
 start_time=None
 
-
-
 while True:
-    
     time.sleep(args.delay)
     if args.benchmark:
         start_time = time.time()
@@ -126,21 +138,25 @@ while True:
         try_to_create_socket()
         
     try:
-        
+        frame_count += 1
+        skip_frame = frame_count % skip_frames == 0
         ret, frame = cap.read()
         
         targets = [] # List of targets in the frame
         
         # Get the image height and width
-        height, width, _ = frame.shape    
-    
-        if process_this_frame:
+        height, width, _ = frame.shape   
+        
+        compressed_image = cv2.resize(frame, (0, 0), fx=1/image_compression, fy=1/image_compression) #type: ignore
+
+        if not skip_frame:
             
             if args.detect_faces:
-                face_locations = find_faces_in_frame(frame, image_compression)
+                face_locations = find_faces_in_frame(compressed_image)
 
         process_this_frame = not process_this_frame
         
+        # Loop through each face in this frame of video that were detected
         for face_location in face_locations:
             # Scale back up face locations since the frame we detected in was scaled to 1/4 size
             target = get_face_location_details(image_compression, height, width, face_location)
@@ -148,12 +164,28 @@ while True:
             if args.id_targets:
                 target["id"]  = get_target_id(frame, target["box"], target_names, target_images)
                 
-                
             targets.append(target)
-      
             
             if not HEADLESS:
                 frame = draw_face_box(CROSS_HAIR_SIZE, frame, height, width, target)
+        
+        if object_detector and not skip_frame: #type: ignore
+            results =  object_detector.detect(compressed_image)
+            for result in results:
+
+                target = { "box": result["box"], "type": result["class_name"], "mask": result["mask"].tolist()}
+                targets.append(target)
+                
+                if not HEADLESS:
+                    left, top, right, bottom = result["box"]
+                    top *= args.image_compression
+                    right *= args.image_compression
+                    bottom *= args.image_compression
+                    left *= args.image_compression
+                    class_color = object_detector.get_color_for_class_name(result['class_name'])
+                    frame = draw_object_mask(frame, class_color, result['mask'])
+                    frame = draw_object_box(frame, left, top, right, bottom, result['class_name'], class_color)
+                    
         
         if len(targets) > 0:
             center_x = width // 2
@@ -164,7 +196,6 @@ while True:
                 "view_dimensions": [width, height],
             }
             json_data = json.dumps(data).encode('utf-8') # Encode the JSON object as a byte string
-            
             
             logging.debug(f'{ "Mock: "if args.test else ""}Sending data to the AI controller:' + json.dumps(data))
             if web_socket_client_connection and not args.test:
@@ -206,9 +237,6 @@ while True:
         pass
         
 cap.release()
-        
-        
-            
 
         
 cv2.destroyAllWindows()

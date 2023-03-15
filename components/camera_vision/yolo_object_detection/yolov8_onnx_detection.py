@@ -37,7 +37,7 @@ class ObjectDetector:
 
 
     # def perform_yolov8_segmentation(uri: str) -> List[YoloResults]:
-    def perform_yolov8_segmentation(self, source: Union[str, int, np.ndarray]) -> List[dict]:
+    def detect(self, source: Union[str, int, np.ndarray]) -> List[dict]:
         """
         Performs YOLOv8 segmentation on an image or video frame.
 
@@ -71,7 +71,7 @@ class ObjectDetector:
 
         # Convert the array to a tensor and run the inference using the ONNX model
         ort_inputs = {self.model.get_inputs()[0].name: image}
-        print('ort_inputs', ort_inputs)
+        # print('ort_inputs', ort_inputs)
         detections = self.model.run(self.output_names, ort_inputs)
         
         for detection in detections:
@@ -155,7 +155,7 @@ if __name__ == '__main__':
                 if args.image_compression > 1:
                     process_frame = cv2.resize(frame, (0, 0), fx=1/args.image_compression, fy=1/args.image_compression) #type: ignore
                 
-                results = detector.perform_yolov8_segmentation(process_frame)
+                results = detector.detect(process_frame)
                 
             for result in results:
                 
@@ -228,7 +228,7 @@ if __name__ == '__main__':
             
     else:
     
-        results = detector.perform_yolov8_segmentation("https://ultralytics.com/images/bus.jpg")
+        results = detector.detect("https://ultralytics.com/images/bus.jpg")
         # print("Results here", results)
         for result in results:
             print('\n', result)

@@ -18,7 +18,6 @@ def get_face_location_details(image_compression:int, height:int, width:int, face
     Returns:
         dict: A dictionary containing the following keys:
             - vec_delta: A list containing the x and y movement vectors of the face bounding box's center relative to the image's center.
-            - locked: A boolean indicating whether the face is centered within the image.
             - box: A list containing the adjusted face bounding box coordinates [left, top, right, bottom].
     """
     top, right, bottom, left = face_location
@@ -28,19 +27,8 @@ def get_face_location_details(image_compression:int, height:int, width:int, face
     bottom *= image_compression
     left *= image_compression
         
-    # Calculate the center coordinates
-    center_x = width // 2
-    center_y = height // 2
-    is_on_target = False  
-    if top <= center_y <= bottom and left <= center_x <= right:
-        is_on_target=True
-        
-    box_center_x = (left + right) / 2
-    box_center_y = (top + bottom) / 2
-        
-    movement_vector = [box_center_x - center_x, box_center_y - center_y]
-                    
-    target = { "vec_delta": movement_vector, "locked": is_on_target, "box": [left, top, right, bottom]}
+                            
+    target = { "box": [left, top, right, bottom], 'type': "face"}
     
     return target
 
@@ -85,7 +73,7 @@ def get_target_id(frame, box:list, target_names: list, target_images: list) -> O
 
 
 
-def find_faces_in_frame(frame, image_compression: int) -> List[Tuple[int, int, int, int]]:
+def find_faces_in_frame(frame) -> List[Tuple[int, int, int, int]]:
     """
     Detect faces in the given frame using the specified image compression factor.
 
@@ -96,19 +84,22 @@ def find_faces_in_frame(frame, image_compression: int) -> List[Tuple[int, int, i
     Returns:
         List[Tuple[int, int, int, int]]: A list of tuples containing the face bounding box coordinates (top, right, bottom, left) for each detected face.
     """
-    small_frame = cv2.resize(frame, (0, 0), fx=1/image_compression, fy=1/image_compression) #type: ignore
 
-    face_locations = face_recognition.face_locations(small_frame)
+    face_locations = face_recognition.face_locations(frame)
     return face_locations
 
 
 
 def draw_face_box(cross_hair_size, frame, height, width, target):
     left, top, right, bottom = target["box"]
-    is_on_target = target.get('locked', False)
-    movement_vector = target['vec_delta']
+        
     center_x = width // 2
     center_y = height // 2
+    movement_vector = [center_x - center_x, center_y - center_y]
+    
+    is_on_target = False  
+    if top <= center_y <= bottom and left <= center_x <= right:
+        is_on_target=True
                 
     lock_text = "Lock" if is_on_target else f""
     font_size = 500
