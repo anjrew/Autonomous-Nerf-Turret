@@ -1,9 +1,9 @@
 # Standard library imports
-import argparse
-import os
 import socket
-import sys
 import time
+import os
+import sys
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/..')
 
 # Third-party imports
 import cv2
@@ -14,7 +14,8 @@ import math
 
 # Local/application-specific imports
 from argparse import ArgumentParser
-from face_tracking_utils import map_log_level
+from nerf_turret_utils.args_utils import map_log_level
+from face_tracking_utils import get_face_location_details, get_target_id, find_faces_in_frame, draw_face_box
 
 
 parser = ArgumentParser(description="Track faces with bounding boxes")
@@ -32,9 +33,19 @@ parser.add_argument("--headless", help="Whether to run the service in headless m
 parser.add_argument("--id-targets", "-it",help="Whether to only shoot targets that are stored in the './data/targets' folder.", action='store_true', default=False)
 parser.add_argument("--test", "-t",help="Test without trying to emit data.", action='store_true', default=False)
 parser.add_argument("--benchmark", "-b",help="Wether to measure the script performance and output in the logs.", action='store_true', default=False)
+parser.add_argument("--image-compression", "-ic", 
+                        help="The amount to compress the image. Eg give a value of 2 and the image for inference will have half the pixels", type=int, default=4)
+
+parser.add_argument("--detect-faces", "-df", 
+                        help="Weather or not to detect faces", type=bool, default=True)
+
+parser.add_argument("--detect-objects", "-do", 
+                        help="Weather or not to detect general objects", type=bool, default=True)
 
 
 args = parser.parse_args()
+
+image_compression = args.image_compression
 
 logging.basicConfig(level=args.log_level)
 
@@ -64,7 +75,6 @@ if args.id_targets:
     logging.info(f" Labeling targets {target_names}")
             
           
-        
 ## Setup ready to send data to subscribers
 HOST = args.host  # IP address of the server
 PORT = args.port  # Port number to listen on
@@ -104,6 +114,8 @@ def try_to_create_socket():
 
 start_time=None
 
+
+
 while True:
     
     time.sleep(args.delay)
@@ -114,97 +126,38 @@ while True:
         try_to_create_socket()
         
     try:
-        targets = [] # List of targets in the frame
         
         ret, frame = cap.read()
         
-        # Get the image height and width
-        height, width, _ = frame.shape
+        targets = [] # List of targets in the frame
         
-        # Calculate the center coordinates
-        center_x = width // 2
-        center_y = height // 2
-            
+        # Get the image height and width
+        height, width, _ = frame.shape    
+    
         if process_this_frame:
             
-            small_frame = cv2.resize(frame, (0, 0), fx=0.25, fy=0.25) #type: ignore
-    
-            face_locations = face_recognition.face_locations(small_frame)
+            if args.detect_faces:
+                face_locations = find_faces_in_frame(frame, image_compression)
 
         process_this_frame = not process_this_frame
         
-        for top, right, bottom, left in face_locations:
+        for face_location in face_locations:
             # Scale back up face locations since the frame we detected in was scaled to 1/4 size
-            top *= 4
-            right *= 4
-            bottom *= 4
-            left *= 4
-    
-            is_on_target = False  
-            if top <= center_y <= bottom and left <= center_x <= right:
-                is_on_target=True
-            
-            target_highlight_size = 5 if is_on_target else 1
-            target_highlight_color = (0, 0, 255) if is_on_target else (0, 100, 0)
-            
-            if not HEADLESS:
-                
-                # Draw a box around the face
-                cv2.rectangle(frame, (left, top), (right, bottom), target_highlight_color, 2)
-                
-            box_center_x = (left + right) / 2
-            box_center_y = (top + bottom) / 2
-            box_width = right - left
-            
-            movement_vector = [box_center_x - center_x, box_center_y - center_y]
-            
-            distance = math.sqrt(movement_vector[0]**2 + movement_vector[1]**2)
-            
-            lock_text = "Lock" if is_on_target else f""
-             
-            target = { "vec_delta": movement_vector, "locked": is_on_target, "box": [left, top, right, bottom]}
+            target = get_face_location_details(image_compression, height, width, face_location)
             
             if args.id_targets:
-                t_width = right-left
-                t_height = bottom-top
-                sub_image = frame[top:top+t_height, left:left+t_width]
-                img = cv2.cvtColor(   
-                        sub_image,
-                        cv2.COLOR_BGR2RGB
-                    )
-                img_encoding = face_recognition.face_encodings(
-                    img
-                )
-                
-                if len(img_encoding) >  0:
-                    matched_results = face_recognition.compare_faces(target_images, img_encoding[0])
-                    if True in matched_results:
-                        # Do something with the index of the matching face
-                        result = matched_results.index(True)
-                        
-                        target["id"] = target_names[result]
-                    else:
-                        logging.debug("Target not recognized")
+                target["id"]  = get_target_id(frame, target["box"], target_names, target_images)
                 
                 
             targets.append(target)
+      
             
             if not HEADLESS:
-                font_size = 445
-                
-                # Draw a label with a name below the face
-                cv2.rectangle(frame, (left, bottom - 35), (right, bottom), target_highlight_color, cv2.FILLED)
-                font = cv2.FONT_HERSHEY_DUPLEX
-                box_text = target.get("id") if target.get("id") else f"{lock_text} {movement_vector} {distance:.2f}"
-                cv2.putText(frame, box_text, (left + 6, bottom - 6), font, box_width/font_size, (255, 255, 255), 1)
-                
-                # Draw a red horizontal line through the center
-                cv2.line(frame, (center_x - CROSS_HAIR_SIZE, center_y), (center_x + CROSS_HAIR_SIZE, center_y), target_highlight_color, target_highlight_size)
-                
-                # Draw a red vertical line through the center
-                cv2.line(frame, (center_x, center_y - CROSS_HAIR_SIZE), (center_x, center_y + CROSS_HAIR_SIZE), target_highlight_color, target_highlight_size)
+                frame = draw_face_box(CROSS_HAIR_SIZE, frame, height, width, target)
         
         if len(targets) > 0:
+            center_x = width // 2
+            center_y = height // 2
             data = {
                 "targets": targets,
                 "heading_vect": [center_x, center_y],
