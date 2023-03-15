@@ -1,6 +1,7 @@
 import sys
 import os
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../..')
+directory_path = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(directory_path + '/../..')
 
 import time
 from typing import List, Union
@@ -8,6 +9,9 @@ import numpy as np
 from ultralytics import YOLO
 from nerf_turret_utils.args_utils import map_log_level
 import logging
+import onnxruntime as ort
+
+
 
 
 
@@ -15,9 +19,13 @@ class ObjectDetector:
     """Detect objects of multiple types Using YOLOv8
     """
     
-    def __init__(self, model_name: str = "yolov8n-seg.pt") -> None:
-        self.model = YOLO(model_name)  # load an official model
-        self.class_names = self.model.names or {}
+    def __init__(self, model_name: str ="yolov8n-seg.onnx") -> None:
+        self.model = ort.InferenceSession(model_name)
+        # Get the output names and shapes
+        outputs = self.model.get_outputs()
+        self.output_names = [output.name for output in outputs]
+        class_names = { i:output.name for i, output in enumerate(outputs) }
+        self.class_names = class_names or {}
         logging.debug("Detecting from : " + str(self.class_names))
         self.colors = np.random.uniform(0, 255, size=(len(self.class_names), 3))
         self._class_name_id = { v:k for k, v in self.class_names.items() }
@@ -29,7 +37,7 @@ class ObjectDetector:
 
 
     # def perform_yolov8_segmentation(uri: str) -> List[YoloResults]:
-    def perform_yolov8_segmentation(self, source: Union[str, int, np.ndarray], confidence: float, save=False, save_txt=False) -> List[dict]:
+    def perform_yolov8_segmentation(self, source: Union[str, int, np.ndarray]) -> List[dict]:
         """
         Performs YOLOv8 segmentation on an image or video frame.
 
@@ -48,10 +56,23 @@ class ObjectDetector:
                 - 'class_name': A string representing the name of the detected object class.
                 - 'confidence': A float representing the confidence level of the detection.
         """
-        # return model.predict(uri, save=True, save_txt=True, conf=0.8)
+        image = None
+        if type(source) == str:
+            image = cv2.imread(source) # type: ignore
+        
+        # Convert the image to a NumPy array
+        image = np.array(image)
+
+        # Reshape the array to match the input shape of the ONNX model
+        # image = image.transpose((2, 0, 1))
+        image = image.reshape(image.shape)
+
         results: List[dict] = []
 
-        detections = self.model.predict(source, save=save, save_txt=save_txt, conf=confidence)
+        # Convert the array to a tensor and run the inference using the ONNX model
+        ort_inputs = {self.model.get_inputs()[0].name: image}
+        print('ort_inputs', ort_inputs)
+        detections = self.model.run(self.output_names, ort_inputs)
         
         for detection in detections:
             if hasattr(detection, 'boxes') and detection.boxes:
@@ -90,7 +111,7 @@ if __name__ == '__main__':
     parser.add_argument("--confidence", "-c", help="Set the confidence from low(0) to high (1) as a float for detection. Default 0.8", default=0.8, type=float)
     parser.add_argument("--camera", "-cam", help="Weather or not to use the camera for testing purposes", action='store_true', default=False)
     parser.add_argument("--skip-frames", "-sk", help="Skip x amount of frames to increase performance", type=int, default=0)
-    parser.add_argument("--model-name", "-mn", help="The model name to use for detection", type=str)
+    parser.add_argument("--model-name", "-mn", help="The model name to use for detection", type=str, default="yolov8n-seg.onnx")
     parser.add_argument("--image-compression", "-ic", 
                         help="The amount to compress the image. Eg give a value o2 2 and the image for inference will have half the pixels", type=int, default=1)
     parser.add_argument("--draw-mask", "-dm", 
@@ -134,7 +155,7 @@ if __name__ == '__main__':
                 if args.image_compression > 1:
                     process_frame = cv2.resize(frame, (0, 0), fx=1/args.image_compression, fy=1/args.image_compression) #type: ignore
                 
-                results = detector.perform_yolov8_segmentation(process_frame, args.confidence)
+                results = detector.perform_yolov8_segmentation(process_frame)
                 
             for result in results:
                 
@@ -207,7 +228,7 @@ if __name__ == '__main__':
             
     else:
     
-        results = detector.perform_yolov8_segmentation("https://ultralytics.com/images/bus.jpg", args.confidence)
+        results = detector.perform_yolov8_segmentation("https://ultralytics.com/images/bus.jpg")
         # print("Results here", results)
         for result in results:
             print('\n', result)
