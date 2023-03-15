@@ -76,6 +76,8 @@ if __name__ == '__main__':
                         help="Whether a mask should be drawn ", type=bool, default=True)
     parser.add_argument("--draw-box", "-db", 
                         help="Whether a box should be drawn ", type=bool, default=True)
+    parser.add_argument("--draw-crosshair", "-dc", 
+                        help="Whether a crosshair should be drawn ", type=bool, default=True)
 
     
     args = parser.parse_args()
@@ -128,8 +130,10 @@ if __name__ == '__main__':
             
                 target_highlight_color = detector.get_color_for_class_name(id)
                 
+                mask = result.get('mask', np.array([]))
+                
                 if args.draw_mask:
-                    mask = cv2.resize(result.get('mask', np.array([])), (frame.shape[1], frame.shape[0]))
+                    mask = cv2.resize(mask, (frame.shape[1], frame.shape[0]))
                     # Draw a mask
                     if len(mask.shape) == 2:
 
@@ -156,7 +160,24 @@ if __name__ == '__main__':
                     box_text = f'{id} {confidence:.2f}'
                     cv2.putText(frame, box_text, (left + 6, top - 6), font, box_width/font_size, (255, 255, 255) if False else (10, 10, 10), 1)
                 
-            
+                
+                # Get the center position of the image
+                center = (frame.shape[1]//2, frame.shape[0]//2)
+
+                # Check if the center position is within the segmented masked area
+                is_on_target = mask[center[1], center[0]] == 1
+                
+                if args.draw_crosshair:
+                    # Draw a crosshair at the center of the image
+                    center = (frame.shape[1]//2, frame.shape[0]//2)
+                    length = 20
+                    color = (0, 0, 255) if is_on_target else (0, 255, 0) # Set the color to red
+                    thickness = 2
+                    cv2.line(frame, (center[0]-length, center[1]), (center[0]+length, center[1]), color, thickness)
+                    cv2.line(frame, (center[0], center[1]-length), (center[0], center[1]+length), color, thickness)
+
+                
+                
             cv2.imshow('YOLO Detector', frame)
             c = cv2.waitKey(1)
             ## S 'key'
