@@ -72,6 +72,10 @@ if __name__ == '__main__':
     parser.add_argument("--skip-frames", "-sk", help="Skip x amount of frames to increase performance", type=int, default=0)
     parser.add_argument("--image-compression", "-ic", 
                         help="The amount to compress the image. Eg give a value o2 2 and the image for inference will have half the pixels", type=int, default=1)
+    parser.add_argument("--draw-mask", "-dm", 
+                        help="Whether a mask should be drawn ", type=bool, default=True)
+    parser.add_argument("--draw-box", "-db", 
+                        help="Whether a box should be drawn ", type=bool, default=True)
 
     
     args = parser.parse_args()
@@ -123,27 +127,34 @@ if __name__ == '__main__':
                 confidence = result['confidence']
             
                 target_highlight_color = detector.get_color_for_class_name(id)
+                
+                if args.draw_mask:
+                    mask = cv2.resize(result.get('mask', np.array([])), (frame.shape[1], frame.shape[0]))
+                    # Draw a mask
+                    if len(mask.shape) == 2:
 
-                mask = np.array(cv2.resize(result['mask'], (frame.shape[1], frame.shape[0])), dtype=np.int8)
-                # Draw a mask
-                if len(mask.shape) == 2:
-                    print("Recoloring mask",type(result['mask']))
-                    mask = cv2.cvtColor(mask * 1./255, cv2.COLOR_GRAY2BGR)
-                
-                
-                frame = cv2.bitwise_and(frame ,mask)
+                        # Create a color mask using the segmented area
+                        color_mask = np.zeros_like(frame)
+                        color_mask[mask == 1] = target_highlight_color  # Set the color for the segmented area
+
+                        # Blend the color mask with the original image
+                        alpha = 0.5  # Adjust the alpha value for the blending
+                        beta = 1 - alpha
+                        frame = cv2.addWeighted(frame, alpha, color_mask, beta, 0)
                     
-                
-                # Draw a bounding box
-                cv2.rectangle(frame, (int(left), int(top)), (int(right), int(bottom)), target_highlight_color, 2)
-                
-                # Draw a label with a name below the face
-                cv2.rectangle(frame, (left, top - 55), (right, top), target_highlight_color, cv2.FILLED)
-                
-                font_size = 445
-                font = cv2.FONT_HERSHEY_DUPLEX
-                box_text = f'{id} {confidence:.2f}'
-                cv2.putText(frame, box_text, (left + 6, top - 6), font, box_width/font_size, (255, 255, 255) if False else (10, 10, 10), 1)
+                    
+                if args.draw_box:
+                    
+                    # Draw a bounding box
+                    cv2.rectangle(frame, (int(left), int(top)), (int(right), int(bottom)), target_highlight_color, 2)
+                    
+                    # Draw a label with a name below the face
+                    cv2.rectangle(frame, (left, top - 55), (right, top), target_highlight_color, cv2.FILLED)
+                    
+                    font_size = 445
+                    font = cv2.FONT_HERSHEY_DUPLEX
+                    box_text = f'{id} {confidence:.2f}'
+                    cv2.putText(frame, box_text, (left + 6, top - 6), font, box_width/font_size, (255, 255, 255) if False else (10, 10, 10), 1)
                 
             
             cv2.imshow('YOLO Detector', frame)
