@@ -47,14 +47,27 @@ def draw_object_box(frame: np.ndarray, left: int, top: int, right: int, bottom: 
     Returns:
         The input frame with the bounding box and label drawn.
     """
+    box_width = right-left
+    box_height = bottom-top
+    box_center_x = box_width // 2
+    box_center_y = box_height // 2
+    # Get the image dimensions
+    frame_height, frame_width = frame.shape[:2]
+
+    # Calculate the center of the image
+    frame_center_x, frame_center_y = frame_width // 2, frame_height // 2
+    
+    
     # Draw a bounding box
     cv2.rectangle(frame, (int(left), int(top)), (int(right), int(bottom)), target_highlight_color, 2)
     
     # Draw a label with a name below the face
     cv2.rectangle(frame, (left, top - 55), (right, top), target_highlight_color, cv2.FILLED)
     
+    
+    movement_vector = [frame_center_x - box_center_x, frame_center_y - box_center_y]
     font_size = 445
     font = cv2.FONT_HERSHEY_DUPLEX
-    cv2.putText(frame, box_text, (left + 6, top - 6), font, (right - left)/font_size, (255, 255, 255) if False else (10, 10, 10), 1)
+    cv2.putText(frame, box_text + " " + str(movement_vector), (left + 6, top - 6), font, (right - left)/font_size, (255, 255, 255) if False else (10, 10, 10), 1)
     
     return frame

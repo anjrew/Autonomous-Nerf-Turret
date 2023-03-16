@@ -17,7 +17,7 @@ import numpy as np
 # Local/application-specific imports
 from argparse import ArgumentParser
 from nerf_turret_utils.args_utils import map_log_level, str2bool
-from face_tracking_utils import get_face_location_details, get_target_id, find_faces_in_frame, draw_face_box, draw_cross_hair
+from camera_vision_utils import get_face_location_details, get_target_id, find_faces_in_frame, draw_face_box, draw_cross_hair
 from yolo_object_detection.object_detection import ObjectDetector
 from yolo_object_detection.utils import draw_object_mask, draw_object_box
 
@@ -168,8 +168,8 @@ while True:
             
                 
         
-        if object_detector and not skip_frame: #type: ignore
-            results =  object_detector.detect(compressed_image)
+        if 'object_detector' in globals() and not skip_frame: 
+            results =  object_detector.detect(compressed_image) #type: ignore
             for result in results:
 
                 # target = { "box": result["box"], "type": result["class_name"], "mask": result["mask"].tolist()}
