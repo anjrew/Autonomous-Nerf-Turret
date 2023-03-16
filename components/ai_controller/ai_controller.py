@@ -25,11 +25,11 @@ parser.add_argument("--azimuth-dp", help="Set how many decimal places the azimut
 parser.add_argument("--elevation-dp", help="Set how many decimal places the elevation is taken too.", default=0, type=int)
 parser.add_argument("--delay", "-d", help="Delay to limit the data flow into the websocket server.", default=0, type=int)
 parser.add_argument("--test", "-t", help="For testing it will not send requests to the driver.", action="store_true")
-parser.add_argument("--x-speed", "-xs", help="Set the limit for the the azimuth speed", default=20)
-parser.add_argument("--y-speed", "-ys", help="Set the factor to multiply the elevation speed", default=1)
+parser.add_argument("--x-speed", "-xs", help="Set the limit for the the azimuth speed", default=20, type=int)
+parser.add_argument("--y-speed", "-ys", help="Set the factor to multiply the elevation speed", default=1, type=int)
 parser.add_argument("--x-smoothing", "-smx", help="The amount of smoothing factor for speed to optimal position on the azimuth angle", default=1, type=int)
 parser.add_argument("--y-smoothing", "-smy", help="The amount of smoothing factor for speed to optimal position on the elevation angle", default=1, type=int)
-parser.add_argument("--max-azimuth-angle", "-ma", help="The maximum angle that the turret will try to turn in one step on the azimuth plane", default=40, type=int)
+parser.add_argument("--max-azimuth-angle", "-ma", help="The maximum angle that the turret will try to turn in one step on the azimuth plane", default=65, type=int)
 parser.add_argument("--max-elevation-speed", "-mes", 
                     help="The maximum speed at which the elevation of the gun angle can change as an integrer value between [1-10]", 
                     default=10, 
@@ -207,19 +207,11 @@ while True:
                 smoothed_speed_adjusted_azimuth = slow_start_fast_end_smoothing(azimuth_speed_adjusted, float(args.x_smoothing) + 1.0, 90)
                 azimuth_formatted = round(smoothed_speed_adjusted_azimuth, args.azimuth_dp)
                 
-                ## TODO: Find out why the view height  and box height mus be divided by 4 instead of 2 here. I think it maybe something todo with 
-                ## the way the way the face prediction is done by reducing the image size by 4. Did not have time to check but found this empirically. 
-                
-                # max_elevation = (view_height/4) - (box_height/4)
+
                 max_elevation = (view_height/2)
-                print('max_elevation', max_elevation)
                 abs_movement_vector = abs(movement_vector[1])
-                print('abs_movement_vector', abs_movement_vector)
                 elevation_speed_adjusted = map_range(abs_movement_vector - args.accuracy_threshold_y, 0, max_elevation, 0 , args.max_elevation_speed) * float(args.y_speed)
-                print('elevation_speed_adjusted', elevation_speed_adjusted)
-                smooth_elevation_speed_adjusted = min(0,slow_start_fast_end_smoothing(elevation_speed_adjusted, float(args.y_smoothing) + 1.0, 10))
-                print('smooth_elevation_speed_adjusted', smooth_elevation_speed_adjusted)
-                
+                smooth_elevation_speed_adjusted = min(0,slow_start_fast_end_smoothing(elevation_speed_adjusted, float(args.y_smoothing) + 1.0, 10))                
                 
                 controller_state = cached_controller_state = {
                     'azimuth_angle': azimuth_formatted,
