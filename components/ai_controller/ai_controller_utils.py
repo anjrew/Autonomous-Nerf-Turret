@@ -98,15 +98,24 @@ def get_priority_target_index(targets: List[dict], type: str,  target_ids: List[
         index = get_priority_target_index(targets, ids, type)
         # Returns 1 (index of the "002" target in the `targets` list)
     """
-    if len(target_ids) > 0:
+    if len(target_ids) > 0: # If there are target IDs just check if the target IDs face is in the list
         assert type == "face", "The `type` argument must be 'face' if the `ids` argument is not empty, as these are face IDs."
         for i, target in enumerate(targets):
             if target.get("id", None) in target_ids:
                 return i
     else:
         for i, target in enumerate(targets):
+            if target["type"] == 'person' and type == 'person':
+                # If the target is a person, check if it has a face
+                for index, person in enumerate(targets):
+                    if person['type'] == 'face':
+                        return index
+                return i # If no face is found, return the person
+                 
+            elif target["type"] == 'face' and  type == 'person':
+                return i # Because a face part of a person
+            
             if target["type"] == type:
                 return i
-            
     return None
     

@@ -170,7 +170,8 @@ while True:
             results =  object_detector.detect(compressed_image)
             for result in results:
 
-                target = { "box": result["box"], "type": result["class_name"], "mask": result["mask"].tolist()}
+                # target = { "box": result["box"], "type": result["class_name"], "mask": result["mask"].tolist()}
+                target = { "box": result["box"], "type": result["class_name"],}
                 targets.append(target)
                 
         if not HEADLESS: ## Draw targets
@@ -187,9 +188,12 @@ while True:
                     
                     class_color = object_detector.get_color_for_class_name(target['type'])
 
-                    frame = draw_object_mask(frame, class_color, np.array(target['mask']))
-                    frame = draw_object_box(frame, left, top, right, bottom, target['type'], class_color)
-                        
+                    if 'mask' in target:
+                        frame = draw_object_mask(frame, class_color, np.array(target['mask']))
+                    
+                    if 'box' in target:
+                        frame = draw_object_box(frame, left, top, right, bottom, target['type'], class_color)
+                         
         
         if len(targets) > 0:
             center_x = width // 2
@@ -201,7 +205,8 @@ while True:
             }
             json_data = json.dumps(data).encode('utf-8') # Encode the JSON object as a byte string
             
-            logging.debug(f'{ "Mock: "if args.test else ""}Sending data to the AI controller:' + json.dumps(data))
+            # logging.debug(f'{ "Mock: "if args.test else ""}Sending data({len(json_data)}) to the AI controller:' + json.dumps(data))
+            logging.debug(f'{ "Mock: "if args.test else ""}Sending data({len(json_data)}) to the AI controller:' + json.dumps(data))
             if web_socket_client_connection and not args.test:
                 web_socket_client_connection.sendall(json_data) # Send the byte string to the server
                 

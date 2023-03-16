@@ -147,14 +147,17 @@ while True:
                 logging.debug('Data obtained:' + json.dumps(data.decode('utf-8')))
                 already_sent_no_targets=False 
                 center_x, center_y =  json_data['heading_vect']
-                
                 target_index = get_priority_target_index(json_data['targets'], args.target_type, args.targets)
                 
-                if not target_index:
+                if target_index is None:
+                    logging.debug(f'No valid target found from type {args.target_type} with ids {args.targets}')
                     # If no valid target was found, then just move onto the next frame
                     continue
                 
                 target = json_data['targets'][target_index] # Extract the first target from the targets list
+                
+                logging.debug('Targeting:' + json.dumps(target))
+
                 left, top, right, bottom = target['box']
                 
                 # calculate box coordinates
