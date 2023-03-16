@@ -1,0 +1,5 @@
+if(EXISTS "/Users/earyzhe/Desktop/Autonomous-Nerf-Turret/components/stepper_motor/src/control_via_serial/build/turret_control_test[1]_tests.cmake")
+  include("/Users/earyzhe/Desktop/Autonomous-Nerf-Turret/components/stepper_motor/src/control_via_serial/build/turret_control_test[1]_tests.cmake")
+else()
+  add_test(turret_control_test_NOT_BUILT turret_control_test_NOT_BUILT)
+endif()

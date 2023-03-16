@@ -1,12 +1,10 @@
 # Python 3 server example
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import HTTPServer
 from typing import Optional
 import argparse
 import serial.tools.list_ports
 import serial
-import json
 import logging
-import time
 
 from serial_driver_server import SerialDriverServer
 from serial_driver_utils import map_log_level

@@ -21,6 +21,7 @@ __pycache__/
 *~
 *.bak
 .dist
+*.onnx
 
 
 *.pt
@@ -32,3 +33,4 @@ components/camera_vision/yolo_object_detection/runs
 components/nerf_turret_utils/nerf_turret_utils.egg-info
 .pytest_cache
 components/nerf_turret_utils/build
+components/camera_vision/yolo_object_detection/YOLOWrapper_latencies_63b4c528-6.json

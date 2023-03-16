@@ -9,6 +9,7 @@ from ultralytics import YOLO
 from nerf_turret_utils.args_utils import map_log_level
 import logging
 from yolo_object_detection.utils import draw_object_mask, draw_object_box
+# from utils import draw_object_mask, draw_object_box
 
 
 
@@ -94,7 +95,7 @@ if __name__ == '__main__':
     parser.add_argument("--confidence", "-c", help="Set the confidence from low(0) to high (1) as a float for detection. Default 0.8", default=0.8, type=float)
     parser.add_argument("--camera", "-cam", help="Weather or not to use the camera for testing purposes", action='store_true', default=False)
     parser.add_argument("--skip-frames", "-sk", help="Skip x amount of frames to process to increase performance", type=int, default=0)
-    parser.add_argument("--model-name", "-mn", help="The model name to use for detection", type=str)
+    parser.add_argument("--model-name", "-mn", help="The model name to use for detection", type=str, default="yolov8n-seg.pt")
     parser.add_argument("--image-compression", "-ic", 
                         help="The amount to compress the image. Eg give a value o2 2 and the image for inference will have half the pixels", type=int, default=1)
     parser.add_argument("--draw-mask", "-dm", 
@@ -159,19 +160,21 @@ if __name__ == '__main__':
                 mask = result.get('mask', np.array([]))
                 
                 if args.draw_mask:
+                    print("frame type:", type(frame), "shape:", frame.shape)
                     frame = draw_object_mask(frame, target_highlight_color, mask)
                     
                     
                 if args.draw_box:
+                    print("frame type:", type(frame), "shape:", frame.shape)
                     frame =  draw_object_box(frame, left, top, right, bottom,f'{id} {confidence:.2f}', target_highlight_color)
                     
                 # Get the center position of the image
-                center = (frame.shape[1]//2, frame.shape[0]//2) 
+                center = (int(frame.shape[1]//2 - 1), int(frame.shape[0]//2 - 1)) 
 
                 # Check if the center position is within the segmented masked area
                 is_on_target = mask[center[1], center[0]] == 1
                 
-                if args.draw_crosshair and frame:
+                if args.draw_crosshair and frame is not None:
                     # Draw a crosshair at the center of the image
                     center = (frame.shape[1]//2, frame.shape[0]//2) 
                     length = 20

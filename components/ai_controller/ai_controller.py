@@ -10,8 +10,8 @@ import os
 import sys
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/..')
 
-
-from ai_controller_utils import assert_in_int_range, map_log_level, slow_start_fast_end_smoothing, map_range
+from nerf_turret_utils.logging_utils import map_log_level
+from ai_controller_utils import assert_in_int_range, slow_start_fast_end_smoothing, get_priority_target_index, map_range
 
 
 parser = argparse.ArgumentParser()
@@ -135,7 +135,12 @@ while True:
             if not data:
                 continue
             
-            json_data = json.loads(data.decode('utf-8')) # Decode the received data and parse it as a JSON object
+            json_data = None
+            try:
+                json_data = json.loads(data.decode('utf-8'))
+            except json.JSONDecodeError as e:
+                logging.error(f"Error decoding JSON: {e}")
+                continue
             
             # Check if there are any targets in the frame
             if len(json_data['targets']) > 0:
@@ -143,27 +148,13 @@ while True:
                 already_sent_no_targets=False 
                 center_x, center_y =  json_data['heading_vect']
                 
-                target_index = 0
+                target_index = get_priority_target_index(json_data['targets'], args.target_type, args.targets)
                 
-                has_targets_to_shoot = len(args.targets) > 0
-                cancel_on_no_valid_target = has_targets_to_shoot
-                if has_targets_to_shoot:
-                    # Filter the targets by the target ids
-                    for i, target in enumerate(json_data['targets']):
-                        found_target_id = target.get('id', '')
-                        target_match = found_target_id in args.targets
-                        if target_match:
-                            target_index = i
-                            cancel_on_no_valid_target = False
-                            break
-                        else: 
-                            logging.info("Unknown target id: " + found_target_id)
-                            
-                if cancel_on_no_valid_target:
+                if not target_index:
+                    # If no valid target was found, then just move onto the next frame
                     continue
                 
                 target = json_data['targets'][target_index] # Extract the first target from the targets list
-                # vec_delta = first_target['vec_delta'] # Extract the vec_delta data
                 left, top, right, bottom = target['box']
                 
                 # calculate box coordinates

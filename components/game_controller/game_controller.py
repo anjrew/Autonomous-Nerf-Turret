@@ -8,7 +8,6 @@ import os
 import sys
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/..')
 
-
 parser = argparse.ArgumentParser()
 parser.add_argument("--set-man", action="store_true",dest="is_man", help="Set the joystick manually instead of using the default.")
 parser.add_argument("--port", help="Set the http server port.", default=5565, type=int)

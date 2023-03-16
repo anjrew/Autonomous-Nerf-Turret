@@ -14,6 +14,9 @@ def draw_object_mask(frame: np.ndarray, target_highlight_color: Tuple[int, int, 
     Returns:
         A NumPy array representing the image frame with the segmentation mask drawn on it.
     """
+    assert type(frame) == np.ndarray, 'frame must be a numpy array'
+    assert type(mask) == np.ndarray, 'mask must be a numpy array'
+    
     mask = cv2.resize(mask, (frame.shape[1], frame.shape[0]))
                     # Draw a mask
     if len(mask.shape) == 2:

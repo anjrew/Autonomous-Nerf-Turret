@@ -1,6 +1,5 @@
 import argparse
-import logging
-from typing import Union
+from typing import List, Optional, Union
 
 def assert_in_int_range(value: int, min_val: int, max_val: int) -> int:
     """
@@ -23,66 +22,6 @@ def assert_in_int_range(value: int, min_val: int, max_val: int) -> int:
         raise argparse.ArgumentTypeError(f"{value} is not within range [{min_val}, {max_val}] or is not an integer")
     return i_value
 
-
-def is_valid_string_log_level(level_str: str) -> bool:
-    """
-    Check whether an input string matches one of the log levels defined in the logging module.
-
-    Parameters:
-        level_str (str): The input string to check.
-
-    Returns:
-        bool: True if the input string matches one of the log levels, False otherwise.
-    """
-    assert type(level_str) == str
-    try:
-        level = logging.getLevelName(level_str.upper())
-        return is_valid_int_log_level(int(level))
-    except ValueError:
-        return False
-
-
-def is_valid_int_log_level(level: int) -> bool:
-    """
-    Check whether an input int matches one of the log levels defined in the logging module.
-
-    Parameters:
-        level (int): The input int to check.
-
-    Returns:
-        bool: True if the input int matches one of the log levels, False otherwise.
-    """
-    assert type(level) == int
- 
-    return level in (logging.CRITICAL, logging.ERROR, logging.WARNING, logging.INFO, logging.DEBUG, logging.NOTSET)
-   
-
-# Define the conversion function
-def map_log_level(level_str: str) -> int:
-    """
-    Convert a logging level string to its corresponding integer value.
-
-    Parameters:
-        level_str (str): The logging level string to convert.
-
-    Returns:
-        int: The integer value corresponding to the logging level string.
-
-    Raises:
-        argparse.ArgumentTypeError: If the input value is not a valid logging level string.
-    """
-    
-    if type(level_str) == int or level_str.isdigit() and is_valid_int_log_level(int(level_str)):
-        return int(level_str)
-    
-    elif level_str.isalpha() and is_valid_string_log_level(level_str):
-        
-        level_name = level_str.upper()
-        return logging.getLevelName(level_name)
-       
-    else:
-        raise argparse.ArgumentTypeError(f"Invalid logging level: {level_str}")
-    
     
     
 def slow_start_fast_end_smoothing(x: float, p: float, max_value: int) -> float:
@@ -135,3 +74,39 @@ def map_range(
     mapped_value = (bottom_input / input_range) * (max_output - min_output) + min_output
     return mapped_value
 
+
+def get_priority_target_index(targets: List[dict], type: str,  target_ids: List[str]=[]) -> Optional[int]:
+    """
+    Returns the index of the highest priority target in the `targets` list based on the input `ids` and `type`.
+
+    Args:
+        targets: A list of dictionaries, each representing a target with the keys 'id' and 'type'.
+        type: A target type to prioritize if none of the target IDs are found.
+        target_ids: A list of target IDs to prioritize over the target types.
+
+    Returns:
+        The index of the highest priority target in the `targets` list. Returns 0 if no target is found.
+
+    Example:
+        targets = [
+            {"id": "001", "type": "person"},
+            {"id": "002", "type": "vehicle"},
+            {"id": "003", "type": "person"}
+        ]
+        ids = ["003", "004"]
+        type = "vehicle"
+        index = get_priority_target_index(targets, ids, type)
+        # Returns 1 (index of the "002" target in the `targets` list)
+    """
+    if len(target_ids) > 0:
+        assert type == "face", "The `type` argument must be 'face' if the `ids` argument is not empty, as these are face IDs."
+        for i, target in enumerate(targets):
+            if target.get("id", None) in target_ids:
+                return i
+    else:
+        for i, target in enumerate(targets):
+            if target["type"] == type:
+                return i
+            
+    return None
+    

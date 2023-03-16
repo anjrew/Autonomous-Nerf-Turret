@@ -12,7 +12,7 @@ import cv2
 import face_recognition
 import json
 import logging
-import math
+import numpy as np
 
 # Local/application-specific imports
 from argparse import ArgumentParser
@@ -20,7 +20,6 @@ from nerf_turret_utils.args_utils import map_log_level
 from face_tracking_utils import get_face_location_details, get_target_id, find_faces_in_frame, draw_face_box
 from yolo_object_detection.object_detection import ObjectDetector
 from yolo_object_detection.utils import draw_object_mask, draw_object_box
-
 
 
 parser = ArgumentParser(description="Track faces with bounding boxes")
@@ -40,7 +39,7 @@ parser.add_argument("--test", "-t",help="Test without trying to emit data.", act
 parser.add_argument("--benchmark", "-b",help="Wether to measure the script performance and output in the logs.", action='store_true', default=False)
 parser.add_argument("--image-compression", "-ic", 
                         help="The amount to compress the image. Eg give a value of 2 and the image for inference will have half the pixels", type=int, default=4)
-parser.add_argument("--skip-frames", "-sk", help="Skip x amount of frames to process to increase performance", type=int, default=0)
+parser.add_argument("--skip-frames", "-sk", help="Skip x amount of frames to process to increase performance", type=int, default=1)
 
 parser.add_argument("--detect-faces", "-df", 
                         help="Weather or not to detect faces", type=bool, default=True)
@@ -101,7 +100,6 @@ if HEADLESS:
 cap = cv2.VideoCapture(CAMERA_ID)
 
 scaling_factor = 0.5
-process_this_frame = True
 web_socket_client_connection = None
 face_locations = []
 
@@ -128,6 +126,7 @@ def try_to_create_socket():
 
 
 start_time=None
+targets = [] # List of targets in the frame to keep out here for skipped frame processing
 
 while True:
     time.sleep(args.delay)
@@ -140,21 +139,20 @@ while True:
     try:
         frame_count += 1
         skip_frame = frame_count % skip_frames == 0
+        logging.debug(f"Skipping frame: {skip_frame}")
+        
         ret, frame = cap.read()
-        
-        targets = [] # List of targets in the frame
-        
+                
         # Get the image height and width
         height, width, _ = frame.shape   
         
         compressed_image = cv2.resize(frame, (0, 0), fx=1/image_compression, fy=1/image_compression) #type: ignore
 
         if not skip_frame:
-            
+            targets = []
             if args.detect_faces:
                 face_locations = find_faces_in_frame(compressed_image)
 
-        process_this_frame = not process_this_frame
         
         # Loop through each face in this frame of video that were detected
         for face_location in face_locations:
@@ -166,8 +164,7 @@ while True:
                 
             targets.append(target)
             
-            if not HEADLESS:
-                frame = draw_face_box(CROSS_HAIR_SIZE, frame, height, width, target)
+                
         
         if object_detector and not skip_frame: #type: ignore
             results =  object_detector.detect(compressed_image)
@@ -176,16 +173,23 @@ while True:
                 target = { "box": result["box"], "type": result["class_name"], "mask": result["mask"].tolist()}
                 targets.append(target)
                 
-                if not HEADLESS:
-                    left, top, right, bottom = result["box"]
+        if not HEADLESS: ## Draw targets
+            
+            for target in targets:
+                if target['type'] == 'face':
+                    frame = draw_face_box(CROSS_HAIR_SIZE, frame, height, width, target)
+                elif object_detector: # type: ignore
+                    left, top, right, bottom = target["box"]
                     top *= args.image_compression
                     right *= args.image_compression
                     bottom *= args.image_compression
                     left *= args.image_compression
-                    class_color = object_detector.get_color_for_class_name(result['class_name'])
-                    frame = draw_object_mask(frame, class_color, result['mask'])
-                    frame = draw_object_box(frame, left, top, right, bottom, result['class_name'], class_color)
                     
+                    class_color = object_detector.get_color_for_class_name(target['type'])
+
+                    frame = draw_object_mask(frame, class_color, np.array(target['mask']))
+                    frame = draw_object_box(frame, left, top, right, bottom, target['type'], class_color)
+                        
         
         if len(targets) > 0:
             center_x = width // 2
@@ -217,7 +221,8 @@ while True:
     except KeyboardInterrupt as e:
         raise e
     except AttributeError as e:
-        logging.error("Camera failed. Retrying in 5 seconds...")
+        logging.error("Wrong property accessed. See logs below. Retrying in 5 seconds...")
+        print(e)
         time.sleep(5)
         pass
     except BrokenPipeError as e:

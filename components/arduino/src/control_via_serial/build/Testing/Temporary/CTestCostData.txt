@@ -1,0 +1,13 @@
+turret_control_test_NOT_BUILT 0 0
+DecodeTest.Azimuth 8 0.00101441
+DecodeTest.BaseValues 8 0.00116963
+DecodeTest.AllValues 8 0.00106403
+MapRangeTest.MapsValueToMiddleOfOutputRange 8 0.00126515
+MapRangeTest.MapsValueToLowEndOfOutputRange 8 0.00106714
+MapRangeTest.MapsValueToHighEndOfOutputRange 8 0.00132676
+MapRangeTest.MapsNegativeValueToOutputRange 8 0.0010362
+MapRangeTest.MapsValueToOutputRange 8 0.000869947
+MapRangeTest.MapsValueOutsideInputRangeToOutputRange 4 0.00177806
+MapRangeTest.MapsValueOutsideInputRangeToLowEndOfOutputRange 8 0.00101801
+MapRangeTest.MapsValueToLowerValueOfOne 1 0.00928745
+---
