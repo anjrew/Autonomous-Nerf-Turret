@@ -118,10 +118,12 @@ def draw_face_box(frame: np.ndarray, target: dict, is_on_target: bool ) -> np.nd
 
 def draw_cross_hair(frame: np.ndarray, cross_hair_size: int, target: dict, is_on_target: bool) -> np.ndarray:# Draw a red horizontal line through the center
     left, top, right, bottom = target["box"]
-    width = right-left
-    height = bottom-top
-    center_x = width // 2
-    center_y = height // 2
+ 
+    # Get the image dimensions
+    height, width = frame.shape[:2]
+
+    # Calculate the center of the image
+    center_x, center_y = width // 2, height // 2
 
     is_on_target = False  
     if top <= center_y <= bottom and left <= center_x <= right:

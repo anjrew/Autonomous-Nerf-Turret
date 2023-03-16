@@ -194,7 +194,6 @@ while True:
                     frame = draw_face_box(frame, target, is_on_target)
                 elif object_detector: # type: ignore
                     
-                    
                     class_color = object_detector.get_color_for_class_name(target['type'])
 
                     if 'mask' in target:
