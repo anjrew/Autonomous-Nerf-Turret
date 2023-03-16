@@ -2,6 +2,7 @@ from typing import List, Optional, Tuple
 import logging
 import cv2
 import face_recognition
+from nerf_turret_utils.image_utils import get_vec_delta
 import math
 import numpy as np
 
@@ -92,13 +93,9 @@ def find_faces_in_frame(frame) -> List[Tuple[int, int, int, int]]:
 def draw_face_box(frame: np.ndarray, target: dict, is_on_target: bool ) -> np.ndarray:
     left, top, right, bottom = target["box"]
     box_width = right-left
-    box_center_x = (left + right) // 2
-    box_center_y = (top + bottom) // 2
-    # Get the image dimensions
-    frame_height, frame_width = frame.shape[:2]
 
-    # Calculate the center of the image
-    frame_center_x, frame_center_y = frame_width // 2, frame_height // 2
+    # Get the image dimensions
+    _, frame_width = frame.shape[:2]
     
     target_highlight_color = (0, 0, 255) if is_on_target else (0, 100, 0)
         
@@ -109,7 +106,7 @@ def draw_face_box(frame: np.ndarray, target: dict, is_on_target: bool ) -> np.nd
 
     lock_text = "Lock" if is_on_target else f""
     
-    movement_vector = [frame_center_x - box_center_x, frame_center_y - box_center_y]
+    movement_vector = get_vec_delta(frame, *target["box"]) 
     
     box_text = target.get("id", '') if target.get("id") \
         else f"{lock_text} {movement_vector} { math.sqrt(movement_vector[0]**2 + movement_vector[1]**2):.2f}" # Distance from center
