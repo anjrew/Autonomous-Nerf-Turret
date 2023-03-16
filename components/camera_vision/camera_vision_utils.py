@@ -92,9 +92,8 @@ def find_faces_in_frame(frame) -> List[Tuple[int, int, int, int]]:
 def draw_face_box(frame: np.ndarray, target: dict, is_on_target: bool ) -> np.ndarray:
     left, top, right, bottom = target["box"]
     box_width = right-left
-    box_height = bottom-top
-    box_center_x = box_width // 2
-    box_center_y = box_height // 2
+    box_center_x = (left + right) // 2
+    box_center_y = (top + bottom) // 2
     # Get the image dimensions
     frame_height, frame_width = frame.shape[:2]
 
@@ -109,18 +108,16 @@ def draw_face_box(frame: np.ndarray, target: dict, is_on_target: bool ) -> np.nd
     cv2.rectangle(frame, (left, bottom - 35), (right, bottom), target_highlight_color, cv2.FILLED)
 
     lock_text = "Lock" if is_on_target else f""
+    
     movement_vector = [frame_center_x - box_center_x, frame_center_y - box_center_y]
+    
     box_text = target.get("id", '') if target.get("id") \
         else f"{lock_text} {movement_vector} { math.sqrt(movement_vector[0]**2 + movement_vector[1]**2):.2f}" # Distance from center
     
     font = cv2.FONT_HERSHEY_DUPLEX
     font_scale = (box_width/frame_width) + 1
-    print('font_scale', font_scale)
     font_size = 0.4
-    # Draw a box around the face
-    # font_size = 0.6 if len(box_text) > 20 else 1
     scaled_font = font_size * (font_scale ** 3)
-    print('scaled font', scaled_font)
     cv2.putText(frame, box_text, (left + 6, bottom - 6), font, scaled_font, (255, 255, 255), 1)    
     
     return frame
