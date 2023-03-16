@@ -11,6 +11,7 @@ import sys
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/..')
 
 from nerf_turret_utils.logging_utils import map_log_level
+from nerf_turret_utils.image_utils import get_frame_box_dimensions_delta
 from ai_controller_utils import assert_in_int_range, slow_start_fast_end_smoothing, get_priority_target_index, map_range
 
 
@@ -170,9 +171,12 @@ while True:
                 box_center_y = (top + bottom) / 2
                 box_width = right - left
                 box_height = bottom - top
+                
+                view_width = json_data['view_dimensions'][0]
+                view_height = json_data['view_dimensions'][1]
 
                 # Get movement vector to align gun with center of target
-                movement_vector = [box_center_x - center_x, box_center_y - center_y]
+                movement_vector = get_frame_box_dimensions_delta(left,top,right, bottom, view_width, view_height)
                 
                 # Add padding as a percentage of the original dimensions
                 padding_width = box_width * TARGET_PADDING_PERCENTAGE
@@ -186,10 +190,7 @@ while True:
                     
                 is_on_target = False  
                 if padded_top <= center_y <= padded_bottom and padded_left <= center_x <= padded_right:
-                    is_on_target=True      
-
-                view_width = json_data['view_dimensions'][0]
-                view_height = json_data['view_dimensions'][1]
+                    is_on_target=True
                 
                 current_distance_from_the_middle = movement_vector[0]
                 max_distance_from_the_middle_left = -(view_width / 2)
@@ -202,21 +203,27 @@ while True:
                     -args.max_azimuth_angle ,
                     args.max_azimuth_angle
                 )
-                azimuth_speed_adjusted = -min(predicted_azimuth_angle , args.x_speed)
+                azimuth_speed_adjusted = min(predicted_azimuth_angle , args.x_speed)
                 smoothed_speed_adjusted_azimuth = slow_start_fast_end_smoothing(azimuth_speed_adjusted, float(args.x_smoothing) + 1.0, 90)
                 azimuth_formatted = round(smoothed_speed_adjusted_azimuth, args.azimuth_dp)
                 
                 ## TODO: Find out why the view height  and box height mus be divided by 4 instead of 2 here. I think it maybe something todo with 
                 ## the way the way the face prediction is done by reducing the image size by 4. Did not have time to check but found this empirically. 
                 
-                max_elevation = (view_height/4) - (box_height/4)
-                elevation_speed_adjusted = map_range(abs(movement_vector[1]) - args.accuracy_threshold_y, 0, max_elevation, 0 , args.max_elevation_speed) * float(args.y_speed)
-                smooth_elevation_speed_adjusted = slow_start_fast_end_smoothing(elevation_speed_adjusted, float(args.y_smoothing) + 1.0, 10)
+                # max_elevation = (view_height/4) - (box_height/4)
+                max_elevation = (view_height/2)
+                print('max_elevation', max_elevation)
+                abs_movement_vector = abs(movement_vector[1])
+                print('abs_movement_vector', abs_movement_vector)
+                elevation_speed_adjusted = map_range(abs_movement_vector - args.accuracy_threshold_y, 0, max_elevation, 0 , args.max_elevation_speed) * float(args.y_speed)
+                print('elevation_speed_adjusted', elevation_speed_adjusted)
+                smooth_elevation_speed_adjusted = min(0,slow_start_fast_end_smoothing(elevation_speed_adjusted, float(args.y_smoothing) + 1.0, 10))
+                print('smooth_elevation_speed_adjusted', smooth_elevation_speed_adjusted)
                 
                 
                 controller_state = cached_controller_state = {
                     'azimuth_angle': azimuth_formatted,
-                    'is_clockwise': movement_vector[1] > 0,
+                    'is_clockwise': movement_vector[1] < 0,
                     'speed': round(elevation_speed_adjusted / 2 , args.elevation_dp),
                     'is_firing': is_on_target,
                 }

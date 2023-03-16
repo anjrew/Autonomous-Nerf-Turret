@@ -1,7 +1,7 @@
 from typing import Tuple
 import numpy as np
 import cv2
-from nerf_turret_utils.image_utils import get_vec_delta
+from nerf_turret_utils.image_utils import get_frame_box_vec_delta
 
 
 def draw_object_mask(frame: np.ndarray, target_highlight_color: Tuple[int, int, int], mask: np.ndarray) -> np.ndarray:
@@ -54,7 +54,7 @@ def draw_object_box(frame: np.ndarray, left: int, top: int, right: int, bottom: 
     # Calculate the center of the image
     _, frame_width = frame.shape[:2]
     
-    movement_vector = get_vec_delta(frame, left, top, right, bottom) 
+    movement_vector = get_frame_box_vec_delta(frame, left, top, right, bottom) 
 
     # Draw a bounding box
     cv2.rectangle(frame, (int(left), int(top)), (int(right), int(bottom)), target_highlight_color, 2)

@@ -2,7 +2,7 @@ from typing import List, Optional, Tuple
 import logging
 import cv2
 import face_recognition
-from nerf_turret_utils.image_utils import get_vec_delta
+from nerf_turret_utils.image_utils import get_frame_box_vec_delta
 import math
 import numpy as np
 
@@ -106,7 +106,7 @@ def draw_face_box(frame: np.ndarray, target: dict, is_on_target: bool ) -> np.nd
 
     lock_text = "Lock" if is_on_target else f""
     
-    movement_vector = get_vec_delta(frame, *target["box"]) 
+    movement_vector = get_frame_box_vec_delta(frame, *target["box"]) 
     
     box_text = target.get("id", '') if target.get("id") \
         else f"{lock_text} {movement_vector} { math.sqrt(movement_vector[0]**2 + movement_vector[1]**2):.2f}" # Distance from center
