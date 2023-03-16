@@ -16,8 +16,8 @@ import numpy as np
 
 # Local/application-specific imports
 from argparse import ArgumentParser
-from nerf_turret_utils.args_utils import map_log_level
-from face_tracking_utils import get_face_location_details, get_target_id, find_faces_in_frame, draw_face_box
+from nerf_turret_utils.args_utils import map_log_level, str2bool
+from face_tracking_utils import get_face_location_details, get_target_id, find_faces_in_frame, draw_face_box, draw_cross_hair
 from yolo_object_detection.object_detection import ObjectDetector
 from yolo_object_detection.utils import draw_object_mask, draw_object_box
 
@@ -34,25 +34,27 @@ parser.add_argument("--host", help="Set the web socket server hostname to send m
 parser.add_argument("--log-level", "-ll" , help="Set the logging level by integer value.", default=logging.INFO, type=map_log_level)
 parser.add_argument("--delay", help="Delay to limit the data flow into the websocket server.", default=0, type=int)
 parser.add_argument("--headless", help="Whether to run the service in headless mode.", action='store_true', default=False)
-parser.add_argument("--id-targets", "-it",help="Whether to only shoot targets that are stored in the './data/targets' folder.", action='store_true', default=False)
-parser.add_argument("--test", "-t",help="Test without trying to emit data.", action='store_true', default=False)
-parser.add_argument("--benchmark", "-b",help="Wether to measure the script performance and output in the logs.", action='store_true', default=False)
+parser.add_argument("--id-targets", "-it", help="Whether to id targets that are stored in the './data/targets' folder.", action='store_true', default=False)
+parser.add_argument("--test", "-t", help="Test without trying to emit data.", action='store_true', default=False)
+parser.add_argument("--benchmark", "-b", help="Wether to measure the script performance and output in the logs.", action='store_true', default=False)
 parser.add_argument("--image-compression", "-ic", 
                         help="The amount to compress the image. Eg give a value of 2 and the image for inference will have half the pixels", type=int, default=4)
 parser.add_argument("--skip-frames", "-sk", help="Skip x amount of frames to process to increase performance", type=int, default=1)
 
 parser.add_argument("--detect-faces", "-df", 
-                        help="Weather or not to detect faces", type=bool, default=True)
+                        help="Weather or not to detect faces", type=str2bool, default=True)
 
 parser.add_argument("--detect-objects", "-do", 
-                        help="Weather or not to detect general objects", type=bool, default=True)
+                        help="Weather or not to detect general objects", type=str2bool, default=True)
 
 
 args = parser.parse_args()
 
 image_compression = args.image_compression
-
 logging.basicConfig(level=args.log_level)
+
+logging.debug(f"\nArgs: {args}\n")
+
 
 target_images = []
 target_names = [ ]
@@ -157,7 +159,7 @@ while True:
         # Loop through each face in this frame of video that were detected
         for face_location in face_locations:
             # Scale back up face locations since the frame we detected in was scaled to 1/4 size
-            target = get_face_location_details(image_compression, height, width, face_location)
+            target = get_face_location_details(image_compression, face_location)
             
             if args.id_targets:
                 target["id"]  = get_target_id(frame, target["box"], target_names, target_images)
@@ -171,20 +173,27 @@ while True:
             for result in results:
 
                 # target = { "box": result["box"], "type": result["class_name"], "mask": result["mask"].tolist()}
-                target = { "box": result["box"], "type": result["class_name"],}
+                target = { "box": (np.array(result["box"]) * image_compression).tolist(), "type": result["class_name"],}
                 targets.append(target)
                 
         if not HEADLESS: ## Draw targets
-            
+                
             for target in targets:
+                left, top, right, bottom = target["box"]
+                center_x = width // 2
+                center_y = height // 2
+                
+                is_on_target = False 
+                
+                if top <= center_y <= bottom and left <= center_x <= right:
+                    is_on_target=True 
+                    
+                frame =  draw_cross_hair(frame, CROSS_HAIR_SIZE, target, is_on_target)
+                    
                 if target['type'] == 'face':
-                    frame = draw_face_box(CROSS_HAIR_SIZE, frame, height, width, target)
+                    frame = draw_face_box(frame, target, is_on_target)
                 elif object_detector: # type: ignore
-                    left, top, right, bottom = target["box"]
-                    top *= args.image_compression
-                    right *= args.image_compression
-                    bottom *= args.image_compression
-                    left *= args.image_compression
+                    
                     
                     class_color = object_detector.get_color_for_class_name(target['type'])
 

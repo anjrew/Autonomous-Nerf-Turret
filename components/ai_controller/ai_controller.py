@@ -14,7 +14,7 @@ from nerf_turret_utils.logging_utils import map_log_level
 from ai_controller_utils import assert_in_int_range, slow_start_fast_end_smoothing, get_priority_target_index, map_range
 
 
-parser = argparse.ArgumentParser()
+parser = argparse.ArgumentParser("AI Controller for the Nerf Turret")
 parser.add_argument("--ws-port", help="Set the web socket server port to recieve messages from.", default=6565, type=int)
 parser.add_argument("--ws-host", help="Set the web socket server hostname to recieve messages from.", default="localhost")
 parser.add_argument("--port", help="Set the web server server port to send commands too.", default=5565, type=int)
@@ -38,7 +38,7 @@ parser.add_argument("--benchmark", "-b",help="Wether to measure the script perfo
 
 
 parser.add_argument('--targets', nargs='+', type=str, 
-                    help='List of target ids to track. This will only be valid if a target type of \'person\' is selected', default=[])
+                    help='List of target ids to track. This will only be valid if a target type of "person" is selected', default=[])
 
 parser.add_argument('--search',  action='store_true', help='If this flag is set the gun will try to find targets if there are none currently in sight', default=False)
 
@@ -74,12 +74,16 @@ parser.add_argument('--target-type', '-ty', type=str, default='person',
 
 args = parser.parse_args()
 
+
+
 if args.target_type != 'face' and len(args.targets) > 0 :
     raise argparse.ArgumentTypeError(
         f'You can only track specific targets if the target type is set to \'face\', but it is set to \'{args.target_type}\'')
 
 
 logging.basicConfig(level=args.log_level)
+
+logging.debug(f"\nArgs: {args}\n")
 
 TARGET_PADDING_PERCENTAGE = args.target_padding/100
 TARGET_PADDING_PERCENTAGE = args.target_padding/100
@@ -89,7 +93,8 @@ WS_PORT = args.ws_port  # Port number to listen on
 
 url = f"http://{args.host}:{args.port}"
 
-logging.info(f'Forwarding controller values to host at {url}')
+logging.info(f'{"Mocking" if args.test else "" } Forwarding controller values to host at {url}')
+
 if args.targets:
     logging.info(f'Tracking targets with ids: {args.targets}')
 

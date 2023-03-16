@@ -3,16 +3,15 @@ import logging
 import cv2
 import face_recognition
 import math
+import numpy as np
 
 
-def get_face_location_details(image_compression:int, height:int, width:int, face_location:tuple) -> dict:
+def get_face_location_details(image_compression:int, face_location:tuple) -> dict:
     """
     Calculate face location details based on the given image dimensions and face location.
     
     Args:
         image_compression: The compression factor applied to the original image.
-        height: The height of the image in pixels.
-        width: The width of the image in pixels.
         face_location: A list containing the face bounding box coordinates [top, right, bottom, left].
 
     Returns:
@@ -90,34 +89,50 @@ def find_faces_in_frame(frame) -> List[Tuple[int, int, int, int]]:
 
 
 
-def draw_face_box(cross_hair_size, frame, height, width, target):
+def draw_face_box(frame: np.ndarray, target: dict, is_on_target: bool ) -> np.ndarray:
     left, top, right, bottom = target["box"]
-        
+    width = right-left
+    height = bottom-top
     center_x = width // 2
     center_y = height // 2
+ 
+    target_highlight_color = (0, 0, 255) if is_on_target else (0, 100, 0)
+    lock_text = "Lock" if is_on_target else f""
+    
     movement_vector = [center_x - center_x, center_y - center_y]
     
-    is_on_target = False  
-    if top <= center_y <= bottom and left <= center_x <= right:
-        is_on_target=True
-                
-    lock_text = "Lock" if is_on_target else f""
     font_size = 500
-    target_highlight_size = 5 if is_on_target else 1
-    target_highlight_color = (0, 0, 255) if is_on_target else (0, 100, 0)
                 # Draw a box around the face
     cv2.rectangle(frame, (left, top), (right, bottom), target_highlight_color, 2)
                 # Draw a label with a name below the face
     cv2.rectangle(frame, (left, bottom - 35), (right, bottom), target_highlight_color, cv2.FILLED)
     font = cv2.FONT_HERSHEY_DUPLEX
-    box_text = target.get("id") if target.get("id") else f"{lock_text} {movement_vector} { math.sqrt(movement_vector[0]**2 + movement_vector[1]**2):.2f}" # Distance from center
+    box_text = target.get("id", '') if target.get("id") \
+        else f"{lock_text} {movement_vector} { math.sqrt(movement_vector[0]**2 + movement_vector[1]**2):.2f}" # Distance from center
 
     font_size = 0.6 if len(box_text) > 20 else 1
-    cv2.putText(frame, box_text, (left + 6, bottom - 6), font, font_size, (255, 255, 255), 1)
+    cv2.putText(frame, box_text, (left + 6, bottom - 6), font, font_size, (255, 255, 255), 1)    
+    
+    return frame
 
-    # Draw a red horizontal line through the center
-    cv2.line(frame, (center_x - cross_hair_size, center_y), (center_x + cross_hair_size, center_y), target_highlight_color, target_highlight_size)
+
+def draw_cross_hair(frame: np.ndarray, cross_hair_size: int, target: dict, is_on_target: bool) -> np.ndarray:# Draw a red horizontal line through the center
+    left, top, right, bottom = target["box"]
+    width = right-left
+    height = bottom-top
+    center_x = width // 2
+    center_y = height // 2
+
+    is_on_target = False  
+    if top <= center_y <= bottom and left <= center_x <= right:
+        is_on_target=True
+    
+    color = (0, 0, 255) if is_on_target else (0, 100, 0)
+    target_highlight_size = 5 if is_on_target else 1
+
+    cv2.line(frame, (center_x - cross_hair_size, center_y), (center_x + cross_hair_size, center_y), color, target_highlight_size)
                 
     # Draw a red vertical line through the center
-    cv2.line(frame, (center_x, center_y - cross_hair_size), (center_x, center_y + cross_hair_size), target_highlight_color, target_highlight_size)
+    cv2.line(frame, (center_x, center_y - cross_hair_size), (center_x, center_y + cross_hair_size), color, target_highlight_size)
+    
     return frame

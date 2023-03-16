@@ -22,6 +22,7 @@ args = parser.parse_args()
 
 logging.basicConfig(level=args.log_level)
 
+logging.debug(f"\nArgs: {args}\n")
 
 webServer:Optional[HTTPServer] = None
 serialInst:Optional[serial.Serial] = None
