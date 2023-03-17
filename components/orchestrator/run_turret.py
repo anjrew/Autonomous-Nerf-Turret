@@ -25,21 +25,21 @@ logging.basicConfig(level=args.log_level)
 
 processes = []
 
-def run_script(script_path: str) -> None:
+def run_script(script_path: str) -> subprocess.Popen:
     """
     Run a Python script in a separate process and print its output to the console.
 
     :param script_path: The path to the Python script to run.
+    :return: The process object for the running script.
     """
     process = subprocess.Popen([sys.executable, script_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    processes.append(process)
-
     while True:
         output = process.stdout.readline() #type: ignore
         if output:
             print(f"{script_path} output: {output.decode().strip()}")
         if process.poll() is not None:
             break
+    return process
 
 
 async def main():
@@ -84,32 +84,28 @@ async def main():
     # script_paths = [f'{components_directory}/{script_path}' for script_path in script_paths]
     script_paths = [f'python {components_directory}/{script_path}' for script_path in script_paths]
 
-    bash_command = " & ".join(script_paths)
-    subprocess.run(bash_command, shell=True)
-    # print('Running scripts:')
-    # for script_path in script_paths:
-        
-    #     print(script_path)
-    #     thread = threading.Thread(target=run_script, args=(script_path,))
-    #     thread.start()
-    #     threads.append(thread)
 
+  
     try:
-        for thread in threads:
-            thread.join()
-            
-    except KeyboardInterrupt:
+        
+        bash_command = " & ".join(script_paths)
+        subprocess.run(bash_command, shell=True)
+
+        # for script_path in script_paths:
+        #     process = run_script(script_path)
+        #     processes.append(process)
+
+        # for process in processes:
+        #     process.wait()
+    except Exception as e:
         print("\nTerminating the scripts...")
 
-        # Terminate all running threads
-        for thread in threads:
-            if thread.is_alive():
-                try:
-                    thread.terminate()
-                except AttributeError:
-                    # Python 3.7 and below do not have the terminate() method
-                    pass
+        # Terminate all running processes
+        for process in processes:
+            if process.poll() is None:
+                process.terminate()
 
+        raise e
 
 if __name__ == '__main__':
     
