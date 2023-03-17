@@ -124,5 +124,13 @@
         "image": "cpp",
         "source_location": "cpp",
         "math": "cpp"
-    }
+    },
+    "spellright.language": [
+        "en-US-10-1."
+    ],
+    "spellright.documentTypes": [
+        "markdown",
+        "latex",
+        "plaintext"
+    ]
 }
