@@ -15,9 +15,29 @@ handle_ctrl_c() {
 # Set up the trap to catch SIGINT (Control+C) and call the handle_ctrl_c function
 trap handle_ctrl_c SIGINT
 
+logging="INFO"
 
+# Parse the options
+while getopts ":a:b:" opt; do
+  case $opt in
+    a)
+      logging="$OPTARG"
+      ;;
+    # b)
+    #   arg2="$OPTARG"
+    #   ;;
+    \?)
+      echo "Invalid option: -$OPTARG" >&2
+      exit 1
+      ;;
+    :)
+      echo "Option -$OPTARG requires an argument." >&2
+      exit 1
+      ;;
+  esac
+done
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-python $SCRIPT_DIR/components/orchestrator/run_turret.py 
+python $SCRIPT_DIR/components/orchestrator/run_turret.py --log-level $logging
 
 

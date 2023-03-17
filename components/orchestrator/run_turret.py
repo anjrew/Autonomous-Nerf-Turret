@@ -19,8 +19,8 @@ parser.add_argument("--delay", "-d" , help="Delay in seconds between starting ea
 parser.add_argument("--show-camera", "-c" , help="Show the camera output of what the turret sees.", action='store_true')
 args = parser.parse_args()
 
-setup_logger('run_turret', args.log_level)
-
+# setup_logger('run_turret', args.log_level)
+logging.basicConfig(level=args.log_level, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 def main():
     """
@@ -41,6 +41,9 @@ def main():
     script_option_idx = select_option(run_options)
     
     logging.info(f"Running mode: {run_options[script_option_idx]}")
+
+    
+
 
     if script_option_idx == 0:
         camera_vision_script += ' --detect-objects False' 
@@ -65,7 +68,7 @@ def main():
     for script in script_paths:
         logging.info("Running: " + script)
     
-    script_paths = [f'python {components_directory}/{script_path}' for script_path in script_paths]
+    script_paths = [f'python {components_directory}/{script_path} --log-level {args.log_level}' for script_path in script_paths]
 
     try:
         bash_command = " & ".join(script_paths)

@@ -46,9 +46,11 @@ parser.add_argument("--detect-faces", "-df",
 
 parser.add_argument("--detect-objects", "-do", 
                         help="Weather or not to detect general objects", type=str2bool, default=True)
+parser.add_argument("--object-confidence", "-oc", 
+                        help="Ho confidence the camera vision should be", type=float, default=0.7)
 
 parser.add_argument("--box-targets", "-bt",
-                        help="What objects to draw boxes around", nargs='+', type=List[str], default=['person', 'face'])
+                        help="What objects to draw boxes around", nargs='+', type=str, default=['person', 'face'])
 
 args = parser.parse_args()
 
@@ -169,7 +171,7 @@ while True:
             targets.append(target)
             
         if 'object_detector' in globals() and not skip_frame: 
-            results =  object_detector.detect(compressed_image) #type: ignore
+            results =  object_detector.detect(compressed_image, args.object_confidence) #type: ignore
             for result in results:
 
                 # target = { "box": result["box"], "type": result["class_name"], "mask": result["mask"].tolist()}
@@ -179,6 +181,7 @@ while True:
         if not HEADLESS: ## Draw targets
                 
             for target in targets:
+                logging.debug("Target: " + str(target))
                 
                 if len(args.box_targets or []) == 0 or target['type'] not in args.box_targets:
                     continue # skip this target if it's not in the list of targets to draw boxes around
