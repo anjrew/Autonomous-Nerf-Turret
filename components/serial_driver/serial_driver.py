@@ -1,10 +1,13 @@
-# Python 3 server example
-from http.server import HTTPServer
-from typing import Optional
 import argparse
-import serial.tools.list_ports
-import serial
 import logging
+import os
+import sys
+from http.server import HTTPServer
+import serial
+import serial.tools.list_ports
+from typing import Optional
+
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/..')
 
 from serial_driver_server import SerialDriverServer
 from serial_driver_utils import map_log_level

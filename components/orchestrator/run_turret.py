@@ -23,6 +23,7 @@ args = parser.parse_args()
 
 logging.basicConfig(level=args.log_level)
 
+processes = []
 
 def run_script(script_path: str) -> None:
     """
@@ -31,6 +32,7 @@ def run_script(script_path: str) -> None:
     :param script_path: The path to the Python script to run.
     """
     process = subprocess.Popen([sys.executable, script_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    processes.append(process)
 
     while True:
         output = process.stdout.readline() #type: ignore
@@ -79,18 +81,34 @@ async def main():
         ai_controller_script,
         camera_vision_script 
     ]
-    script_paths = [f'{components_directory}/{script_path}' for script_path in script_paths]
+    # script_paths = [f'{components_directory}/{script_path}' for script_path in script_paths]
+    script_paths = [f'python {components_directory}/{script_path}' for script_path in script_paths]
 
-    print('Running scripts:')
-    for script_path in script_paths:
-        print(script_path)
-        thread = threading.Thread(target=run_script, args=(script_path,))
-        thread.start()
-        threads.append(thread)
+    bash_command = " & ".join(script_paths)
+    subprocess.run(bash_command, shell=True)
+    # print('Running scripts:')
+    # for script_path in script_paths:
+        
+    #     print(script_path)
+    #     thread = threading.Thread(target=run_script, args=(script_path,))
+    #     thread.start()
+    #     threads.append(thread)
 
-    for thread in threads:
-        thread.join()
+    try:
+        for thread in threads:
+            thread.join()
+            
+    except KeyboardInterrupt:
+        print("\nTerminating the scripts...")
 
+        # Terminate all running threads
+        for thread in threads:
+            if thread.is_alive():
+                try:
+                    thread.terminate()
+                except AttributeError:
+                    # Python 3.7 and below do not have the terminate() method
+                    pass
 
 
 if __name__ == '__main__':
