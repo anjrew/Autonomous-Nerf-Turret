@@ -18,7 +18,8 @@
         "xyxy",
         "yolo",
         "YOLO",
-        "yolov"
+        "yolov",
+        "ython"
     ],
     "C_Cpp.errorSquiggles": "disabled",
     "files.associations": {

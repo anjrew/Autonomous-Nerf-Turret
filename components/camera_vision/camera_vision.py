@@ -39,7 +39,7 @@ parser.add_argument("--test", "-t", help="Test without trying to emit data.", ac
 parser.add_argument("--benchmark", "-b", help="Wether to measure the script performance and output in the logs.", action='store_true', default=False)
 parser.add_argument("--image-compression", "-ic", 
                         help="The amount to compress the image. Eg give a value of 2 and the image for inference will have half the pixels", type=int, default=4)
-parser.add_argument("--skip-frames", "-sk", help="Skip x amount of frames to process to increase performance", type=int, default=1)
+parser.add_argument("--skip-frames", "-sk", help="Skip x amount of frames to process to increase performance", type=int, default=500)
 
 parser.add_argument("--detect-faces", "-df", 
                         help="Weather or not to detect faces", type=str2bool, default=True)
