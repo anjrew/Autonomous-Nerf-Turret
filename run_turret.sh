@@ -1,5 +1,3 @@
-
-
 #!/bin/bash
 
 # Define the function that will be executed when Control+C is pressed
@@ -19,7 +17,7 @@ trap handle_ctrl_c SIGINT
 
 
 
-
-python $PWD/components/orchestrator/run_turret.py 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+python $SCRIPT_DIR/components/orchestrator/run_turret.py 
 
 
