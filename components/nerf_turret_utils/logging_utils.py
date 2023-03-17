@@ -70,7 +70,7 @@ def map_log_level(level_str: str) -> int:
 def setup_logger(name: str, level: Union[int, str]) -> logging.Logger:
     # Create a logger
     logger = logging.getLogger(name)
-    logger.setLevel(logging.DEBUG)  # Set the logging level
+    logger.setLevel(level)  # Set the logging level
 
     # Create a custom format
     custom_format = logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(message)s')

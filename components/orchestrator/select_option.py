@@ -47,7 +47,7 @@ def select_option(options: List[Any]) -> int:
     curses.curs_set(0)
 
     selected_option = options[0]
-    index = options.index(selected_option)
+    index = 0
     try:
         while True:
             # Draw the menu
@@ -60,12 +60,14 @@ def select_option(options: List[Any]) -> int:
             if key == 65:  # Up arrow key
                 index = options.index(selected_option)
                 selected_option = options[(index - 1) % len(options)]
+                print(selected_option, index)
             elif key == 66:  # Down arrow key
                 index = options.index(selected_option)
                 selected_option = options[(index + 1) % len(options)]
+                print(selected_option, index)
             elif key == ord('\n'):
                 curses.endwin()
-                return index
+                return options.index(selected_option)
     except:
         curses.endwin()
     
