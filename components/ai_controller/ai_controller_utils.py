@@ -1,5 +1,7 @@
 import argparse
-from typing import List, Optional, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
+from nerf_turret_utils.number_utils import map_range
+
 
 def assert_in_int_range(value: int, min_val: int, max_val: int) -> int:
     """
@@ -43,36 +45,6 @@ def slow_start_fast_end_smoothing(x: float, p: float, max_value: int) -> float:
     ratio = x / max_value
     output = ratio ** p * max_value
     return output if x >= 0 else -abs(output)
-
-
-def map_range(
-    input_value: Union[int,float], 
-    min_input: Union[int,float], 
-    max_input: Union[int,float], 
-    min_output: Union[int,float], 
-    max_output: Union[int,float]
-    ) -> Union[int,float]:
-    """
-    Maps an input value from one range to another range.
-
-    Parameters:
-        input_value (float): The input value to be mapped to the output range.
-        min_input (float): The minimum value of the input range.
-        max_input (float): The maximum value of the input range.
-        min_output (float): The minimum value of the output range.
-        max_output (float): The maximum value of the output range.
-
-    Returns:
-        float: The mapped value in the output range.
-
-    Example:
-        >>> map_range(-0.5, -1, 1, 0, 180)
-        90.0
-    """
-    bottom_input = input_value - min_input
-    input_range = max_input - min_input
-    mapped_value = (bottom_input / input_range) * (max_output - min_output) + min_output
-    return mapped_value
 
 
 def get_priority_target_index(targets: List[dict], type: str,  target_ids: List[str]=[]) -> Optional[int]:
@@ -119,3 +91,46 @@ def get_priority_target_index(targets: List[dict], type: str,  target_ids: List[
                 return i
     return None
     
+    
+    
+def get_elevation_speed(args: Any, view_height:int, movement_vector:Tuple, target_box: Tuple[int,int,int,int]) -> int:
+    """
+    Calculates the elevation speed of a Nerf turret.
+
+    Args:
+        args: Any object containing the necessary arguments for the calculation.
+        view_heigh: The height of the camera view in pixels.
+        movement_vector : A tuple containing x,y movement vector of the turret to te center of the view.
+        target_box: A tuple containing the coordinates of the target box [left, top, right, bottom].
+
+    Returns:
+        int: The elevation speed of the turret.
+    """
+    top = target_box[1]
+    max_elevation = (view_height/2)
+    abs_movement_vector = abs(movement_vector[1])
+
+    if top == 0:
+        return 1 # Do this of the target is to the edge of the camera view but filling it up
+    
+    elevation_speed_adjusted = map_range(abs_movement_vector - args.accuracy_threshold_y, 0, max_elevation, 0 , args.max_elevation_speed) * float(args.y_speed)
+    # TODO: implement a smoothing function to smooth out the speed
+    # smooth_elevation_speed_adjusted = min(0,slow_start_fast_end_smoothing(elevation_speed_adjusted, float(args.y_smoothing) + 1.0, 10))                
+    final_speed = round(elevation_speed_adjusted / 2 , args.elevation_dp)
+    return int(final_speed)
+
+
+def get_elevation_clockwise(movement_vector: Tuple[float, float]) -> bool:
+    """
+    Determines whether the Nerf turret elevation stepper motor should rotate clockwise based on its movement vector.
+
+    Args:
+        movement_vector (Tuple[float, float]): A tuple containing the movement vector of the turret,
+            where the first element is the horizontal movement and the second element is the vertical movement.
+
+    Returns:
+        bool: True if the turret elevation should rotate clockwise, False otherwise.
+    """
+
+    is_clockwise = movement_vector[1] < 0
+    return is_clockwise

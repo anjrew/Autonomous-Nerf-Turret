@@ -1,6 +1,10 @@
 {
     "cSpell.words": [
+        "addstr",
         "DSHOW",
+        "endwin",
+        "getch",
+        "james",
         "JOYAXISMOTION",
         "JOYBUTTONDOWN",
         "JOYBUTTONUP",
@@ -9,6 +13,7 @@
         "onnx",
         "onnxruntime",
         "openvino",
+        "stdscr",
         "ultralytics",
         "xyxy",
         "yolo",

@@ -3,7 +3,7 @@ import socket
 import time
 import os
 import sys
-from typing import Optional
+from typing import List, Optional
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/..')
 
@@ -47,6 +47,8 @@ parser.add_argument("--detect-faces", "-df",
 parser.add_argument("--detect-objects", "-do", 
                         help="Weather or not to detect general objects", type=str2bool, default=True)
 
+parser.add_argument("--box-targets", "-bt",
+                        help="What objects to draw boxes around", nargs='+', type=List[str], default=['person', 'face'])
 
 args = parser.parse_args()
 
@@ -166,8 +168,6 @@ while True:
                 
             targets.append(target)
             
-                
-        
         if 'object_detector' in globals() and not skip_frame: 
             results =  object_detector.detect(compressed_image) #type: ignore
             for result in results:
@@ -179,6 +179,10 @@ while True:
         if not HEADLESS: ## Draw targets
                 
             for target in targets:
+                
+                if len(args.box_targets or []) == 0 or target['type'] not in args.box_targets:
+                    continue # skip this target if it's not in the list of targets to draw boxes around
+                
                 left, top, right, bottom = target["box"]
                 center_x = width // 2
                 center_y = height // 2

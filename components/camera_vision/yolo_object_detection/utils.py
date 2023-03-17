@@ -60,12 +60,13 @@ def draw_object_box(frame: np.ndarray, left: int, top: int, right: int, bottom: 
     cv2.rectangle(frame, (int(left), int(top)), (int(right), int(bottom)), target_highlight_color, 2)
     
     # Draw a label with a name below the face
-    cv2.rectangle(frame, (left, top - 55), (right, top), target_highlight_color, cv2.FILLED)
+    bottom_of_text_box = top + 55
+    cv2.rectangle(frame, (left, bottom_of_text_box), (right, top), target_highlight_color, cv2.FILLED)
     
     font = cv2.FONT_HERSHEY_DUPLEX
     font_scale = (box_width/frame_width) + 1
     font_size = 0.4
     scaled_font = font_size * (font_scale ** 3)
-    cv2.putText(frame, box_text + " " + str(movement_vector), (left + 6, top - 6), font, scaled_font, (255, 255, 255) if False else (10, 10, 10), 1)
+    cv2.putText(frame, box_text + " " + str(movement_vector), (left + 6, bottom_of_text_box - 6), font, scaled_font, (255, 255, 255) if False else (10, 10, 10), 1)
     
     return frame

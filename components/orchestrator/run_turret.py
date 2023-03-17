@@ -40,27 +40,35 @@ def run_script(script_path: str) -> None:
             break
 
 
-
 async def main():
     """
     Run multiple Python scripts in parallel using separate threads.
     """
     
-    run_options = [
-        'Aim only for face',
-        'Aim only for people'
-        'Aim at people but try to hit face'
-        ''
-    ]
-    
-    option = select_option([
-        ''
-    ])
-    
-    
     serial_script = 'serial_driver/serial_driver.py'
     ai_controller_script = 'ai_controller/ai_controller.py'
     camera_vision_script = 'camera_vision/camera_vision.py'
+    
+    run_options = [
+        'Aim only for face',
+        'Aim only for people',
+        'Aim at people but try to hit face',
+        'Aim specifically at James Harper and always to hit face'
+    ]
+    
+    script_option = select_option(run_options)
+    
+    if script_option == 0:
+        camera_vision_script += ' --detect-objects False' 
+        ai_controller_script += ' --target-type face' 
+    
+    if script_option == 1:
+        camera_vision_script += ' --detect-faces False' 
+        ai_controller_script += ' --target-type person' 
+        
+    if script_option == 3: #aim for James Harper
+        camera_vision_script += ' --detect-faces True --id-targets' 
+        ai_controller_script += ' --target-type face --targets james_harper' 
     
     if not args.show_camera:
         camera_vision_script += ' --headless'   
@@ -73,7 +81,9 @@ async def main():
     ]
     script_paths = [f'{components_directory}/{script_path}' for script_path in script_paths]
 
+    print('Running scripts:')
     for script_path in script_paths:
+        print(script_path)
         thread = threading.Thread(target=run_script, args=(script_path,))
         thread.start()
         threads.append(thread)
@@ -84,10 +94,6 @@ async def main():
 
 
 if __name__ == '__main__':
-    
-    
-    
-    
     
     asyncio.run(main())
 

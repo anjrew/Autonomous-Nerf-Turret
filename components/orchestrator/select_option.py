@@ -80,6 +80,7 @@ def print_options(stdscr, options: List[str], selected: List[bool], current: int
         stdscr.addstr(idx, 0, f'{prefix} {option}', highlight)
     stdscr.refresh()
 
+
 def get_multiselect_input(stdscr, options: List[str]) -> List[bool]:
     curses.curs_set(0)
     current = 0
@@ -103,6 +104,20 @@ def get_multiselect_input(stdscr, options: List[str]) -> List[bool]:
 
 
 def select_multiple_options(options: List[str])-> List[bool]:
+    """
+    Prompt the user to select multiple options from a list using a curses-based interface.
+
+    The user can navigate the list using arrow keys, select options using the space key,
+    and confirm the selection with the Enter key.
+
+    Args:
+        options: A list of strings representing the options to choose from.
+
+    Returns:
+        A list of boolean values with the same length as the input list `options`.
+                    Each boolean value indicates whether the corresponding option was selected
+                    by the user (True) or not (False).
+    """
     return curses.wrapper(get_multiselect_input, options)
 
 
@@ -111,7 +126,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Select an option from a list')
     parser.add_argument('--multi', '-m',help="Test multi select command line", action='store_true')
     
-   
     options = ['Option 1', 'Option 2', 'Option 3']
     
     args = parser.parse_args()

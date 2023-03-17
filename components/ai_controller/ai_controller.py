@@ -2,6 +2,7 @@ import argparse
 import logging
 import socket
 import json
+from typing import Tuple
 import requests
 import time
 import traceback
@@ -12,7 +13,8 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/..')
 
 from nerf_turret_utils.logging_utils import map_log_level
 from nerf_turret_utils.image_utils import get_frame_box_dimensions_delta
-from ai_controller_utils import assert_in_int_range, slow_start_fast_end_smoothing, get_priority_target_index, map_range
+from nerf_turret_utils.number_utils import map_range
+from ai_controller_utils import assert_in_int_range, slow_start_fast_end_smoothing, get_priority_target_index, get_elevation_speed, get_elevation_clockwise
 
 
 parser = argparse.ArgumentParser("AI Controller for the Nerf Turret")
@@ -25,9 +27,9 @@ parser.add_argument("--azimuth-dp", help="Set how many decimal places the azimut
 parser.add_argument("--elevation-dp", help="Set how many decimal places the elevation is taken too.", default=0, type=int)
 parser.add_argument("--delay", "-d", help="Delay to limit the data flow into the websocket server.", default=0, type=int)
 parser.add_argument("--test", "-t", help="For testing it will not send requests to the driver.", action="store_true")
-parser.add_argument("--x-speed", "-xs", help="Set the limit for the the azimuth speed", default=20, type=int)
+parser.add_argument("--x-speed", "-xs", help="Set the limit for the the azimuth speed", default=60, type=int)
 parser.add_argument("--y-speed", "-ys", help="Set the factor to multiply the elevation speed", default=1, type=int)
-parser.add_argument("--x-smoothing", "-smx", help="The amount of smoothing factor for speed to optimal position on the azimuth angle", default=1, type=int)
+parser.add_argument("--x-smoothing", "-smx", help="The amount of smoothing factor for speed to optimal position on the azimuth angle", default=2, type=int)
 parser.add_argument("--y-smoothing", "-smy", help="The amount of smoothing factor for speed to optimal position on the elevation angle", default=1, type=int)
 parser.add_argument("--max-azimuth-angle", "-ma", help="The maximum angle that the turret will try to turn in one step on the azimuth plane", default=65, type=int)
 parser.add_argument("--max-elevation-speed", "-mes", 
@@ -38,7 +40,7 @@ parser.add_argument("--max-elevation-speed", "-mes",
 parser.add_argument("--benchmark", "-b",help="Wether to measure the script performance and output in the logs.", action='store_true', default=False)
 
 
-parser.add_argument('--targets', nargs='+', type=str, 
+parser.add_argument('--targets', nargs='+', type=lambda x: str(x.lower().replace(" ", "_")), 
                     help='List of target ids to track. This will only be valid if a target type of "person" is selected', default=[])
 
 parser.add_argument('--search',  action='store_true', help='If this flag is set the gun will try to find targets if there are none currently in sight', default=False)
@@ -58,9 +60,9 @@ parser.add_argument('--accuracy-threshold-y', '-aty', type=int, default=30,
                     The threshold of how accurate the gun will try to get the target in the center of the crosshair in pixels vertically.
                     """ )
 
-parser.add_argument('--target-type', '-ty', type=str, default='person', 
+parser.add_argument('--target-type', '-ty', type=lambda x: str(x.lower()), default='person', 
                     help="""
-                    The type of object to the .
+                    The type of object to shoot at. This can be anything available in yolov8 objects but it will default to shoot people, preferably in the face'.
                     """ )
 
 
@@ -127,6 +129,10 @@ def try_to_bind_to_socket():
 
 
 start_time=None
+
+
+
+
 while True:
     time.sleep(args.delay)
     if args.benchmark:
@@ -176,7 +182,7 @@ while True:
                 view_height = json_data['view_dimensions'][1]
 
                 # Get movement vector to align gun with center of target
-                movement_vector = get_frame_box_dimensions_delta(left,top,right, bottom, view_width, view_height)
+                movement_vector = get_frame_box_dimensions_delta(left, top, right, bottom, view_width, view_height)
                 
                 # Add padding as a percentage of the original dimensions
                 padding_width = box_width * TARGET_PADDING_PERCENTAGE
@@ -206,17 +212,12 @@ while True:
                 azimuth_speed_adjusted = min(predicted_azimuth_angle , args.x_speed)
                 smoothed_speed_adjusted_azimuth = slow_start_fast_end_smoothing(azimuth_speed_adjusted, float(args.x_smoothing) + 1.0, 90)
                 azimuth_formatted = round(smoothed_speed_adjusted_azimuth, args.azimuth_dp)
-                
 
-                max_elevation = (view_height/2)
-                abs_movement_vector = abs(movement_vector[1])
-                elevation_speed_adjusted = map_range(abs_movement_vector - args.accuracy_threshold_y, 0, max_elevation, 0 , args.max_elevation_speed) * float(args.y_speed)
-                smooth_elevation_speed_adjusted = min(0,slow_start_fast_end_smoothing(elevation_speed_adjusted, float(args.y_smoothing) + 1.0, 10))                
                 
                 controller_state = cached_controller_state = {
                     'azimuth_angle': azimuth_formatted,
-                    'is_clockwise': movement_vector[1] < 0,
-                    'speed': round(elevation_speed_adjusted / 2 , args.elevation_dp),
+                    'is_clockwise': get_elevation_clockwise(movement_vector),
+                    'speed': get_elevation_speed(args, view_height, movement_vector, target['box']),
                     'is_firing': is_on_target,
                 }
                 

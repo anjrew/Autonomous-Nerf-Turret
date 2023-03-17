@@ -8,6 +8,7 @@ onnxruntime==1.14.1
 pylint
 ultralytics==8.0.53
 keyboard==0.13.5
+pytest-mock==3.10.0
 ipykernel
 face-recognition
 pylint
