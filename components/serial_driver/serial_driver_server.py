@@ -72,7 +72,7 @@ class SerialDriverServer(BaseHTTPRequestHandler):
         except Exception as e:
             logging.error("An exception was thrown:" + str(e) + " " + str(type(e)))
             if serial_inst: serial_inst.close()
-            logging.error("Server stopped and Serial Port closed")
+            logging.error("SerialDriverServer stopped and Serial Port closed")
             self.send_response(500)
             self.end_headers()
         finally: 

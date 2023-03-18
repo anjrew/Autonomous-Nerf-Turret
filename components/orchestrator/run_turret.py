@@ -19,8 +19,7 @@ parser.add_argument("--delay", "-d" , help="Delay in seconds between starting ea
 parser.add_argument("--show-camera", "-c" , help="Show the camera output of what the turret sees.", action='store_true')
 args = parser.parse_args()
 
-# setup_logger('run_turret', args.log_level)
-logging.basicConfig(level=args.log_level, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+setup_logger('run_turret', args.log_level)
 
 def main():
     """
@@ -43,9 +42,6 @@ def main():
     
     logging.info(f"Running mode: {run_options[script_option_idx]}")
 
-    
-
-
     if script_option_idx == 0:
         camera_vision_script += ' --detect-objects False' 
         ai_controller_script += ' --target-type face' 
@@ -66,29 +62,45 @@ def main():
         ai_controller_script,
         camera_vision_script 
     ]
-    for script in script_paths:
-        logging.info("Running: " + script)
     
-    script_paths = [f'python {components_directory}/{script_path} --log-level {args.log_level}' for script_path in script_paths]
+    # script_paths = [ for script_path in script_paths]
 
+    processes = []
     try:
-        bash_command = " & ".join(script_paths)
-        subprocess.run(bash_command, shell=True, check=True, capture_output=True)
+        for script in script_paths:
+            command = f'python {components_directory}/{script} --log-level {args.log_level}'
+            logging.debug("Running command: " + command)
+            process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            processes.append(process)
+
+        for process in processes:
+            stdout, stderr = process.communicate()
+            if stdout:
+                # We print all output because the log level will be set in the child processes
+                print(stdout.decode("utf-8"))
+            if stderr:
+                raise subprocess.CalledProcessError(process.returncode, f"Process {process.pid} failed: {stderr.decode('utf-8')}")
+
+    
     except subprocess.CalledProcessError as e:
-        terminate_processes(e)
-
-
-def terminate_processes(e):
-    print("\nTerminating the scripts...", e)
-    subprocess.run("kill $(ps aux | grep '[p]ython' | grep Autonomous-Nerf-Turret | awk '{print $2}')", shell=True, check=True, capture_output=True)
-    raise e
+        print(e)
+        for process in processes:
+            logging.warning(f"Terminating process with PID {process.pid}")
+            try:
+                process.terminate()
+            except Exception as exc:
+                print(f"Error terminating process with PID {process.pid}: {exc}")
+        exit()
+   
+    
 
 if __name__ == '__main__':
     
     try:
         main()
     except Exception as e:
-        terminate_processes(e)
+        logging.error('Unknown Error')
+        print(e)
        
     print("Exiting...")
   

@@ -89,7 +89,8 @@ try:
       
 
 except Exception as e:
-    logging.error("An exception was thrown:" + str(e))
+    logging.error("An exception was thrown:" )
+    print(e)
     if serialInst: serialInst.close()
     if webServer: webServer.server_close()
     logging.error("Server stopped and Serial Port closed")
