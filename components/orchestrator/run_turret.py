@@ -28,6 +28,7 @@ def main():
     """
 
     serial_script = 'serial_driver/serial_driver.py'
+    # ai_controller_script = 'ai_controller/ai_controller.py --search'
     ai_controller_script = 'ai_controller/ai_controller.py'
     camera_vision_script = 'camera_vision/camera_vision.py'
 
