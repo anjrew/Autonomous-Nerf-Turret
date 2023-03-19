@@ -1,0 +1,52 @@
+<mxfile host="65bd71144e">
+    <diagram id="u0GKcI2Sj2dAF65e4qwR" name="Page-1">
+        <mxGraphModel dx="1193" dy="918" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="16" style="edgeStyle=none;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="2" target="3" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="2" value="Camera vision gives outputs" style="rounded=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="250" y="100" width="290" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="17" style="edgeStyle=none;html=1;" parent="1" source="3" target="5" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="3" value="Target selection" style="rounded=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="250" y="220" width="290" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="18" style="edgeStyle=none;html=1;" parent="1" source="5" target="7" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="5" value="Target [box]&lt;br&gt;" style="shape=hexagon;perimeter=hexagonPerimeter2;whiteSpace=wrap;html=1;fixedSize=1;" parent="1" vertex="1">
+                    <mxGeometry x="335" y="340" width="120" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="15" style="edgeStyle=none;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="6" target="14" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="6" value="Policy Network" style="shape=process;whiteSpace=wrap;html=1;backgroundOutline=1;" parent="1" vertex="1">
+                    <mxGeometry x="240" y="500" width="330" height="150" as="geometry"/>
+                </mxCell>
+                <mxCell id="7" value="Target Box Coordinates" style="whiteSpace=wrap;html=1;aspect=fixed;" parent="1" vertex="1">
+                    <mxGeometry x="355" y="460" width="80" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="10" value="fire" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="275" y="610" width="66" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="11" value="isClockwise" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="409" y="610" width="66" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="12" value="speed" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="474" y="610" width="66" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="13" value="azimuth" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="345" y="610" width="66" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="14" value="&lt;div style=&quot;font-family: Menlo, Monaco, &amp;quot;Courier New&amp;quot;, monospace; line-height: 18px;&quot;&gt;&lt;div style=&quot;color: rgb(212, 212, 212);&quot;&gt;{&lt;/div&gt;&lt;div style=&quot;color: rgb(212, 212, 212);&quot;&gt;                    &lt;span style=&quot;color: #ce9178;&quot;&gt;&lt;span style=&quot;white-space: pre;&quot;&gt;&#9;&lt;/span&gt;'azimuth_angle'&lt;/span&gt;: &lt;span style=&quot;color: #9cdcfe;&quot;&gt;int&lt;/span&gt;,&lt;/div&gt;&lt;div style=&quot;color: rgb(212, 212, 212);&quot;&gt;                    &lt;span style=&quot;color: #ce9178;&quot;&gt;&lt;span style=&quot;white-space: pre;&quot;&gt;&#9;&lt;/span&gt;'is_clockwise'&lt;/span&gt;:bool,&lt;/div&gt;&lt;div style=&quot;&quot;&gt;                    &lt;span style=&quot;color: rgb(206, 145, 120);&quot;&gt;&lt;span style=&quot;white-space: pre;&quot;&gt;&#9;&lt;/span&gt;'speed'&lt;/span&gt;&lt;font color=&quot;#d4d4d4&quot;&gt;: &lt;/font&gt;&lt;font color=&quot;#dcdcaa&quot;&gt;int&lt;/font&gt;&lt;font color=&quot;#d4d4d4&quot;&gt;,&lt;/font&gt;&lt;/div&gt;&lt;div style=&quot;&quot;&gt;&lt;span style=&quot;color: rgb(212, 212, 212);&quot;&gt;                    &lt;span style=&quot;color: #ce9178;&quot;&gt;&lt;span style=&quot;white-space: pre;&quot;&gt;&#9;&lt;/span&gt;'is_firing'&lt;/span&gt;: &lt;/span&gt;&lt;font color=&quot;#9cdcfe&quot;&gt;bool&lt;/font&gt;&lt;font color=&quot;#d4d4d4&quot;&gt;,&lt;/font&gt;&lt;/div&gt;&lt;div style=&quot;color: rgb(212, 212, 212);&quot;&gt;                }&lt;/div&gt;&lt;/div&gt;" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;align=left;spacingLeft=50;spacingRight=50;" parent="1" vertex="1">
+                    <mxGeometry x="240" y="730" width="330" height="330" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>
