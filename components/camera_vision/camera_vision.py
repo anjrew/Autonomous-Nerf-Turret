@@ -150,7 +150,7 @@ while True:
         ret, frame = cap.read()
                 
         # Get the image height and width
-        height, width, _ = frame.shape   
+        frame_height, frame_width, _ = frame.shape   
         
         compressed_image = cv2.resize(frame, (0, 0), fx=1/image_compression, fy=1/image_compression) #type: ignore
 
@@ -187,8 +187,8 @@ while True:
                     continue # skip this target if it's not in the list of targets to draw boxes around
                 
                 left, top, right, bottom = target["box"]
-                center_x = width // 2
-                center_y = height // 2
+                center_x = frame_width // 2
+                center_y = frame_height // 2
                 
                 is_on_target = False 
                 
@@ -211,12 +211,12 @@ while True:
                          
         
         if len(targets) > 0:
-            center_x = width // 2
-            center_y = height // 2
+            center_x = frame_width // 2
+            center_y = frame_height // 2
             data = {
                 "targets": targets,
                 "heading_vect": [center_x, center_y],
-                "view_dimensions": [width, height],
+                "view_dimensions": [frame_width, frame_height],
             }
             json_data = json.dumps(data).encode('utf-8') # Encode the JSON object as a byte string
             
