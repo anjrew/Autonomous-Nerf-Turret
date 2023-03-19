@@ -28,42 +28,50 @@ def main():
 
     serial_script = 'serial_driver/serial_driver.py'
     # ai_controller_script = 'ai_controller/ai_controller.py --search'
-    ai_controller_script = 'ai_controller/ai_controller.py'
+    controller_script = 'ai_controller/ai_controller.py'
+    
     camera_vision_script = 'camera_vision/camera_vision.py'
 
     run_options = [
         'Aim only for face',
         'Aim only for people',
         'Aim at people but try to hit face',
-        'Aim specifically at James Harper and always to hit face'
+        'Aim specifically at James Harper and always to hit face',
+        'Use gaming controller'
     ]
 
     script_option_idx = select_option(run_options)
     
     logging.info(f"Running mode: {run_options[script_option_idx]}")
 
-    if script_option_idx == 0:
+    if script_option_idx == 0: # aim for face
         camera_vision_script += ' --detect-objects False' 
-        ai_controller_script += ' --target-type face' 
+        controller_script += ' --target-type face' 
 
-    if script_option_idx == 1:
+    if script_option_idx == 1: # aim for people
         camera_vision_script += ' --detect-faces False' 
-        ai_controller_script += ' --target-type person' 
+        controller_script += ' --target-type person' 
 
     if script_option_idx == 3: #aim for James Harper
         camera_vision_script += ' --detect-faces True --id-targets' 
-        ai_controller_script += ' --target-type face --targets james_harper' 
+        controller_script += ' --target-type face --targets james_harper' 
+        
+    if script_option_idx == 4: # use controller
+        camera_vision_script += ' --detect-objects False  --detect-faces False' # disable all object detection for better performance 
+        controller_script = 'game_controller/game_controller.py'
 
-    if not args.show_camera:
+
+    camera_option_idx = select_option(['Run without camera view ', 'Show camera view',  ])
+    
+    if not args.show_camera and not camera_option_idx:
         camera_vision_script += ' --headless'   
 
     script_paths = [
         serial_script,
-        ai_controller_script,
-        camera_vision_script 
+        controller_script,
+        camera_vision_script
     ]
     
-    # script_paths = [ for script_path in script_paths]
 
     processes = []
     try:

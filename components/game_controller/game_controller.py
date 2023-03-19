@@ -95,16 +95,16 @@ try:
         something_changed = False # Keeps track of whether or not a request should be sent to the serve        
         
         for event in pygame.event.get():
+            logging.debug("Controller Event:" + str(event))
             if event.type == pygame.JOYBUTTONDOWN:
-                if event.button == 1:
+                if event.button == 7:
                     # Fire gun when user presses A
                     fire_cache = True
                     something_changed =True
 
                         
             if event.type == pygame.JOYBUTTONUP:
-                if event.button == 1:
-                    # Fire gun when user presses A
+                if event.button == 7:
                     fire_cache = False
                     something_changed =True
                 
@@ -112,7 +112,7 @@ try:
                 if event.axis == 3:
                     
                     # Speed calculation 
-                    speed = round(abs(event.value * 10), args.speed_dp)
+                    speed = round(abs(event.value * 9), args.speed_dp)
                     
                     if speed != speed_cache:
                         speed_cache = speed
@@ -128,14 +128,14 @@ try:
                 if event.axis == 2:
                    
                         # azimuth_angle = round(map_range(event.value,-1,1,0,180) , args.azimuth_dp)
-                        azimuth_angle = round(map_range(event.value,-1,1,-90, 90) , args.azimuth_dp)
+                        azimuth_angle = round(map_range(event.value,-1,1,-8, 8) , args.azimuth_dp)
                         if azimuth_angle != azimuth_cache:
                             azimuth_cache = azimuth_angle
                             something_changed =True
      
         if something_changed:
             controller_state = {
-                'azimuth_angle': azimuth_cache,
+                'azimuth_angle': -azimuth_cache, # Invert the azimuth angle because with the current config it was sending it backwar1010             'is_clockwise': is_clockwise_cache,
                 'is_clockwise': is_clockwise_cache,
                 'speed': speed_cache,
                 'is_firing': fire_cache,
