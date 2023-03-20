@@ -1,3 +1,5 @@
+import math
+import time
 from typing import Optional, Union
 import pygame
 import argparse
@@ -7,14 +9,21 @@ import json
 import os
 import sys
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/..')
+from nerf_turret_utils.args_utils import map_log_level
+from nerf_turret_utils.number_utils import map_range
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--set-man", action="store_true",dest="is_man", help="Set the joystick manually instead of using the default.")
 parser.add_argument("--port", help="Set the http server port.", default=5565, type=int)
 parser.add_argument("--host", help="Set the http server hostname.", default="localhost")
-parser.add_argument("--log-level", help="Set the logging level by integer value.", default=logging.DEBUG, type=int)
 parser.add_argument("--speed-dp", help="Set how many decimal places the speed is taken too.", default=0, type=int)
 parser.add_argument("--azimuth-dp", help="Set how many decimal places the azimuth is taken too.", default=0, type=int)
+parser.add_argument("--test", "-t", help="Test without trying to emit data.", action='store_true', default=False)
+parser.add_argument("--log-level", "-ll" , help="Set the logging level by integer value.", default=logging.INFO, type=map_log_level)
+parser.add_argument("--delay", "-d",help="Delay to rate the data is sent from the controller in seconds. This can help with buffering problems", default=0.05, type=float)
+
+
 args = parser.parse_args()
 
 logging.basicConfig(level=args.log_level)
@@ -59,31 +68,6 @@ joystick = pygame.joystick.Joystick(int(selectionIdx))
 joystick.init()
 logging.info('Initialized ' + joystick.get_name())
 
-
-def map_range(input_value: Union[int,float], min_input: Union[int,float], max_input: Union[int,float], min_output: Union[int,float], max_output: Union[int,float]) -> Union[int,float]:
-    """
-    Maps an input value from one range to another range.
-
-    Parameters:
-        input_value (float): The input value to be mapped to the output range.
-        min_input (float): The minimum value of the input range.
-        max_input (float): The maximum value of the input range.
-        min_output (float): The minimum value of the output range.
-        max_output (float): The maximum value of the output range.
-
-    Returns:
-        float: The mapped value in the output range.
-
-    Example:
-        >>> map_range(-0.5, -1, 1, 0, 180)
-        90.0
-    """
-    mapped_value = ((input_value - min_input) / (max_input - min_input)) * (max_output - min_output) + min_output
-    return mapped_value
-
-
-
-
 is_clockwise_cache = False # False is the default direction
 speed_cache = 0 # 0 is the default speed
 azimuth_cache = 90 # 90 is the default position
@@ -91,11 +75,14 @@ fire_cache = False # False is the default state
 
 try:
     while True:
+        time.sleep(args.delay)
         
         something_changed = False # Keeps track of whether or not a request should be sent to the serve        
         
         for event in pygame.event.get():
             logging.debug("Controller Event:" + str(event))
+            
+            
             if event.type == pygame.JOYBUTTONDOWN:
                 if event.button == 7:
                     # Fire gun when user presses A
@@ -128,17 +115,17 @@ try:
                 if event.axis == 2:
                    
                         # azimuth_angle = round(map_range(event.value,-1,1,0,180) , args.azimuth_dp)
-                        azimuth_angle = round(map_range(event.value,-1,1,-8, 8) , args.azimuth_dp)
+                        azimuth_angle = math.ceil(map_range(event.value,-1,1,-15, 15))
                         if azimuth_angle != azimuth_cache:
                             azimuth_cache = azimuth_angle
                             something_changed =True
      
-        if something_changed:
+        if something_changed and not args.test:
             controller_state = {
-                'azimuth_angle': -azimuth_cache, # Invert the azimuth angle because with the current config it was sending it backwar1010             'is_clockwise': is_clockwise_cache,
-                'is_clockwise': is_clockwise_cache,
-                'speed': speed_cache,
-                'is_firing': fire_cache,
+                'azimuth_angle': -int(azimuth_cache), # Invert the azimuth angle because with the current config it was sending it backwar1010             'is_clockwise': is_clockwise_cache,
+                'is_clockwise': bool(is_clockwise_cache),
+                'speed': int(speed_cache),
+                'is_firing': bool(fire_cache),
             }
             try:
                 logging.debug('Sending controller state to server: ' + json.dumps(controller_state))

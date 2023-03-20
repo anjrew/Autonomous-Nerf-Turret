@@ -15,6 +15,7 @@
         "openvino",
         "stdscr",
         "ultralytics",
+        "unicode",
         "xyxy",
         "yolo",
         "YOLO",

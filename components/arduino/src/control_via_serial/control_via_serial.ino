@@ -36,6 +36,7 @@ const int SLOWEST_STEP_SPEED = 80; // in milli seconds which is achieved by maki
 
 const uint8_t SLOWEST_SPEED = 0;
 const uint8_t FASTEST_SPEED = 10;
+bool isFiring = false; // Records the isFirong state for debugging purposes
 
 const uint8_t MAX_AZIMUTH_DEG_RANGE= 180;
 
@@ -79,18 +80,21 @@ bool processSerialInput() {
     
     digitalWrite(dirPin, decodedValues.isClockwise ? LOW : HIGH);
 
-    digitalWrite(shootPin, decodedValues.isFiring ? HIGH: LOW);   
+    isFiring = decodedValues.isFiring;
+
+    digitalWrite(shootPin, isFiring ? HIGH: LOW);   
+    
 
    
     meanSerialProcessingTimeMs = (meanSerialProcessingTimeMs + micros() - startOfSerialProcess) / 2;
-//    Serial.print(" - azimuth: ");
-//    Serial.print(decodedValues.azimuth);
-//    Serial.print(" - speed: ");
-//    Serial.println(decodedValues.speed);
-//    Serial.print(" - isClockwise: ");
-//    Serial.println(decodedValues.isClockwise);
-//    Serial.print(" - isFiring: ");
-//    Serial.println(decodedValues.isFiring);
+    // Serial.print(" - azimuth: ");
+    // Serial.print(decodedValues.azimuth);
+    // Serial.print(" - speed: ");
+    // Serial.println(decodedValues.speed);
+    // Serial.print(" - isClockwise: ");
+    // Serial.println(decodedValues.isClockwise);
+    // Serial.print(" - isFiring: ");
+    // Serial.println(decodedValues.isFiring);
 
     return true;
   } else {
@@ -175,4 +179,6 @@ void loop() {
       
   }
 
+  // Serial.print("loop isFiring: ");
+  // Serial.println(isFiring);
 }

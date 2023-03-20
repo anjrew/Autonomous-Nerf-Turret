@@ -18,9 +18,7 @@ class SerialDriverServer(BaseHTTPRequestHandler):
                 del kwargs[key]
   
         BaseHTTPRequestHandler.__init__(self, *args, **kwargs)
-    
-    # def __setitem__(self, key, value):
-        # self.properties[key] = value
+
         
     def do_GET(self):
         # Send a response
@@ -60,10 +58,14 @@ class SerialDriverServer(BaseHTTPRequestHandler):
                 Received a speed that was outside the min({slowest_speed}) max({fasted_speed}) bounds: {speed_in}
                 """.encode())
                 return
-
+            
+       
+        
+        logging.debug("Sending before encoding: " + str([round(json_data.get("azimuth_angle", 0)), json_data.get("is_clockwise", False), round(speed_in), json_data['is_firing']]))
         encoded_message = encode(round(json_data.get("azimuth_angle", 0)), json_data.get("is_clockwise", False), round(speed_in), json_data['is_firing'])
         logging.debug("Encoded Message HEX: " + str(encoded_message) + "  BINARY: " + str(bin(encoded_message[0])) + " " + str(bin(encoded_message[1])))
         try:
+
             serial_inst.write(encoded_message)
             # # Send a response
             self.send_response(200)
