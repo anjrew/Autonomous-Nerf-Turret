@@ -7,7 +7,7 @@ handle_ctrl_c() {
 
     for pid in $pids; do
     echo "Killing process ID: $pid"
-    kill "$pid"
+    kill -s SIGKILL "$pid"
     done
     exit 1
 }
@@ -17,27 +17,31 @@ trap handle_ctrl_c SIGINT
 
 logging="INFO"
 
-# Parse the options
-while getopts ":ll:b:" opt; do
+while getopts "l:" opt; do
+  echo $opt
   case $opt in
-    a)
-      logging="$OPTARG"
-      ;;
-    # b)
-    #   arg2="$OPTARG"
-    #   ;;
+    l) logging=$OPTARG;;
     \?)
-      echo "Invalid option: -$OPTARG" >&2
-      exit 1
+      echo "Invalid option: -$OPTARG"
       ;;
     :)
-      echo "Option -$OPTARG requires an argument." >&2
-      exit 1
+      echo "Option -$OPTARG requires an argument."
       ;;
   esac
 done
 
+if [[ ! -z "$logging" ]]; then
+  echo "The value of -l is: $logging"
+else
+  echo "No -ll option provided."
+fi
+
+
+
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-python $SCRIPT_DIR/components/orchestrator/run_turret.py --log-level $logging
+SCRIPT="$SCRIPT_DIR/components/orchestrator/run_turret.py --log-level $logging"
+echo "Running python script: $SCRIPT"
+python $SCRIPT
+
 
 

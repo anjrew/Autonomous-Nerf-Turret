@@ -93,7 +93,7 @@ def main():
                 raise subprocess.CalledProcessError(process.returncode, f"Process {process.pid} failed: {stderr.decode('utf-8')}")
 
     
-    except subprocess.CalledProcessError as e:
+    except Exception as e:
         print(e)
         for process in processes:
             logging.warning(f"Terminating process with PID {process.pid}")
