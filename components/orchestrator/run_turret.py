@@ -10,7 +10,7 @@ from select_option import select_option
 components_directory = os.path.dirname(os.path.abspath(__file__)) + '/..'
 sys.path.append(components_directory)
 
-from nerf_turret_utils.logging_utils import setup_logger
+# from nerf_turret_utils.logging_utils import setup_logger
 from nerf_turret_utils.args_utils import map_log_level 
  
 parser = ArgumentParser(description="Runs multiple services to make the the shooter work")
@@ -19,7 +19,10 @@ parser.add_argument("--delay", "-d" , help="Delay in seconds between starting ea
 parser.add_argument("--show-camera", "-c" , help="Show the camera output of what the turret sees.", action='store_true')
 args = parser.parse_args()
 
-setup_logger('run_turret', args.log_level)
+logging.basicConfig(level=args.log_level)
+# setup_logger('run_turret', args.log_level)
+
+logging.debug("Starting run_turret.py wih args: " + str(args))
 
 def main():
     """
@@ -57,11 +60,11 @@ def main():
         controller_script += ' --target-type face --targets james_harper' 
         
     if script_option_idx == 4: # use controller
-        camera_vision_script += ' --detect-objects False  --detect-faces False' # disable all object detection for better performance 
+        camera_vision_script += ' --detect-objects False  --detect-faces False -t' # disable all object detection for better performance 
         controller_script = 'game_controller/game_controller.py'
 
 
-    camera_option_idx = select_option(['Run without camera view ', 'Show camera view',  ])
+    camera_option_idx = select_option(['Run without camera view ', 'Show camera view' ])
     
     if not args.show_camera and not camera_option_idx:
         camera_vision_script += ' --headless'   

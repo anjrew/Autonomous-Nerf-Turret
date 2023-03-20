@@ -18,7 +18,7 @@ trap handle_ctrl_c SIGINT
 logging="INFO"
 
 # Parse the options
-while getopts ":l:b:" opt; do
+while getopts ":ll:b:" opt; do
   case $opt in
     a)
       logging="$OPTARG"

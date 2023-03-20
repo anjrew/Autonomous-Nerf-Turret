@@ -8,7 +8,9 @@ def map_log_level(level_str) -> int:
     elif level_str.isalpha():
         level_name = level_str.upper()
         try:
+            print('level_name: ', level_name)
             level = logging.getLevelName(level_name)
+            print('level: ', level)
             return level
         except ValueError:
             raise argparse.ArgumentTypeError(f"Invalid logging level: {level_str}")
