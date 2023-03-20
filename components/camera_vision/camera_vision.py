@@ -46,6 +46,7 @@ parser.add_argument("--detect-faces", "-df",
 
 parser.add_argument("--detect-objects", "-do", 
                         help="Weather or not to detect general objects", type=str2bool, default=True)
+
 parser.add_argument("--object-confidence", "-oc", 
                         help="Ho confidence the camera vision should be", type=float, default=0.7)
 
@@ -150,7 +151,7 @@ while True:
         ret, frame = cap.read()
                 
         # Get the image height and width
-        height, width, _ = frame.shape   
+        frame_height, frame_width, _ = frame.shape   
         
         compressed_image = cv2.resize(frame, (0, 0), fx=1/image_compression, fy=1/image_compression) #type: ignore
 
@@ -179,6 +180,7 @@ while True:
                 targets.append(target)
                 
         if not HEADLESS: ## Draw targets
+            is_on_target = False
                 
             for target in targets:
                 logging.debug("Target: " + str(target))
@@ -187,18 +189,16 @@ while True:
                     continue # skip this target if it's not in the list of targets to draw boxes around
                 
                 left, top, right, bottom = target["box"]
-                center_x = width // 2
-                center_y = height // 2
+                center_x = frame_width // 2
+                center_y = frame_height // 2
                 
-                is_on_target = False 
                 
                 if top <= center_y <= bottom and left <= center_x <= right:
                     is_on_target=True 
-                    
-                frame =  draw_cross_hair(frame, CROSS_HAIR_SIZE, target, is_on_target)
-                    
+                     
                 if target['type'] == 'face':
                     frame = draw_face_box(frame, target, is_on_target)
+                    
                 elif object_detector: # type: ignore
                     
                     class_color = object_detector.get_color_for_class_name(target['type'])
@@ -208,15 +208,19 @@ while True:
                     
                     if 'box' in target:
                         frame = draw_object_box(frame, left, top, right, bottom, target['type'], class_color)
-                         
+                    
+                # Always draw the cross hai.rindex() if not headless        
+            frame =  draw_cross_hair(frame, CROSS_HAIR_SIZE, is_on_target)
+
+ 
         
         if len(targets) > 0:
-            center_x = width // 2
-            center_y = height // 2
+            center_x = frame_width // 2
+            center_y = frame_height // 2
             data = {
                 "targets": targets,
                 "heading_vect": [center_x, center_y],
-                "view_dimensions": [width, height],
+                "view_dimensions": [frame_width, frame_height],
             }
             json_data = json.dumps(data).encode('utf-8') # Encode the JSON object as a byte string
             
