@@ -8,3 +8,16 @@ This code includes computer vision algorithms for object detection and tracking.
   - Speed optimization for inference with script parameters:
     - Skip 10 frames
     - Use 4x compression
+
+
+## Image processing times
+
+These experiments were made on 2018 Macbook pro and processing as a video feed:
+
+| MODEL           |   Task    | Preprocessing  |  Inference       | Post processing   | Total time     |
+|-----------------|-----------|----------------|------------------|-------------------|----------------|
+| yolov8n.pt      | Detection | +/- 1ms mean   | +/- 168s mean    | +/- 1ms mean      | +/- 170ms mean |
+| yolov8n-seg.pt  | Detection | +/- 1ms mean   | +/- 220ms mean   | +/- 1ms mean      | +/- 222ms mean |
+
+The findings indicate the most of the image processing time is in inference and the pre and post processing time is negligible.
+Segmentation takes 30% more time to process than bounding box detection.

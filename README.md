@@ -40,15 +40,6 @@ For example:
     - On stand still the circuit uses 0.08A
 
 
-## Inference times
-
-These experiments were made on 2018 Macbook pro:
-
-| MODEL           |   Task    | Preprocessing  |  Inference       | Post processing   | Total time     |
-|-----------------|-----------|----------------|------------------|-------------------|----------------|
-| yolov8n.pt      | Detection | +/- 1ms mean   | +/- 168s mean    | +/- 1ms mean      | +/- 170ms mean |
-| yolov8n-seg.pt  | Detection | +/- 1ms mean   | +/- 220ms mean   | +/- 1ms mean      | +/- 222ms mean |
-
 
   ## Good configurations for AI controller
 
