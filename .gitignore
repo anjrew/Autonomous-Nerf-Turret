@@ -25,7 +25,7 @@ __pycache__/
 .dist
 *.onnx
 
-
+**/*YOLOWrapper_latencies*
 *.pt
 components/stepper_motor/src/control_via_serial/build
 components/stepper_motor/src/control_via_serial/control_via_serial.ino.standard.hex
@@ -36,3 +36,5 @@ components/nerf_turret_utils/nerf_turret_utils.egg-info
 .pytest_cache
 components/nerf_turret_utils/build
 components/camera_vision/yolo_object_detection/YOLOWrapper_latencies_63b4c528-6.json
+components/camera_vision/yolo_object_detection/quantized_model
+components/camera_vision/yolo_object_detection/yolov8n_openvino_model

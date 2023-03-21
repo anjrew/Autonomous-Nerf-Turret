@@ -1,10 +1,14 @@
 import cv2.dnn
 import numpy as np
+import os
+import sys
 
 from ultralytics.yolo.utils import ROOT, yaml_load
 from ultralytics.yolo.utils.checks import check_yaml
 
 CLASSES = yaml_load(check_yaml('coco128.yaml'))['names']
+directory_path = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(directory_path + '/../..')
 
 colors = np.random.uniform(0, 255, size=(len(CLASSES), 3))
 
@@ -17,7 +21,7 @@ def draw_bounding_box(img, class_id, confidence, x, y, x_plus_w, y_plus_h):
 
 
 def main():
-    model: cv2.dnn.Net = cv2.dnn.readNetFromONNX('yolov8n.onnx')
+    model: cv2.dnn.Net = cv2.dnn.readNetFromONNX(f'{directory_path}/yolov8n.onnx')
     original_image: np.ndarray = cv2.imread(str(ROOT / 'assets/bus.jpg'))
     [height, width, _] = original_image.shape
     length = max((height, width))
@@ -60,6 +64,8 @@ def main():
             'box': box,
             'scale': scale}
         detections.append(detection)
+        
+        
         draw_bounding_box(original_image, class_ids[index], scores[index], round(box[0] * scale), round(box[1] * scale),
                           round((box[0] + box[2]) * scale), round((box[1] + box[3]) * scale))
 

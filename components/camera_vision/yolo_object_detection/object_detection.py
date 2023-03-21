@@ -10,7 +10,7 @@ from ultralytics import YOLO
 from nerf_turret_utils.args_utils import map_log_level
 import logging
 from yolo_object_detection.utils import draw_object_mask, draw_object_box
-# from utils import draw_object_mask, draw_object_box
+
 
 
 
@@ -108,6 +108,8 @@ if __name__ == '__main__':
                         help="Whether a box should be drawn ", type=bool, default=True)
     parser.add_argument("--draw-crosshair", "-dc", 
                         help="Whether a crosshair should be drawn ", type=bool, default=True)
+    parser.add_argument("--type", "-ty", 
+                        help="What type of model it is. Options [yolo, speedster]", type=str, default='yolo')
 
     
     args = parser.parse_args()

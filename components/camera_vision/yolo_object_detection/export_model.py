@@ -2,6 +2,7 @@ from ultralytics import YOLO
 import argparse
 from argparse import ArgumentParser
 import logging
+import json
 
 parser = ArgumentParser(description="Tracks multiple objects with bounding boxes, segmentation and classification")
 
@@ -16,3 +17,11 @@ model = YOLO(args.model_name)  # load an official model
 
 # Export the model
 model.export(format=args.format)
+
+
+config = {
+    'class_names': model.names
+}
+
+with open(args.type + '_config.json', 'w') as outfile:
+    json.dump(config, outfile)
