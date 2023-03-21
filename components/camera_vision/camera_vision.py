@@ -18,7 +18,7 @@ import numpy as np
 from argparse import ArgumentParser
 from nerf_turret_utils.args_utils import map_log_level, str2bool
 from camera_vision_utils import get_face_location_details, get_target_id, find_faces_in_frame, draw_face_box, draw_cross_hair
-from yolo_object_detection.object_detection import ObjectDetector
+from yolo_object_detection.object_detection import YoloObjectDetector
 from yolo_object_detection.utils import draw_object_mask, draw_object_box
 
 
@@ -87,9 +87,9 @@ if args.id_targets:
     logging.info(f" Labeling targets {target_names}")
             
 
-object_detector: Optional[ObjectDetector]        
+object_detector: Optional[YoloObjectDetector]        
 if args.detect_objects:
-    object_detector = ObjectDetector() 
+    object_detector = YoloObjectDetector() 
                        
 ## Setup ready to send data to subscribers
 HOST = args.host  # IP address of the server

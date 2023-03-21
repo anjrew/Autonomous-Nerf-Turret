@@ -12,9 +12,20 @@ import logging
 from yolo_object_detection.utils import draw_object_mask, draw_object_box
 
 
+import abc
+
+class ObjectDetector(metaclass=abc.ABCMeta):
+    @abc.abstractmethod
+    def get_color_for_class_name(self):
+        pass
+    
+    @abc.abstractmethod
+    def detect(self):
+        pass
+    
 
 
-class ObjectDetector:
+class YoloObjectDetector(ObjectDetector):
     """Detect objects of multiple types Using YOLOv8
     """
     
@@ -31,7 +42,6 @@ class ObjectDetector:
         return self.colors[self._class_name_id[class_name]]
 
 
-    # def perform_yolov8_segmentation(uri: str) -> List[YoloResults]:
     def detect(self, source: Union[str, int, np.ndarray], confidence: float = 0.7, save=False, save_txt=False) -> List[dict]:
         """
         Performs YOLOv8 segmentation on an image or video frame.
@@ -115,7 +125,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     
     
-    detector = ObjectDetector(model_name=args.model_name)
+    detector = YoloObjectDetector(model_name=args.model_name)
     
     skip_frames =  args.skip_frames + 1
     frame_count = 0

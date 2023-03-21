@@ -15,6 +15,7 @@
         "onnx",
         "onnxruntime",
         "openvino",
+        "scalefactor",
         "stdscr",
         "ultralytics",
         "unicode",
