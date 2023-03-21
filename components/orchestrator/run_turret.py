@@ -89,7 +89,7 @@ def main():
         for i, script in enumerate(script_paths):
             command = f'python {components_directory}/{script} --log-level {args.log_level}'
             process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
-            process_name = f'Process {i + 1}'
+            process_name = f'{script.split("/")[0]}'
             t = threading.Thread(target=read_output, args=(process, process_name))
             t.daemon = True
             t.start()
