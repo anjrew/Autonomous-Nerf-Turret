@@ -36,9 +36,9 @@ def main():
     camera_vision_script = 'camera_vision/camera_vision.py'
 
     run_options = [
+        'Aim at people but try to hit face',
         'Aim only for face',
         'Aim only for people',
-        'Aim at people but try to hit face',
         'Aim specifically at James Harper and always to hit face',
         'Use gaming controller'
     ]
