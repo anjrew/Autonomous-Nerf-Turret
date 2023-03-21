@@ -41,7 +41,7 @@ For example:
 
 
 
-  ## Good configurations for AI controller
+  ## Good combination configurations
 
 | HEADLESS | Skip Frames | IMG Comp | Y-speed,smooth,lim | X-speed,smooth,lim | target_type | faces | objects | model          |
 |----------|-------------|----------|--------------------|--------------------|-------------|-------|---------|----------------|

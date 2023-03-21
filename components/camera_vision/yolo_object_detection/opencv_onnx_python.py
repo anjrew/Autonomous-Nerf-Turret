@@ -1,20 +1,34 @@
 import os
 import sys
-from typing import Tuple
+from typing import Any, Dict, List, Tuple
 directory_path = os.path.dirname(os.path.abspath(__file__))
+
 sys.path.append(directory_path + '/..')
-from object_detection import ObjectDetector
+sys.path.append(directory_path + '/../..')
+sys.path.append(directory_path)
+
 import cv2.dnn #type: ignore
 import numpy as np
 from ultralytics.yolo.utils import ROOT, yaml_load
 from ultralytics.yolo.utils.checks import check_yaml
 import logging
 
+print(sys.path)
+print(directory_path)
+from object_detection import ObjectDetector
+
 
 class ONNXObjectDetector(ObjectDetector):
-    
+    """Class to perform object detection using a YOLOv8n model."""
+
     
     def __init__(self, model_name: str = "yolov8n.onnx") -> None:
+        """
+        Initializes the object detector with a YOLOv8n model and class names.
+        
+        Args:
+            model_name: Name of the ONNX model file to use.
+        """
         self.model: cv2.dnn.Net = cv2.dnn.readNetFromONNX(f'{directory_path}/{model_name}')
         self.class_names = yaml_load(check_yaml('coco128.yaml'))['names']
         logging.debug("Detecting from : " + str(self.class_names))
@@ -23,16 +37,50 @@ class ONNXObjectDetector(ObjectDetector):
 
     
     def get_color_for_class_name(self, class_name: str) -> Tuple[int, int, int]:
-        """Gets the color for a particular class by name"""                
+        """
+        Gets the color for a particular class by name.
+        
+        Args:
+            class_name: The name of the class to get the color for.
+        
+        Returns:
+            A tuple representing the RGB color value for the class.
+        """                    
         return self.colors[self.class_name_id[class_name]]
     
-    def draw_bounding_box(self, img, class_id, confidence, x, y, x_plus_w, y_plus_h):
+    
+    def draw_bounding_box(self, img: np.ndarray, class_id: int, confidence: float, x: int, y: int, x_plus_w: int, y_plus_h: int) -> None:
+        """
+        Draws a bounding box with label on an image for a detected object.
+        
+        Args:
+            img: The image to draw on.
+            class_id: The ID of the class of the detected object.
+            confidence: The confidence score of the detection.
+            x: The x-coordinate of the top-left corner of the bounding box.
+            y: The y-coordinate of the top-left corner of the bounding box.
+            x_plus_w: The x-coordinate of the bottom-right corner of the bounding box.
+            y_plus_h: The y-coordinate of the bottom-right corner of the bounding box.
+        """
         label = f'{self.class_names[class_id]} ({confidence:.2f})'
         color = self.colors[class_id]
         cv2.rectangle(img, (x, y), (x_plus_w, y_plus_h), color, 2)
         cv2.putText(img, label, (x - 10, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
 
-    def detect(self, original_image: np.ndarray) -> list:
+
+    def detect(self, original_image: np.ndarray, confidence: float = 0.7) -> List[Dict[str, Any]]:
+        """
+        Performs object detection on an image.
+        
+        Args:
+            original_image: The image to perform detection on.
+        
+        Returns:
+            A list of dictionaries representing the detected objects. Each dictionary has the following keys:
+            - class_name: The name of the class of the detected object.
+            - confidence: The confidence score of the detection.
+            - box: A list of four values representing the coordinates of the bounding box.
+        """
         [height, width, _] = original_image.shape
         length = max((height, width))
         image = np.zeros((length, length, 3), np.uint8)
@@ -65,13 +113,15 @@ class ONNXObjectDetector(ObjectDetector):
         detections = []
         for i in range(len(result_boxes)):
             index = result_boxes[i]
-            box = boxes[index]
-            detection = {
-                'class_name': self.class_names[class_ids[index]],
-                'confidence': scores[index],
-                'box': box,
-            }
-            detections.append(detection)
+            detector_confidence = scores[index]
+            if detector_confidence >= confidence:
+                box = boxes[index]
+                detection = {
+                    'class_name': self.class_names[class_ids[index]],
+                    'confidence': detector_confidence,
+                    'box': [int(box[0]), int(box[1]), int(box[2]), int(box[3])] ,
+                }
+                detections.append(detection)
 
         return detections
 

@@ -1,7 +1,9 @@
 import sys
 import os
+
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../..')
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/..')
+
 
 import time
 from typing import List, Tuple, Union
@@ -10,18 +12,9 @@ from ultralytics import YOLO
 from nerf_turret_utils.args_utils import map_log_level
 import logging
 from yolo_object_detection.utils import draw_object_mask, draw_object_box
-
-
+from yolo_object_detection.object_detector_interface import ObjectDetector
 import abc
 
-class ObjectDetector(metaclass=abc.ABCMeta):
-    @abc.abstractmethod
-    def get_color_for_class_name(self):
-        pass
-    
-    @abc.abstractmethod
-    def detect(self):
-        pass
     
 
 
