@@ -3,7 +3,9 @@ import os
 import logging
 from argparse import ArgumentParser
 import sys
-import sys
+import subprocess
+import threading
+import time
 import subprocess
 from select_option import select_option
 
@@ -23,6 +25,12 @@ logging.basicConfig(level=args.log_level)
 # setup_logger('run_turret', args.log_level)
 
 logging.debug("Starting run_turret.py wih args: " + str(args))
+
+def read_output(process, process_name):
+    while True:
+        line = process.stdout.readline()
+        if line:
+            print(f'{process_name}: {line.decode().rstrip()}')
 
 def main():
     """
@@ -75,23 +83,29 @@ def main():
         camera_vision_script
     ]
     
-
     processes = []
     try:
-        for script in script_paths:
+            
+        for i, script in enumerate(script_paths):
             command = f'python {components_directory}/{script} --log-level {args.log_level}'
-            logging.debug("Running command: " + command)
-            process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            processes.append(process)
+            process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
+            process_name = f'Process {i + 1}'
+            t = threading.Thread(target=read_output, args=(process, process_name))
+            t.daemon = True
+            t.start()
+            processes.append((process, t))
 
-        for process in processes:
-            stdout, stderr = process.communicate()
-            if stdout:
-                # We print all output because the log level will be set in the child processes
-                print(stdout.decode("utf-8"))
-            if stderr:
-                raise subprocess.CalledProcessError(process.returncode, f"Process {process.pid} failed: {stderr.decode('utf-8')}")
-
+        try:
+            while True:
+                # Main process is also running indefinitely, press Ctrl+C to stop.
+                time.sleep(1)
+                
+        except KeyboardInterrupt:
+            print('Terminating subprocesses...')
+            for process, _ in processes:
+                process.terminate()
+                
+                
     
     except Exception as e:
         print(e)
