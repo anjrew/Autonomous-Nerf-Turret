@@ -9,6 +9,7 @@
         "JOYBUTTONDOWN",
         "JOYBUTTONUP",
         "JOYHATMOTION",
+        "Macbook",
         "nerf",
         "onnx",
         "onnxruntime",

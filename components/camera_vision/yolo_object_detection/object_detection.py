@@ -1,6 +1,7 @@
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../..')
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/..')
 
 import time
 from typing import List, Tuple, Union
@@ -17,7 +18,7 @@ class ObjectDetector:
     """Detect objects of multiple types Using YOLOv8
     """
     
-    def __init__(self, model_name: str = "yolov8n-seg.pt") -> None:
+    def __init__(self, model_name: str = "yolov8n.pt") -> None:
         self.model = YOLO(model_name)  # load an official model
         self.class_names = self.model.names or {}
         logging.debug("Detecting from : " + str(self.class_names))
@@ -69,12 +70,15 @@ class ObjectDetector:
                     bottom = box[3]
                     confidence = box[4]
                   
-                    results.append({
+                    result = {
                         'box': [ int(left), int(top), int(right), int(bottom) ],
-                        'mask': detection.masks[i].numpy().data,
                         'class_name': self.class_names[int(box[5])],
                         'confidence': box[4]
-                    })
+                    }
+                    if detection.masks:
+                        result['mask'] = detection.masks[i].numpy().data
+
+                    results.append(result)
                     
         return results
 
@@ -151,6 +155,8 @@ if __name__ == '__main__':
                 left *= args.image_compression
                 box_height = bottom - top
                 box_width = right - left
+                        # Get the center position of the image
+                center = (int(frame.shape[1]//2 - 1), int(frame.shape[0]//2 - 1)) 
                 
                 id = result['class_name']
                 confidence = result['confidence']
@@ -159,20 +165,17 @@ if __name__ == '__main__':
                 
                 mask = result.get('mask', np.array([]))
                 
-                if args.draw_mask:
-                    print("frame type:", type(frame), "shape:", frame.shape)
+                is_on_target = False
+                if args.draw_mask and mask is not None:
+                    # Check if the center position is within the segmented masked area
+                    is_on_target = mask[center[1], center[0]] == 1
                     frame = draw_object_mask(frame, target_highlight_color, mask)
-                    
+                else:
+                    if top <= center[0] <= bottom and left <= center[1] <= right:
+                        is_on_target=True
                     
                 if args.draw_box:
-                    print("frame type:", type(frame), "shape:", frame.shape)
                     frame =  draw_object_box(frame, left, top, right, bottom,f'{id} {confidence:.2f}', target_highlight_color)
-                    
-                # Get the center position of the image
-                center = (int(frame.shape[1]//2 - 1), int(frame.shape[0]//2 - 1)) 
-
-                # Check if the center position is within the segmented masked area
-                is_on_target = mask[center[1], center[0]] == 1
                 
                 if args.draw_crosshair and frame is not None:
                     # Draw a crosshair at the center of the image
