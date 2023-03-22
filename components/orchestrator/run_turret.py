@@ -86,7 +86,7 @@ def main():
     processes = []
     try:
             
-        for i, script in enumerate(script_paths):
+        for script in script_paths:
             command = f'python {components_directory}/{script} --log-level {args.log_level}'
             process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True)
             process_name = f'{script.split("/")[0]}'
@@ -95,15 +95,11 @@ def main():
             t.start()
             processes.append((process, t))
 
-        try:
-            while True:
-                # Main process is also running indefinitely, press Ctrl+C to stop.
-                time.sleep(1)
+        while True:
+            # Main process is also running indefinitely, press Ctrl+C to stop.
+            time.sleep(1)
                 
-        except KeyboardInterrupt:
-            print('Terminating subprocesses...')
-            for process, _ in processes:
-                process.terminate()
+
                 
                 
     
