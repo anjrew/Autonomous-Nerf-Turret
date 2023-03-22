@@ -1,5 +1,4 @@
 {
     "board": "arduino:avr:uno",
-    "sketch": "components/arduino/src/control_via_serial/control_via_serial.ino",
     "port": "/dev/tty.usbmodem143101"
 }

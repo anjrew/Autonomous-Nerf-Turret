@@ -5,6 +5,7 @@ import os
 import sys
 from typing import List, Optional
 
+
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/..')
 
 # Third-party imports
@@ -18,8 +19,10 @@ import numpy as np
 from argparse import ArgumentParser
 from nerf_turret_utils.args_utils import map_log_level, str2bool
 from camera_vision_utils import get_face_location_details, get_target_id, find_faces_in_frame, draw_face_box, draw_cross_hair
+from yolo_object_detection.object_detection import YoloObjectDetector
 from yolo_object_detection.object_detection import ObjectDetector
 from yolo_object_detection.utils import draw_object_mask, draw_object_box
+from yolo_object_detection.opencv_onnx_python import ONNXObjectDetector
 
 
 parser = ArgumentParser(description="Track faces with bounding boxes")
@@ -30,6 +33,8 @@ parser.add_argument('--crosshair_size', '-ch', type=int, default=10, help="The s
 
 parser.add_argument("--port", help="Set the web socket server port to send messages to.", default=6565, type=int)
 parser.add_argument("--host", help="Set the web socket server hostname to send messages to.", default="localhost")
+
+parser.add_argument("--detector", "-d" , help="The detector to use with inference.", default='yolo', type=str)
 
 parser.add_argument("--log-level", "-ll" , help="Set the logging level by integer value.", default=logging.INFO, type=map_log_level)
 parser.add_argument("--delay", help="Delay to limit the data flow into the websocket server.", default=0, type=int)
@@ -64,6 +69,7 @@ logging.debug(f"\nArgs: {args}\n")
 target_images = []
 target_names = [ ]
 
+
 if args.id_targets:
     """Load the target images and use them to build the target names"""
     script_path = os.path.abspath(sys.argv[0])
@@ -89,7 +95,7 @@ if args.id_targets:
 
 object_detector: Optional[ObjectDetector]        
 if args.detect_objects:
-    object_detector = ObjectDetector() 
+    object_detector = ONNXObjectDetector() if args.detector == 'onnx' else YoloObjectDetector() 
                        
 ## Setup ready to send data to subscribers
 HOST = args.host  # IP address of the server
@@ -132,12 +138,13 @@ def try_to_create_socket():
         pass
 
 
-start_time=None
+start_time=time.time()
 targets = [] # List of targets in the frame to keep out here for skipped frame processing
 
 while True:
     time.sleep(args.delay)
     if args.benchmark:
+        print(f'Performance benchmark on 1 loop:{ round(time.time() - start_time, 3) * 1000 }ms', )
         start_time = time.time()
 
     if not web_socket_client_connection and not args.test:

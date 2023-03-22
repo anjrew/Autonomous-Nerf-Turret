@@ -40,9 +40,10 @@ For example:
     - On stand still the circuit uses 0.08A
 
 
-  ## Good configurations for AI controller
 
-  | HEADLESS | Skip Frames | IMG Comp | Y-speed,smooth,lim | X-speed,smooth,lim | target_type | faces | objects |    - |
-  |----------|-------------|----------|--------------------|--------------------|-------------|-------|---------|   ---|
-  | True     | 500         | 4x       | 2,1,10             | 30,1,60            | person      | True  | True    |      |
+  ## Good combination configurations
+
+| HEADLESS | Skip Frames | IMG Comp | Y-speed,smooth,lim | X-speed,smooth,lim | target_type | faces | objects | model          |
+|----------|-------------|----------|--------------------|--------------------|-------------|-------|---------|----------------|
+| True     | 500         | 4x       | 2,1,10             | 30,1,60            | person      | True  | True    | yolov8n-seg.pt | 
 
