@@ -1,6 +1,9 @@
 import numpy as np
+import os
+import sys
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/..')
 
-from image_utils import get_frame_box_vec_delta, get_frame_box_dimensions_delta
+from nerf_turret_utils.image_utils import get_frame_box_vec_delta, get_frame_box_dimensions_delta
 
 def test_get_vec_delta():
     # Create a dummy frame

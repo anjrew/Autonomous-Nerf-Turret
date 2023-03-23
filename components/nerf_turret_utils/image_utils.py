@@ -24,7 +24,7 @@ def get_frame_box_vec_delta(frame: np.ndarray, left: int,  top: int, right:  int
      return get_frame_box_dimensions_delta(left, top, right, bottom, frame_width, frame_height)
 
 
-def get_frame_box_dimensions_delta(left: int,  top: int, right:  int, bottom, frame_width: int, frame_height: int) -> Tuple:
+def get_frame_box_dimensions_delta(left: int,  top: int, right:  int, bottom, frame_width: int, frame_height: int) -> Tuple[int, int]:
      """
      Calculate the vector from the center of a bounding box to the center of a frame with given dimensions.
 

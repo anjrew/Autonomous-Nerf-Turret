@@ -2,19 +2,19 @@ import argparse
 import logging
 import socket
 import json
-from typing import Tuple
 import requests
 import time
 import traceback
 import os
-
 import sys
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/..')
 
+
+from nerf_turret_utils.turret_controller import TurretAction
 from nerf_turret_utils.logging_utils import map_log_level
 from nerf_turret_utils.image_utils import get_frame_box_dimensions_delta
-from nerf_turret_utils.number_utils import map_range
-from ai_controller_utils import assert_in_int_range, slow_start_fast_end_smoothing, get_priority_target_index, get_elevation_speed, get_elevation_clockwise
+from nerf_turret_utils.number_utils import map_range, assert_in_int_range
+from ai_controller_utils import slow_start_fast_end_smoothing, get_priority_target_index, get_elevation_speed, get_elevation_clockwise
 
 
 parser = argparse.ArgumentParser("AI Controller for the Nerf Turret")
@@ -93,7 +93,6 @@ TARGET_PADDING_PERCENTAGE = args.target_padding/100
 WS_HOST = args.ws_host  # IP address of the server
 WS_PORT = args.ws_port  # Port number to listen on
 
-
 url = f"http://{args.host}:{args.port}"
 
 logging.info(f'{"Mocking" if args.test else "" } Forwarding controller values to host at {url}')
@@ -102,7 +101,7 @@ if args.targets:
     logging.info(f'Tracking targets with ids: {args.targets}')
 
 # Cache the controller state to prevent sending the same values over and over again
-cached_controller_state ={
+cached_controller_state: TurretAction =  {
     'azimuth_angle': 0, # The angle of the gun in the horizontal plane adjustment
     'is_clockwise': False,
     'speed': 0,
@@ -129,9 +128,6 @@ def try_to_bind_to_socket():
 
 
 start_time=None
-
-
-
 
 while True:
     time.sleep(args.delay)
@@ -213,13 +209,13 @@ while True:
                 smoothed_speed_adjusted_azimuth = slow_start_fast_end_smoothing(azimuth_speed_adjusted, float(args.x_smoothing) + 1.0, 90)
                 azimuth_formatted = round(smoothed_speed_adjusted_azimuth, args.azimuth_dp)
 
-                
-                controller_state = cached_controller_state = {
-                    'azimuth_angle': azimuth_formatted,
+                controller_state: TurretAction = {
+                    'azimuth_angle': int(azimuth_formatted),
                     'is_clockwise': get_elevation_clockwise(movement_vector),
                     'speed': get_elevation_speed(args, view_height, movement_vector, target['box']),
                     'is_firing': is_on_target,
                 }
+                cached_controller_state = controller_state
                 
                 logging.debug("Sending controller state: " + json.dumps(controller_state))
                 

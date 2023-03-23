@@ -1,6 +1,6 @@
 import math
 import time
-from typing import Optional, Union
+from typing import Optional
 import pygame
 import argparse
 import requests
