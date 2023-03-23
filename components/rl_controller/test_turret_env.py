@@ -17,16 +17,20 @@ def dummy_target_provider(target = (0, 0, 0, 0, 100, 100)) -> Callable[[],Tuple[
         return target
     return target_producer
 
+# A dummy action dispatcher for testing
+def dummy_action_dispatcher(_: TurretAction) -> None:
+    return None
+
 def test_turret_environment_init():
     provider = dummy_target_provider()
-    env = TurretEnv(provider)
+    env = TurretEnv(provider, dummy_action_dispatcher)
     assert env.target_provider == provider
     assert env.state == env.INITIAL_STATE
     assert env.step_n == 0
 
 
 def test_turret_environment_step_no_target():
-    env = TurretEnv(dummy_target_provider())
+    env = TurretEnv(dummy_target_provider(), dummy_action_dispatcher)
     test_action: TurretAction = {
         'azimuth_angle': 90,
         'is_clockwise': False,
@@ -39,7 +43,7 @@ def test_turret_environment_step_no_target():
     assert info['step'] == 1
 
 def test_turret_environment_step_right_on_target_and_firing():
-    env = TurretEnv(dummy_target_provider((25, 25, 75, 75, 100, 100)))
+    env = TurretEnv(dummy_target_provider((25, 25, 75, 75, 100, 100)), dummy_action_dispatcher)
     test_action: TurretAction = {
         'azimuth_angle': 90,
         'is_clockwise': False,
@@ -52,7 +56,7 @@ def test_turret_environment_step_right_on_target_and_firing():
     assert info['step'] == 1
 
 def test_turret_environment_reset():
-    env = TurretEnv(dummy_target_provider())
+    env = TurretEnv(dummy_target_provider(), dummy_action_dispatcher)
     env.step_n = 5
     env.state = {
         'target': (10, 10, 20, 20),
@@ -70,7 +74,7 @@ def test_turret_environment_reset():
 
 
 def test_get_accuracy_reward():
-    env = TurretEnv(dummy_target_provider())
+    env = TurretEnv(dummy_target_provider(), dummy_action_dispatcher)
 
     # Test when frame center and box center are the same
     reward = env.get_accuracy_reward(100, 100, 50, 50, 50, 50)
@@ -88,7 +92,7 @@ def test_get_accuracy_reward():
 # Test calc reward
 def test_calc_reward_no_target_no_shooting():
     target = (0, 0, 0, 0, 0, 0)
-    env = TurretEnv(dummy_target_provider(target))
+    env = TurretEnv(dummy_target_provider(target), dummy_action_dispatcher)
     action: TurretAction = {
         'azimuth_angle': 90,
         'is_clockwise': False,
@@ -100,7 +104,7 @@ def test_calc_reward_no_target_no_shooting():
 
 def test_calc_reward_no_target_with_shooting():
     target = (0, 0, 0, 0, 0, 0)
-    env = TurretEnv(dummy_target_provider(target))
+    env = TurretEnv(dummy_target_provider(target), dummy_action_dispatcher)
     action: TurretAction = {
         'azimuth_angle': 90,
         'is_clockwise': False,
@@ -116,7 +120,7 @@ def test_calc_reward_no_target_with_shooting():
 def test_calc_reward_on_target_shooting():
     # (left, top, right, bottom, height, width)
     target = (10, 10, 20, 20, 30, 30) # Target in the center of the frame
-    env = TurretEnv(dummy_target_provider(target))
+    env = TurretEnv(dummy_target_provider(target), dummy_action_dispatcher)
     action: TurretAction = {
         'azimuth_angle': 90,
         'is_clockwise': False,
@@ -144,7 +148,7 @@ def test_calc_reward_on_target_shooting():
 
 def test_calc_reward_on_target_not_shooting():
     target = (10, 10, 20, 20, 30, 30) # Target in the center of the frame
-    env = TurretEnv(dummy_target_provider(target))
+    env = TurretEnv(dummy_target_provider(target), dummy_action_dispatcher)
     action: TurretAction = {
         'azimuth_angle': 90,
         'is_clockwise': False,
@@ -156,7 +160,7 @@ def test_calc_reward_on_target_not_shooting():
 
 def test_calc_reward_off_target_shooting():
     target = (10, 10, 20, 20, 100, 100) # Target in the center of the frame
-    env = TurretEnv(dummy_target_provider(target))
+    env = TurretEnv(dummy_target_provider(target), dummy_action_dispatcher)
     action: TurretAction = {
         'azimuth_angle': 90,
         'is_clockwise': False,
@@ -170,42 +174,42 @@ def test_calc_reward_off_target_shooting():
 # TEST is on target
 
 def test_check_is_on_target_in_center():
-    env = TurretEnv(dummy_target_provider())
+    env = TurretEnv(dummy_target_provider(), dummy_action_dispatcher)
     target_state = (10, 10, 20, 20, 30, 30)
 
     is_on_target = env.check_is_on_target(target_state)
     assert is_on_target == True
 
 def test_check_is_on_target__offset_top_left():
-    env = TurretEnv(dummy_target_provider())
+    env = TurretEnv(dummy_target_provider(), dummy_action_dispatcher)
     target_state = (5, 5, 20, 20, 30, 30)
 
     is_on_target = env.check_is_on_target(target_state)
     assert is_on_target == True
 
 def test_check_is_on_target_border_left():
-    env = TurretEnv(dummy_target_provider())
+    env = TurretEnv(dummy_target_provider(), dummy_action_dispatcher)
     target_state = (15, 10, 25, 20, 30, 30)
 
     is_on_target = env.check_is_on_target(target_state)
     assert is_on_target == True
 
 def test_check_is_on_target_border_top():
-    env = TurretEnv(dummy_target_provider())
+    env = TurretEnv(dummy_target_provider(), dummy_action_dispatcher)
     target_state = (10, 5, 20, 15, 30, 30)
 
     is_on_target = env.check_is_on_target(target_state)
     assert is_on_target == True
 
 def test_check_is_on_target_border_right():
-    env = TurretEnv(dummy_target_provider())
+    env = TurretEnv(dummy_target_provider(), dummy_action_dispatcher)
     target_state = (5, 10, 15, 20, 30, 30)
 
     is_on_target = env.check_is_on_target(target_state)
     assert is_on_target == True
 
 def test_check_is_on_target_border_bottom():
-    env = TurretEnv(dummy_target_provider())
+    env = TurretEnv(dummy_target_provider(), dummy_action_dispatcher)
     target_state = (10, 15, 20, 25, 30, 30)
 
     is_on_target = env.check_is_on_target(target_state)
@@ -215,7 +219,7 @@ def test_check_is_on_target_border_bottom():
 # Test compare centers
 
 def test_compare_centers_true():
-    env = TurretEnv(dummy_target_provider())
+    env = TurretEnv(dummy_target_provider(), dummy_action_dispatcher)
     left, top, right, bottom = 10, 10, 20, 20
     center_x, center_y = 15, 15
 
@@ -223,7 +227,7 @@ def test_compare_centers_true():
     assert result == True
 
 def test_compare_centers_false_outside_top_left():
-    env = TurretEnv(dummy_target_provider())
+    env = TurretEnv(dummy_target_provider(), dummy_action_dispatcher)
     left, top, right, bottom = 5, 5, 20, 20
     center_x, center_y = 4, 4
 
@@ -231,7 +235,7 @@ def test_compare_centers_false_outside_top_left():
     assert result == False
 
 def test_compare_centers_false_outside_bottom_right():
-    env = TurretEnv(dummy_target_provider())
+    env = TurretEnv(dummy_target_provider(), dummy_action_dispatcher)
     left, top, right, bottom = 10, 10, 25, 25
     center_x, center_y = 26, 26
 
@@ -243,7 +247,7 @@ def test_compare_centers_false_outside_bottom_right():
 # Test get frame centers
 
 def test_get_center_coords_even_dimensions():
-    env = TurretEnv(dummy_target_provider())
+    env = TurretEnv(dummy_target_provider(), dummy_action_dispatcher)
     frame_height, frame_width = 20, 40
 
     center_x, center_y = env.get_center_coords(frame_height, frame_width)
@@ -251,7 +255,7 @@ def test_get_center_coords_even_dimensions():
     assert center_y == 10
 
 def test_get_center_coords_odd_dimensions():
-    env = TurretEnv(dummy_target_provider())
+    env = TurretEnv(dummy_target_provider(), dummy_action_dispatcher)
     frame_height, frame_width = 21, 41
 
     center_x, center_y = env.get_center_coords(frame_height, frame_width)
@@ -259,7 +263,7 @@ def test_get_center_coords_odd_dimensions():
     assert center_y == 10
 
 def test_get_center_coords_zero_dimensions():
-    env = TurretEnv(dummy_target_provider())
+    env = TurretEnv(dummy_target_provider(), dummy_action_dispatcher)
     frame_height, frame_width = 0, 0
 
     center_x, center_y = env.get_center_coords(frame_height, frame_width)
@@ -267,7 +271,7 @@ def test_get_center_coords_zero_dimensions():
     assert center_y == 0
 
 def test_get_center_coords_large_dimensions():
-    env = TurretEnv(dummy_target_provider())
+    env = TurretEnv(dummy_target_provider(), dummy_action_dispatcher)
     frame_height, frame_width = 1080, 1920
 
     center_x, center_y = env.get_center_coords(frame_height, frame_width)

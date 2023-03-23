@@ -66,10 +66,15 @@ class TurretEnv(gym.Env):
     """
     
     
-    def __init__(self, target_provider: Callable[[], Tuple[int, int, int, int,int, int]], episode_step_limit = 100 ) -> None:
+    def __init__(self, 
+                 target_provider: Callable[[], Tuple[int, int, int, int,int, int]], 
+                 action_dispatcher: Callable[[TurretAction], None],
+                 episode_step_limit = 100 
+        ) -> None:
         super(TurretEnv, self).__init__()
         self.episode_time = episode_step_limit
         self.target_provider = target_provider 
+        self.action_dispatcher = action_dispatcher
         
 
         
@@ -213,7 +218,9 @@ class TurretEnv(gym.Env):
         return distance / max_distance # return the normalized distance
 
     
-    def reset(self):
+    def reset(self) -> TurretEnvState:
+        """Resets the environment to the initial state to start a new episode"""
+
         # reset environment state to initial state
         self.state = self.INITIAL_STATE
         self.step_n = 0
