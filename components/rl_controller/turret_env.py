@@ -9,7 +9,6 @@ from nerf_turret_utils.turret_controller import TurretAction
 import gym
 from gym import spaces
 from typing import TypedDict
-import logging
 
 
 class TurretEnvState(TypedDict):

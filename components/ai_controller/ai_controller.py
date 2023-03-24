@@ -18,10 +18,10 @@ from ai_controller_utils import slow_start_fast_end_smoothing, get_priority_targ
 
 
 parser = argparse.ArgumentParser("AI Controller for the Nerf Turret")
-parser.add_argument("--ws-port", help="Set the web socket server port to recieve messages from.", default=6565, type=int)
-parser.add_argument("--ws-host", help="Set the web socket server hostname to recieve messages from.", default="localhost")
-parser.add_argument("--port", help="Set the web server server port to send commands too.", default=5565, type=int)
-parser.add_argument("--host", help="Set the web server server hostname. to send commands too", default="localhost")
+parser.add_argument("--udp-port", help="Set the web socket server port to recieve messages from.", default=6565, type=int)
+parser.add_argument("--udp-host", help="Set the web socket server hostname to recieve messages from.", default="localhost")
+parser.add_argument("--web-port", help="Set the web server server port to send commands too.", default=5565, type=int)
+parser.add_argument("--web-host", help="Set the web server server hostname. to send commands too", default="localhost")
 parser.add_argument("--log-level", "-ll" , help="Set the logging level by integer value or string representation.", default=logging.WARNING, type=map_log_level)
 parser.add_argument("--azimuth-dp", help="Set how many decimal places the azimuth is taken too.", default=2, type=int)
 parser.add_argument("--elevation-dp", help="Set how many decimal places the elevation is taken too.", default=0, type=int)
@@ -90,10 +90,10 @@ logging.debug(f"\nArgs: {args}\n")
 
 TARGET_PADDING_PERCENTAGE = args.target_padding/100
 TARGET_PADDING_PERCENTAGE = args.target_padding/100
-WS_HOST = args.ws_host  # IP address of the server
-WS_PORT = args.ws_port  # Port number to listen on
+WS_HOST = args.udp_host  # IP address of the server
+WS_PORT = args.udp_port  # Port number to listen on
 
-url = f"http://{args.host}:{args.port}"
+url = f"http://{args.web_host}:{args.web_port}"
 
 logging.info(f'{"Mocking" if args.test else "" } Forwarding controller values to host at {url}')
 
@@ -109,7 +109,7 @@ cached_controller_state: TurretAction =  {
 } 
 
 already_sent_no_targets=False # Flag to prevent sending the same message over and over again
-connection = None
+sock = None
 
 search = {
     'clockwise': True,
@@ -118,13 +118,13 @@ search = {
     
 def try_to_bind_to_socket():
     """Try to bind to the socket and accept the connection"""
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    global connection
-    logging.info(f"Binding to host {WS_HOST, WS_PORT}")
-    sock.bind((WS_HOST, WS_PORT))
-    sock.listen()
-    connection, addr = sock.accept()
-    logging.info(f'Connected by {addr}')
+    global sock
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    server_address = (WS_HOST, WS_PORT)
+    logging.info(f"Binding to host {server_address}")
+    sock.bind(server_address)
+
+    logging.info(f'Connected by {server_address}')
 
 
 start_time=None
@@ -134,12 +134,13 @@ while True:
     if args.benchmark:
         start_time = time.time()
     try:
-        if not connection:
+        if not sock:
             try_to_bind_to_socket()
         
         else:
     
-            data = connection.recv(1024)  # Receive data from the client
+             # Receive data from a client
+            data, addr = sock.recvfrom(1024) # type: ignore
             if not data:
                 continue
             

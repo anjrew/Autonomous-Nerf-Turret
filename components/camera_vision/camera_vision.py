@@ -113,7 +113,7 @@ if HEADLESS:
 cap = cv2.VideoCapture(CAMERA_ID)
 
 scaling_factor = 0.5
-web_socket_client_connection = None
+upd_socket_client_connection = None
 face_locations = []
 
 skip_frames =  args.skip_frames + 1
@@ -122,19 +122,17 @@ frame_count = 0
 
 
 def try_to_create_socket():
-    global web_socket_client_connection
-    logging.info(f"Connecting to web socket host @ {HOST, PORT}")
+    global upd_socket_client_connection
+    logging.info(f"Connecting to udp socket host @ {HOST, PORT}")
     try:
         # Create a new socket and connect to the server
-        web_socket_client_connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        web_socket_client_connection.connect((HOST, PORT))
+        upd_socket_client_connection = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         logging.info(f"Successfully Connected to socket @ {HOST, PORT}")
     except Exception as e:
         time.sleep(1)
-        web_socket_client_connection = None
+        upd_socket_client_connection = None
         logging.error("Failed on trying to connect to socket. Attempting to try again")
         print(e)
-        
         pass
 
 
@@ -147,7 +145,7 @@ while True:
         print(f'Performance benchmark on 1 loop:{ round(time.time() - start_time, 3) * 1000 }ms', )
         start_time = time.time()
 
-    if not web_socket_client_connection and not args.test:
+    if not upd_socket_client_connection and not args.test:
         try_to_create_socket()
         
     try:
@@ -233,12 +231,12 @@ while True:
             
             # logging.debug(f'{ "Mock: "if args.test else ""}Sending data({len(json_data)}) to the AI controller:' + json.dumps(data))
             logging.debug(f'{ "Mock: "if args.test else ""}Sending data({len(json_data)}) to the AI controller:' + json.dumps(data))
-            if web_socket_client_connection and not args.test:
-                web_socket_client_connection.sendall(json_data) # Send the byte string to the server
+            if upd_socket_client_connection and not args.test:
+                upd_socket_client_connection.sendto(json_data, (HOST, PORT)) # Send the byte string to the server
                 
         else:
-            if web_socket_client_connection and not args.test:
-                web_socket_client_connection.sendall(json.dumps({"targets": []}).encode('utf-8'))
+            if upd_socket_client_connection and not args.test:
+                upd_socket_client_connection.sendto(json.dumps({"targets": []}).encode('utf-8'), (HOST, PORT))
             
         if not HEADLESS:
             cv2.imshow('Face Detector', frame)
@@ -259,12 +257,12 @@ while True:
     except BrokenPipeError as e:
         logging.error("Socket pipe broken. Retrying in 5 seconds...")
         time.sleep(5)
-        web_socket_client_connection = None
+        upd_socket_client_connection = None
         pass 
     except ConnectionResetError as e:
         logging.error("Socket connection lost. Retrying in 5 seconds...")
         time.sleep(5)
-        web_socket_client_connection = None
+        upd_socket_client_connection = None
         pass
     finally:
         # Record the time taken to process the frame
