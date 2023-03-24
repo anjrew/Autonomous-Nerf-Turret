@@ -111,8 +111,6 @@ def test_calc_reward_no_target_with_shooting():
         'is_firing': True,
         'speed': 0
     }
-    env.step(action) # TODO weird because we have todo two steps here. Might need fixing
-    env.step(action)
 
     reward = env.calc_reward(target, action)
     assert reward == 0 # No target, no shooting should be base reward
