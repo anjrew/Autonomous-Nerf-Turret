@@ -13,7 +13,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/..')
 from stable_baselines3.common.env_checker import check_env
 from turret_env import TurretEnv
 import argparse
-import datetime
+from datetime import datetime
 
 
 
@@ -35,6 +35,7 @@ logging.info(f'{"Mocking" if args.test else "" } Forwarding controller values to
 current_state: Tuple[int, int, int, int, int, int] = (0,0,0,0,0,0)
 get_current_state = lambda: current_state
 dispatch_action = lambda action: print(f"Action: {action}")
+# Define the environment
 env = TurretEnv(get_current_state, dispatch_action)
 
 check_env(env, warn=True)

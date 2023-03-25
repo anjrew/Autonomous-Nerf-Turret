@@ -1,3 +1,4 @@
+from collections import OrderedDict
 import os
 import sys
 from typing import Any, Callable, Optional, Tuple
@@ -7,8 +8,7 @@ import numpy as np
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/..')
 
 from nerf_turret_utils.turret_controller import TurretAction
-
-import gym
+# import gymnasium as gym
 from gym import spaces
 from typing import TypedDict
 
@@ -56,7 +56,14 @@ class TurretEnv(gym.Env):
     
     state = INITIAL_STATE
     
-    action_space = spaces.Discrete(4)
+    action_space = spaces.Dict({
+            "azimuth_angle": spaces.Box(low=-90, high=90, shape=(), dtype=int),
+            # "azimuth_angle": spaces.Discrete(181),
+            "is_clockwise": spaces.Discrete(n=2),
+            "speed": spaces.Box(low=0, high=10, shape=(), dtype=int),
+            # "speed": spaces.Discrete(11),
+            "is_firing": spaces.Discrete(n=2)
+        })
      
     observation_space = spaces.Box(low=-1, high=1, shape=(6,), dtype=np.float16)
     
@@ -107,7 +114,7 @@ class TurretEnv(gym.Env):
         # reward (float) : amount of reward returned after previous action
         # done (bool): whether the episode has ended, in which case further step() calls will return undefined results
         # info (dict): contains auxiliary diagnostic information (helpful for debugging, and sometimes learning)
-        return np.array(target), reward, done, { 'step': self.step_n }    
+        return np.array(target, dtype=np.float16), reward, done, { 'step': self.step_n }    
     
     
     def calc_reward(self, new_target_state: Tuple[int, int, int, int, int, int], action:TurretAction) -> float:
@@ -120,8 +127,8 @@ class TurretEnv(gym.Env):
         Returns:
             A float representing the reward for the current state of the environment.
         """
-        assert type(action) == TurretAction
-        assert type(action.is_firing) == int
+        assert type(action) == OrderedDict
+        assert type(action['is_firing']) == int
         left, top, right, bottom, frame_height, frame_width =  new_target_state
         
         frame_center_x, frame_center_y = frame_width // 2, frame_height // 2
