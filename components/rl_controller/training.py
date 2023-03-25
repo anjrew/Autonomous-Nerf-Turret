@@ -34,7 +34,7 @@ logging.info(f'{"Mocking" if args.test else "" } Forwarding controller values to
 
 current_state: Tuple[int, int, int, int, int, int] = (0,0,0,0,0,0)
 get_current_state = lambda: current_state
-dispatch_action = lambda action: print(f"Action: {action}")
+dispatch_action = lambda action: print(f"Dispatching Action: {action}")
 # Define the environment
 env = TurretEnv(get_current_state, dispatch_action)
 

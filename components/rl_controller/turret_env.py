@@ -67,8 +67,8 @@ class TurretEnv(gym.Env):
     #     })
     # Define combined action space
     action_space = spaces.Box(
-        low=np.array([-90, 0, 0, 0]),
-        high=np.array([90, 1, 10, 1]),
+        low=np.array([-90, 0, 0, 0], np.int8), # type: ignore
+        high=np.array([90, 1, 10, 1], np.int8), # type: ignore
         dtype=np.int64
     )
      
@@ -96,28 +96,29 @@ class TurretEnv(gym.Env):
         super(TurretEnv, self).__init__()
         self.episode_time = episode_step_limit
         self.target_provider = target_provider 
-        self.action_dispatcher = action_dispatcher
+        self.dispatch_action = action_dispatcher
         
 
         
-    def step(self, action: TurretAction) -> Tuple:
-        print("Stepping with action: ", action)
+    def step(self, action: np.ndarray) -> Tuple:
+
         azimuth_angle, is_clockwise, speed, is_firing = action
         is_clockwise, is_firing = bool(is_clockwise), bool(is_firing)
 
-        action: TurretAction = {
-            "azimuth_angle": azimuth_angle,
+        parsed_action: TurretAction = {
+            "azimuth_angle": int(azimuth_angle),
             "is_clockwise": is_clockwise,
-            "speed": speed,
+            "speed": int(speed),
             "is_firing": is_firing,
         }
+        self.dispatch_action(parsed_action)
         # Finish the episode if the step limit is reached
         done = self.step_n >= self.episode_time
         
         # Get the new information from the camera on the turret
         target = self.target_provider()
         
-        reward = self.calc_reward(target, action) # type: ignore
+        reward = self.calc_reward(target, parsed_action) # type: ignore
         
         self.state = {
             'target': target,
