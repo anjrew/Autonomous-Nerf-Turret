@@ -1,7 +1,9 @@
 import os
 import sys
-from typing import Callable, Optional, Tuple
+from typing import Any, Callable, Optional, Tuple
 import math
+
+import numpy as np
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/..')
 
 from nerf_turret_utils.turret_controller import TurretAction
@@ -10,12 +12,18 @@ import gym
 from gym import spaces
 from typing import TypedDict
 
-
 class TurretEnvState(TypedDict):
     previous_action: TurretAction
     target: Tuple[int,int,int,int, int, int]
-    previous_state: Optional['TurretEnvState']  # use forward reference for recursive type
+    previous_state: Optional['TurretEnvState']  # use forward reference for recursive type    
 
+class TurretObservationSpace(TypedDict):
+    left:int
+    top:int
+    right:int
+    bottom:int
+    frame_height:int
+    frame_width:int
 
 class TurretEnv(gym.Env):
     
@@ -34,22 +42,23 @@ class TurretEnv(gym.Env):
             },
             'previous_state': None
         }
+    
+    INITIAL_OBSERVATION_SPACE: TurretObservationSpace= {
+        'left': 0,
+        'top': 0,
+        'right': 0,
+        'bottom': 0,
+        'frame_height': 0,
+        'frame_width': 0,
+    }
+    
     """The state object with its initial values"""
     
     state = INITIAL_STATE
     
     action_space = spaces.Discrete(4)
-    
-    
-    observation_space = spaces.Tuple(
-            (
-                spaces.Box(low=-1, high=1, shape=(1,), dtype=float),
-                spaces.Box(low=-1, high=1, shape=(1,), dtype=float),
-                spaces.Box(low=-1, high=1, shape=(1,), dtype=float),
-                spaces.Box(low=-1, high=1, shape=(1,), dtype=float),
-            )
-        )
-    
+     
+    observation_space = spaces.Box(low=-1, high=1, shape=(6,), dtype=np.float16)
     
     """The observation space of the environment.
     This property is an instance of the `Tuple` class from the `gym.spaces` module,
@@ -78,7 +87,7 @@ class TurretEnv(gym.Env):
 
         
     def step(self, action: TurretAction) -> Tuple:
-        
+        print("Stepping with action: ", action)
         # Finish the episode if the step limit is reached
         done = self.step_n >= self.episode_time
         
@@ -98,7 +107,7 @@ class TurretEnv(gym.Env):
         # reward (float) : amount of reward returned after previous action
         # done (bool): whether the episode has ended, in which case further step() calls will return undefined results
         # info (dict): contains auxiliary diagnostic information (helpful for debugging, and sometimes learning)
-        return self.state, reward, done, { 'step': self.step_n }    
+        return np.array(target), reward, done, { 'step': self.step_n }    
     
     
     def calc_reward(self, new_target_state: Tuple[int, int, int, int, int, int], action:TurretAction) -> float:
@@ -111,6 +120,8 @@ class TurretEnv(gym.Env):
         Returns:
             A float representing the reward for the current state of the environment.
         """
+        assert type(action) == TurretAction
+        assert type(action.is_firing) == int
         left, top, right, bottom, frame_height, frame_width =  new_target_state
         
         frame_center_x, frame_center_y = frame_width // 2, frame_height // 2
@@ -119,7 +130,6 @@ class TurretEnv(gym.Env):
         
         # Get the original coordinates of the box with the height and width
         is_on_target = self.check_is_on_target(new_target_state)
-        
         is_shooting = action['is_firing']
         # Return nothing as punishment for shooting with no target or shooting off target
         if (new_target_state == self.NO_TARGET_STATE and is_shooting) \
@@ -217,10 +227,37 @@ class TurretEnv(gym.Env):
         return distance / max_distance # return the normalized distance
 
     
-    def reset(self) -> TurretEnvState:
+    def reset(self) -> Any:
         """Resets the environment to the initial state to start a new episode"""
 
         # reset environment state to initial state
         self.state = self.INITIAL_STATE
         self.step_n = 0
-        return self.state
+        
+        # Return the initial observation
+        # (
+        #     np.array([0.0]), # First continuous space
+        #     np.array([0.0]), # Second continuous space
+        #     np.array([0.0]), # Third continuous space
+        #     np.array([0.0]), # Fourth continuous space
+        # )
+        # observation = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        # observation = np.array(observation, dtype=np.float32)
+        
+        # return observation
+        # return self.INITIAL_OBSERVATION_SPACE
+        # observation = {
+        #     'left': np.array([1.0]),
+        #     'top': np.array([1.0]),
+        #     'right': np.array([1.0]),
+        #     'bottom': np.array([1.0]),
+        #     'frame_height': np.array([1.0]),
+        #     'frame_width': np.array([1.0]),
+        # }
+        
+        # left, top, right, bottom, frame_height, frame_width 
+        
+        observation = [0, 0, 0, 0, 0, 0]
+        
+        
+        return np.array(observation, dtype=np.float16)

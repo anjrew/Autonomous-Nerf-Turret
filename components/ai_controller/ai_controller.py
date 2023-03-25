@@ -90,8 +90,9 @@ logging.debug(f"\nArgs: {args}\n")
 
 TARGET_PADDING_PERCENTAGE = args.target_padding/100
 TARGET_PADDING_PERCENTAGE = args.target_padding/100
-WS_HOST = args.udp_host  # IP address of the server
-WS_PORT = args.udp_port  # Port number to listen on
+
+UDP_HOST = args.udp_host  # IP address of the server
+UDP_PORT = args.udp_port  # Port number to listen on
 
 url = f"http://{args.web_host}:{args.web_port}"
 
@@ -120,7 +121,7 @@ def try_to_bind_to_socket():
     """Try to bind to the socket and accept the connection"""
     global sock
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    server_address = (WS_HOST, WS_PORT)
+    server_address = (UDP_HOST, UDP_PORT)
     logging.info(f"Binding to host {server_address}")
     sock.bind(server_address)
 
