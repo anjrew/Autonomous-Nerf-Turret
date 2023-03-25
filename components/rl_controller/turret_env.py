@@ -9,6 +9,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/..')
 
 from nerf_turret_utils.turret_controller import TurretAction
 # import gymnasium as gym
+import gym
 from gym import spaces
 from typing import TypedDict
 
@@ -56,14 +57,20 @@ class TurretEnv(gym.Env):
     
     state = INITIAL_STATE
     
-    action_space = spaces.Dict({
-            "azimuth_angle": spaces.Box(low=-90, high=90, shape=(), dtype=int),
-            # "azimuth_angle": spaces.Discrete(181),
-            "is_clockwise": spaces.Discrete(n=2),
-            "speed": spaces.Box(low=0, high=10, shape=(), dtype=int),
-            # "speed": spaces.Discrete(11),
-            "is_firing": spaces.Discrete(n=2)
-        })
+    # action_space = spaces.Dict({
+    #         "azimuth_angle": spaces.Box(low=-90, high=90, shape=(), dtype=int),
+    #         # "azimuth_angle": spaces.Discrete(181),
+    #         "is_clockwise": spaces.Discrete(n=2),
+    #         "speed": spaces.Box(low=0, high=10, shape=(), dtype=int),
+    #         # "speed": spaces.Discrete(11),
+    #         "is_firing": spaces.Discrete(n=2)
+    #     })
+    # Define combined action space
+    action_space = spaces.Box(
+        low=np.array([-90, 0, 0, 0]),
+        high=np.array([90, 1, 10, 1]),
+        dtype=np.int64
+    )
      
     observation_space = spaces.Box(low=-1, high=1, shape=(6,), dtype=np.float16)
     
@@ -95,6 +102,15 @@ class TurretEnv(gym.Env):
         
     def step(self, action: TurretAction) -> Tuple:
         print("Stepping with action: ", action)
+        azimuth_angle, is_clockwise, speed, is_firing = action
+        is_clockwise, is_firing = bool(is_clockwise), bool(is_firing)
+
+        action: TurretAction = {
+            "azimuth_angle": azimuth_angle,
+            "is_clockwise": is_clockwise,
+            "speed": speed,
+            "is_firing": is_firing,
+        }
         # Finish the episode if the step limit is reached
         done = self.step_n >= self.episode_time
         
@@ -127,8 +143,8 @@ class TurretEnv(gym.Env):
         Returns:
             A float representing the reward for the current state of the environment.
         """
-        assert type(action) == OrderedDict
-        assert type(action['is_firing']) == int
+        # assert type(action) == OrderedDict
+        assert type(action['is_firing']) == bool
         left, top, right, bottom, frame_height, frame_width =  new_target_state
         
         frame_center_x, frame_center_y = frame_width // 2, frame_height // 2
