@@ -7,24 +7,11 @@ import math
 import numpy as np
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/..')
 
+from models import TurretEnvState, TurretObservationSpace
 from nerf_turret_utils.turret_controller import TurretAction
 # import gymnasium as gym
 import gym
 from gym import spaces
-from typing import TypedDict
-
-class TurretEnvState(TypedDict):
-    previous_action: TurretAction
-    target: Tuple[int,int,int,int, int, int]
-    previous_state: Optional['TurretEnvState']  # use forward reference for recursive type    
-
-class TurretObservationSpace(TypedDict):
-    left:int
-    top:int
-    right:int
-    bottom:int
-    frame_height:int
-    frame_width:int
 
 class TurretEnv(gym.Env):
     
@@ -44,14 +31,7 @@ class TurretEnv(gym.Env):
             'previous_state': None
         }
     
-    INITIAL_OBSERVATION_SPACE: TurretObservationSpace= {
-        'left': 0,
-        'top': 0,
-        'right': 0,
-        'bottom': 0,
-        'frame_height': 0,
-        'frame_width': 0,
-    }
+
     
     """The state object with its initial values"""
     
@@ -89,18 +69,29 @@ class TurretEnv(gym.Env):
     
     
     def __init__(self, 
-                 target_provider: Callable[[], Tuple[int, int, int, int,int, int]], 
+                 target_provider: Callable[[], TurretObservationSpace], 
                  action_dispatcher: Callable[[TurretAction], None],
                  episode_step_limit = 100 
         ) -> None:
         super(TurretEnv, self).__init__()
         self.episode_time = episode_step_limit
-        self.target_provider = target_provider 
         self.dispatch_action = action_dispatcher
         
+        def map_target() -> Tuple[int, int, int, int, int, int]:
+            target:TurretObservationSpace = target_provider()
+            return ( 
+                *target['box'],
+                target['view_dimensions'][1],
+                target['view_dimensions'][0],
+            )
+        self.target_provider = map_target 
 
         
     def step(self, action: np.ndarray) -> Tuple:
+        """
+        Makes a single step of of an experience episode dispatching an action 
+        and getting new state with a calculated reward
+        """
 
         azimuth_angle, is_clockwise, speed, is_firing = action
         is_clockwise, is_firing = bool(is_clockwise), bool(is_firing)
@@ -118,7 +109,7 @@ class TurretEnv(gym.Env):
         # Get the new information from the camera on the turret
         target = self.target_provider()
         
-        reward = self.calc_reward(target, parsed_action) # type: ignore
+        reward = self.calc_reward(target, parsed_action)
         
         self.state = {
             'target': target,
@@ -186,12 +177,14 @@ class TurretEnv(gym.Env):
 
 
     def get_center_coords(self, frame_height, frame_width):
+        """Calculates center coordinates of the camera frame"""
         center_x = frame_width // 2
         center_y = frame_height // 2
         return center_x,center_y
     
 
     def check_center_within_bounds(self, left, top, right, bottom, center_x, center_y) -> bool:
+        """Returns true when the Camera central crosshair is within the target bounding box"""
         return top <= center_y <= bottom and left <= center_x <= right
 
 
@@ -256,32 +249,8 @@ class TurretEnv(gym.Env):
 
         # reset environment state to initial state
         self.state = self.INITIAL_STATE
-        self.step_n = 0
-        
-        # Return the initial observation
-        # (
-        #     np.array([0.0]), # First continuous space
-        #     np.array([0.0]), # Second continuous space
-        #     np.array([0.0]), # Third continuous space
-        #     np.array([0.0]), # Fourth continuous space
-        # )
-        # observation = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-        # observation = np.array(observation, dtype=np.float32)
-        
-        # return observation
-        # return self.INITIAL_OBSERVATION_SPACE
-        # observation = {
-        #     'left': np.array([1.0]),
-        #     'top': np.array([1.0]),
-        #     'right': np.array([1.0]),
-        #     'bottom': np.array([1.0]),
-        #     'frame_height': np.array([1.0]),
-        #     'frame_width': np.array([1.0]),
-        # }
-        
-        # left, top, right, bottom, frame_height, frame_width 
+        self.step_n = 0 
         
         observation = [0, 0, 0, 0, 0, 0]
-        
         
         return np.array(observation, dtype=np.float16)

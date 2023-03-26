@@ -5,7 +5,6 @@ import os
 import sys
 from typing import List, Optional
 
-
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/..')
 
 # Third-party imports
@@ -18,6 +17,7 @@ import numpy as np
 # Local/application-specific imports
 from argparse import ArgumentParser
 from nerf_turret_utils.args_utils import map_log_level, str2bool
+from models import CameraVisionDetections, CameraVisionTarget
 from camera_vision_utils import get_face_location_details, get_target_id, find_faces_in_frame, draw_face_box, draw_cross_hair
 from yolo_object_detection.object_detection import YoloObjectDetector
 from yolo_object_detection.object_detection import ObjectDetector
@@ -161,7 +161,7 @@ while True:
         compressed_image = cv2.resize(frame, (0, 0), fx=1/image_compression, fy=1/image_compression) #type: ignore
 
         if not skip_frame:
-            targets = []
+            targets:List[CameraVisionTarget] = []
             if args.detect_faces:
                 face_locations = find_faces_in_frame(compressed_image)
 
@@ -169,7 +169,7 @@ while True:
         # Loop through each face in this frame of video that were detected
         for face_location in face_locations:
             # Scale back up face locations since the frame we detected in was scaled to 1/4 size
-            target = get_face_location_details(image_compression, face_location)
+            target: CameraVisionTarget = get_face_location_details(image_compression, face_location)
             
             if args.id_targets:
                 target["id"]  = get_target_id(frame, target["box"], target_names, target_images)
@@ -180,8 +180,7 @@ while True:
             results =  object_detector.detect(compressed_image, args.object_confidence) #type: ignore
             for result in results:
 
-                # target = { "box": result["box"], "type": result["class_name"], "mask": result["mask"].tolist()}
-                target = { "box": (np.array(result["box"]) * image_compression).tolist(), "type": result["class_name"],}
+                target: CameraVisionTarget = { "id": None, "mask": None, "box": (np.array(result["box"]) * image_compression).tolist(), "type": result["class_name"],}
                 targets.append(target)
                 
         if not HEADLESS: ## Draw targets
@@ -208,7 +207,7 @@ while True:
                     
                     class_color = object_detector.get_color_for_class_name(target['type'])
 
-                    if 'mask' in target:
+                    if 'mask' in target and target['mask'] is not None:
                         frame = draw_object_mask(frame, class_color, np.array(target['mask']))
                     
                     if 'box' in target:
@@ -222,10 +221,10 @@ while True:
         if len(targets) > 0:
             center_x = frame_width // 2
             center_y = frame_height // 2
-            data = {
+            data: CameraVisionDetections = {
                 "targets": targets,
-                "heading_vect": [center_x, center_y],
-                "view_dimensions": [frame_width, frame_height],
+                "heading_vect": (center_x, center_y),
+                "view_dimensions": (frame_width, frame_height),
             }
             json_data = json.dumps(data).encode('utf-8') # Encode the JSON object as a byte string
             
