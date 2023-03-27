@@ -16,7 +16,8 @@ from stable_baselines3 import PPO
 from stable_baselines3.common.env_checker import check_env
 
 # Local application imports
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/..')
+file_directory = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(file_directory + '/..')
 from camera_vision.models import CameraVisionDetections, CameraVisionTarget
 from nerf_turret_utils.turret_controller import TurretAction
 from turret_env import TurretEnv
@@ -36,7 +37,7 @@ parser.add_argument("--web-host", help="Set the web server server hostname. to s
 
 parser.add_argument("--test", "-t", help="For testing it will not send requests to the driver.", action="store_true")
 
-parser.add_argument("--delay", "-d", help="Delay to limit the data flow into the websocket server.", default=0, type=int)
+parser.add_argument("--delay", "-d", help="Delay to limit the data flow into the websocket server.", default=0.2, type=float)
 parser.add_argument("--benchmark", "-b",help="Wether to measure the script performance and output in the logs.", action='store_true', default=False)
 parser.add_argument('--target-type', '-ty', type=lambda x: str(x.lower()), default='person', 
                     help="""
@@ -72,14 +73,6 @@ def try_to_bind_to_socket():
 
     logging.info(f'Connected by {server_address}')
 
-    # obs = env.reset()
-    # n_steps = 10
-    # for _ in range(n_steps):
-    #     # Random action
-    #     action = env.action_space.sample()
-    #     obs, reward, done, info = env.step(action)
-    #     if done:
-    #         obs = env.reset()
         
 current_state: TurretObservationSpace = {
     'box': (0,0,0,0),
@@ -91,7 +84,10 @@ get_current_state = lambda: current_state
 
 def dispatch_action(action: TurretAction) -> None:
     if not args.test: 
-        requests.post(url, json=action)
+        try:
+            requests.post(url, json=action)
+        except requests.exceptions.ConnectionError as e:
+            logging.error(f"Error sending request to {url}: {e}")
      
 # Define the environment
 env = TurretEnv(get_current_state, dispatch_action)
@@ -101,10 +97,9 @@ check_env(env, warn=True)
 run_id = datetime.now().strftime('%H%M%S%Y%m%d') # type: ignore
 
 
-
 def run_model_training_process():
     # Define the PPO model
-    model = PPO('MlpPolicy', env, verbose=1, tensorboard_log=f"./turret_tensorboard/{run_id}")
+    model = PPO('MlpPolicy', env, verbose=2, tensorboard_log=f"{file_directory}/turret_tensorboard/{run_id}")
         # Train the model
     model.learn(total_timesteps=10000)
 

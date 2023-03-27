@@ -1,6 +1,7 @@
 from collections import OrderedDict
 import os
 import sys
+import time
 from typing import Any, Callable, Optional, Tuple
 import math
 
@@ -71,11 +72,13 @@ class TurretEnv(gym.Env):
     def __init__(self, 
                  target_provider: Callable[[], TurretObservationSpace], 
                  action_dispatcher: Callable[[TurretAction], None],
-                 episode_step_limit = 100 
+                 episode_step_limit:int = 10_000_000,
+                 step_delay_s :float = 0.1 
         ) -> None:
         super(TurretEnv, self).__init__()
         self.episode_time = episode_step_limit
         self.dispatch_action = action_dispatcher
+        self.step_delay_s = step_delay_s
         
         def map_target() -> Tuple[int, int, int, int, int, int]:
             target:TurretObservationSpace = target_provider()
@@ -92,7 +95,7 @@ class TurretEnv(gym.Env):
         Makes a single step of of an experience episode dispatching an action 
         and getting new state with a calculated reward
         """
-
+        time.sleep(self.step_delay_s)
         azimuth_angle, is_clockwise, speed, is_firing = action
         is_clockwise, is_firing = bool(is_clockwise), bool(is_firing)
 
@@ -104,7 +107,8 @@ class TurretEnv(gym.Env):
         }
         self.dispatch_action(parsed_action)
         # Finish the episode if the step limit is reached
-        done = self.step_n >= self.episode_time
+        # done = self.step_n >= self.episode_time
+        done = False
         
         # Get the new information from the camera on the turret
         target = self.target_provider()
@@ -250,6 +254,7 @@ class TurretEnv(gym.Env):
         # reset environment state to initial state
         self.state = self.INITIAL_STATE
         self.step_n = 0 
+        # self.done = False
         
         observation = [0, 0, 0, 0, 0, 0]
         
