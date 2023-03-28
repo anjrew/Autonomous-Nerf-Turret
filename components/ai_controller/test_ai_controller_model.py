@@ -52,8 +52,8 @@ def mock_detection() -> CameraVisionDetection:
 def test_ai_controller_init(mock_args):
     ai_controller = AiController(mock_args.__dict__)
 
-    assert ai_controller.args == mock_args
-    assert ai_controller.search_state['active'] == mock_args.search
+    assert ai_controller.args == mock_args.__dict__
+    assert ai_controller.search_state['active'] == mock_args.__dict__['search']
 
 
 def test_get_action_with_valid_detection(mock_args, mock_detection):

@@ -318,13 +318,15 @@ def test_map_action_object_to_vector():
     
     # Test case 1: all values are valid
     action_dict:TurretAction = {
-        "azimuth_angle": 90,
+        "azimuth_angle": env.ACTION_SPACE_RANGE_OUT['azimuth_angle'][1],
         "is_clockwise": True,
-        "speed": 50,
+        "speed": 5,
         "is_firing": False
     }
-    expected_output = np.array((90, 1, 50, 0))
-    assert np.array_equal(env.map_action_object_to_vector(action_dict) ,expected_output)
+    expected_output = np.array((1, 1, 0.5, 0))
+    result = env.map_action_object_to_vector(action_dict)
+    
+    assert np.array_equal(result ,expected_output)
 
     # Test case 2: is_clockwise and is_firing are strings
     action_dict:TurretAction  = {
