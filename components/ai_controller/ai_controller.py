@@ -2,19 +2,20 @@ import argparse
 import logging
 import socket
 import json
+from typing import Optional
 import requests
 import time
 import traceback
 import os
 import sys
+
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/..')
 
-
+from camera_vision.models import CameraVisionDetection
+from ai_controller_model import AiController
 from nerf_turret_utils.turret_controller import TurretAction
 from nerf_turret_utils.logging_utils import map_log_level
-from nerf_turret_utils.image_utils import get_frame_box_dimensions_delta
-from nerf_turret_utils.number_utils import map_range, assert_in_int_range
-from ai_controller_utils import slow_start_fast_end_smoothing, get_priority_target_index, get_elevation_speed, get_elevation_clockwise
+from nerf_turret_utils.number_utils import assert_in_int_range
 
 
 parser = argparse.ArgumentParser("AI Controller for the Nerf Turret")
@@ -76,7 +77,6 @@ parser.add_argument('--targets', nargs='+', type=lambda x: str(x.lower().replace
 args = parser.parse_args()
 
 
-
 if args.target_type != 'face' and len(args.targets) > 0 :
     raise argparse.ArgumentTypeError(
         f'You can only track specific targets if the target type is set to \'face\', but it is set to \'{args.target_type}\'')
@@ -86,7 +86,6 @@ logging.basicConfig(level=args.log_level)
 
 logging.debug(f"\nArgs: {args}\n")
 
-TARGET_PADDING_PERCENTAGE = args.target_padding/100
 TARGET_PADDING_PERCENTAGE = args.target_padding/100
 
 UDP_HOST = args.udp_host  # IP address of the server
@@ -100,20 +99,16 @@ if args.targets:
     logging.info(f'Tracking targets with ids: {args.targets}')
 
 # Cache the controller state to prevent sending the same values over and over again
-cached_controller_state: TurretAction =  {
+cached_action: TurretAction =  {
     'azimuth_angle': 0, # The angle of the gun in the horizontal plane adjustment
     'is_clockwise': False,
     'speed': 0,
     'is_firing': False,
 } 
 
-already_sent_no_targets=False # Flag to prevent sending the same message over and over again
-sock = None
+sock: Optional[socket.socket] = None
+controller = AiController(args)
 
-search = {
-    'clockwise': True,
-    'heading': 0,
-}
     
 def try_to_bind_to_socket():
     """Try to bind to the socket and accept the connection"""
@@ -143,115 +138,27 @@ while True:
             if not data:
                 continue
             
-            json_data = None
+            object_detections:Optional[CameraVisionDetection] = None
             try:
-                json_data = json.loads(data.decode('utf-8'))
+                object_detections = json.loads(data.decode('utf-8'))
+                if not object_detections:
+                    raise  ValueError('Object detection failed')
             except json.JSONDecodeError as e:
                 logging.error(f"Error decoding JSON: {e}")
                 continue
+            except ValueError as e:
+                logging.error(e)
+                continue
             
-            # Check if there are any targets in the frame
-            if len(json_data['targets']) > 0:
-                logging.debug('Data obtained:' + json.dumps(data.decode('utf-8')))
-                already_sent_no_targets=False 
-                center_x, center_y =  json_data['heading_vect']
-                target_index = get_priority_target_index(json_data['targets'], args.target_type, args.targets)
-                
-                if target_index is None:
-                    logging.debug(f'No valid target found from type {args.target_type} with ids {args.targets}')
-                    # If no valid target was found, then just move onto the next frame
-                    continue
-                
-                target = json_data['targets'][target_index] # Extract the first target from the targets list
-                
-                logging.debug('Targeting:' + json.dumps(target))
-
-                left, top, right, bottom = target['box']
-                
-                # calculate box coordinates
-                box_center_x = (left + right) / 2
-                box_center_y = (top + bottom) / 2
-                box_width = right - left
-                box_height = bottom - top
-                
-                view_width = json_data['view_dimensions'][0]
-                view_height = json_data['view_dimensions'][1]
-
-                # Get movement vector to align gun with center of target
-                movement_vector = get_frame_box_dimensions_delta(left, top, right, bottom, view_width, view_height)
-                
-                # Add padding as a percentage of the original dimensions
-                padding_width = box_width * TARGET_PADDING_PERCENTAGE
-                padding_height = box_height * TARGET_PADDING_PERCENTAGE
-
-                # Calculate box coordinates
-                padded_left = left + padding_width
-                padded_right = right - padding_width
-                padded_top = top + padding_height
-                padded_bottom = bottom - padding_height
-                    
-                is_on_target = False  
-                if padded_top <= center_y <= padded_bottom and padded_left <= center_x <= padded_right:
-                    is_on_target=True
-                
-                current_distance_from_the_middle = movement_vector[0]
-                max_distance_from_the_middle_left = -(view_width / 2)
-                max_distance_from_the_middle_right = view_width / 2
+            action = controller.get_action(object_detections)
             
-                predicted_azimuth_angle = map_range(
-                    current_distance_from_the_middle - args.accuracy_threshold_x,
-                    max_distance_from_the_middle_left, 
-                    max_distance_from_the_middle_right ,
-                    -args.max_azimuth_angle ,
-                    args.max_azimuth_angle
-                )
-                azimuth_speed_adjusted = min(predicted_azimuth_angle , args.x_speed)
-                smoothed_speed_adjusted_azimuth = slow_start_fast_end_smoothing(azimuth_speed_adjusted, float(args.x_smoothing) + 1.0, 90)
-                azimuth_formatted = round(smoothed_speed_adjusted_azimuth, args.azimuth_dp)
-
-                controller_state: TurretAction = {
-                    'azimuth_angle': int(azimuth_formatted),
-                    'is_clockwise': get_elevation_clockwise(movement_vector),
-                    'speed': get_elevation_speed(args, view_height, movement_vector, target['box']),
-                    'is_firing': is_on_target,
-                }
-                cached_controller_state = controller_state
-                
-                logging.debug("Sending controller state: " + json.dumps(controller_state))
-                
-                if not args.test:
-                    try:
-                        requests.post(url, json=controller_state)       
-                    except:
-                        logging.error("Failed to send controller state to server.")
-
-            else:
-                if args.search:
-                   
-                    requests.post(url, json={
-                        **cached_controller_state,
-                        'azimuth_angle': 1 if search["clockwise"] else -1,
-                        'speed': 0,
-                        'is_firing': False,
-                    }) 
-                      
-                    if search['heading'] > 180:
-                        search['heading'] = 0
-                        search["clockwise"] = not search["clockwise"]
-                    else:
-                        search['heading'] += 1                  
-                        
-                    
-                elif not already_sent_no_targets and not args.test:
-                    ## No targets detected, so stop the gun but hold its current position
-                    requests.post(url, json={
-                        **cached_controller_state,
-                        'speed': 0,
-                        'is_firing': False,
-                    })      
-                    already_sent_no_targets=True 
+            if not args.test and action != cached_action:
+                # Only send requests on new action states    
+                requests.post(url, json=action)      
+            
     
     except KeyboardInterrupt as e:
+        # On a keyboard interrupt
         requests.post(url, json={
             'azimuth_angle': 0,
             'speed': 0,

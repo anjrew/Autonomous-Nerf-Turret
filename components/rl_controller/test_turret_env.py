@@ -47,7 +47,7 @@ def test_turret_environment_step_no_target():
     assert info['step'] == 1
 
 def test_turret_environment_step_right_on_target_and_firing():
-    env = TurretEnv(dummy_target_provider((25, 25, 75, 75, 100, 100)), dummy_action_dispatcher)
+    env = TurretEnv(dummy_target_provider({ 'box': (25, 25, 75, 75,), 'view_dimensions': (100, 100)}), dummy_action_dispatcher)
     # test_action: TurretAction = {
     #     'azimuth_angle': 90,
     #     'is_clockwise': False,

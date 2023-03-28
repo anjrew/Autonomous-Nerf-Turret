@@ -18,7 +18,7 @@ from stable_baselines3.common.env_checker import check_env
 # Local application imports
 file_directory = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(file_directory + '/..')
-from camera_vision.models import CameraVisionDetections, CameraVisionTarget
+from camera_vision.models import CameraVisionDetection, CameraVisionTarget
 from nerf_turret_utils.turret_controller import TurretAction
 from turret_env import TurretEnv
 from models import TurretObservationSpace
@@ -138,7 +138,7 @@ def listen_for_targets(first_target_found_emitter: Callable):
             if not data:
                 continue
             
-            json_data:Optional[CameraVisionDetections] = None
+            json_data:Optional[CameraVisionDetection] = None
             try:
                 json_data = json.loads(data.decode('utf-8'))
             except json.JSONDecodeError as e:

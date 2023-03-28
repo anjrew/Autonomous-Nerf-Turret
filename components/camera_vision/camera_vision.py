@@ -17,7 +17,7 @@ import numpy as np
 # Local/application-specific imports
 from argparse import ArgumentParser
 from nerf_turret_utils.args_utils import map_log_level, str2bool
-from models import CameraVisionDetections, CameraVisionTarget
+from models import CameraVisionDetection, CameraVisionTarget
 from camera_vision_utils import get_face_location_details, get_target_id, find_faces_in_frame, draw_face_box, draw_cross_hair
 from yolo_object_detection.object_detection import YoloObjectDetector
 from yolo_object_detection.object_detection import ObjectDetector
@@ -221,7 +221,7 @@ while True:
         if len(targets) > 0:
             center_x = frame_width // 2
             center_y = frame_height // 2
-            data: CameraVisionDetections = {
+            data: CameraVisionDetection = {
                 "targets": targets,
                 "heading_vect": (center_x, center_y),
                 "view_dimensions": (frame_width, frame_height),

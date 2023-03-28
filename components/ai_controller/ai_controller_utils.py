@@ -1,4 +1,5 @@
 from typing import Any, List, Optional, Tuple
+from camera_vision.models import CameraVisionTarget
 from nerf_turret_utils.number_utils import map_range
     
     
@@ -23,7 +24,7 @@ def slow_start_fast_end_smoothing(x: float, p: float, max_value: int) -> float:
     return output if x >= 0 else -abs(output)
 
 
-def get_priority_target_index(targets: List[dict], type: str,  target_ids: List[str]=[]) -> Optional[int]:
+def get_priority_target_index(targets: List[CameraVisionTarget], type: str,  target_ids: List[str]=[]) -> Optional[int]:
     """
     Returns the index of the highest priority target in the `targets` list based on the input `ids` and `type`.
 

@@ -2,6 +2,8 @@ from typing import List, Optional, Tuple, TypedDict
 
 
 class CameraVisionTarget(TypedDict):
+    """Object representing a target detected by the camera vision component"""
+    
     id: Optional[str]
     """An optional identifier"""
     
@@ -14,7 +16,9 @@ class CameraVisionTarget(TypedDict):
     mask: Optional[List[int]]
     """An optional segmentation mask"""
 
-class CameraVisionDetections(TypedDict):
+
+class CameraVisionDetection(TypedDict):
+    """Object representing a detection by the camera vision component"""
     
     targets: List[CameraVisionTarget]
     """A list of target detections"""
