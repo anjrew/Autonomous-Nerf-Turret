@@ -5,7 +5,12 @@ import json
 import logging
 from typing import List, Optional, Tuple
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/..')
+upper_dir = os.path.dirname(os.path.abspath(__file__)) + '/..'
+sys.path.append(upper_dir)
+root_dir = os.path.dirname(os.path.abspath(__file__)) + '/../..'
+sys.path.append(root_dir)
+curr_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(curr_dir)
 
 from nerf_turret_utils.turret_controller import TurretAction
 from camera_vision.models import CameraVisionDetection, CameraVisionTarget
@@ -37,11 +42,13 @@ class AiController:
     """The state of the search behavior of the turret"""
     
     
-    def __init__(self, args: Namespace):
+    def __init__(self, args: dict):
         """Initialize the AiController with the given arguments"""
         self.args = args
-        args.target_padding = args.target_padding/100
-        self.search_state['active'] = args.search
+        self.args['target_padding'] = args['target_padding']/100
+        self.search_state['active'] = args['search']
+        
+        self.args['target_ids'] =  args.get('targets') or args.get('target_ids') or []
       
       
     def get_action(self, detection: CameraVisionDetection) -> TurretAction:
@@ -55,7 +62,7 @@ class AiController:
             target_index = self.get_priority_target_index(detection['targets'])
             
             if target_index is None:
-                logging.debug(f'No valid target found from type {args.target_type} with ids {args.targets}')
+                logging.debug(f'No valid target found from type {args["target_type"]} with ids {args["targets"]}')
                 # If no valid target was found, then just move onto the next frame
                 return self.handle_no_target(self.search_state)
             
@@ -63,17 +70,26 @@ class AiController:
             
                 target: CameraVisionTarget = detection['targets'][target_index] # Extract the first target from the targets list
                 
-                logging.debug('Targeting:' + json.dumps(target))
+                if self.is_void_target(target, detection['view_dimensions']):
+                    return self.handle_no_target(self.search_state)
+                
+                else:
+                    logging.debug('Targeting:' + json.dumps(target))
 
-                return self.get_action_for_target(target, detection['view_dimensions'])
+                    return self.get_action_for_target(target, detection['view_dimensions'])
 
         else:
             return self.handle_no_target(self.search_state)
            
            
+    def is_void_target(self, target: CameraVisionTarget, frame: Tuple[int,int]) -> bool:
+        """Check if the target is a void target"""
+        return target['box'] == (0,0,0,0) and frame == (0,0)
+    
                 
     def get_action_for_target(self, target: CameraVisionTarget, frame: Tuple[int,int]) -> TurretAction:
         """Handle the case where a target is found in the frame"""
+        
         args = self.args
 
         view_width = frame[0]
@@ -91,8 +107,8 @@ class AiController:
         movement_vector = get_frame_box_dimensions_delta(left, top, right, bottom, view_width, view_height)
         
         # Add padding as a percentage of the original dimensions
-        padding_width = box_width * args.target_padding
-        padding_height = box_height * args.target_padding
+        padding_width = box_width * args['target_padding']
+        padding_height = box_height * args['target_padding']
 
         # Calculate box coordinates
         padded_left = left + padding_width
@@ -109,15 +125,15 @@ class AiController:
         max_distance_from_the_middle_right = view_width / 2
     
         predicted_azimuth_angle = map_range(
-            current_distance_from_the_middle - args.accuracy_threshold_x,
+            current_distance_from_the_middle - args['accuracy_threshold_x'],
             max_distance_from_the_middle_left, 
             max_distance_from_the_middle_right ,
-            -args.max_azimuth_angle ,
-            args.max_azimuth_angle
+            -args['max_azimuth_angle'] ,
+            args['max_azimuth_angle']
         )
-        azimuth_speed_adjusted = min(predicted_azimuth_angle , args.x_speed)
-        smoothed_speed_adjusted_azimuth = slow_start_fast_end_smoothing(azimuth_speed_adjusted, float(args.x_smoothing) + 1.0, 90)
-        azimuth_formatted = round(smoothed_speed_adjusted_azimuth, args.azimuth_dp)
+        azimuth_speed_adjusted = min(predicted_azimuth_angle , args['x_speed'])
+        smoothed_speed_adjusted_azimuth = slow_start_fast_end_smoothing(azimuth_speed_adjusted, float(args['x_smoothing']) + 1.0, 90)
+        azimuth_formatted = round(smoothed_speed_adjusted_azimuth, args['azimuth_dp'])
 
         action: TurretAction = {
             'azimuth_angle': int(azimuth_formatted),
@@ -160,4 +176,4 @@ class AiController:
             
     def get_priority_target_index(self, targets: List[CameraVisionTarget]) -> Optional[int]:
         """Get the index of the target that has the highest priority"""
-        return  get_priority_target_index(targets, self.args.target_type, self.args.target_ids)
+        return  get_priority_target_index(targets, self.args['target_type'], self.args['target_ids'])

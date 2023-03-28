@@ -105,31 +105,8 @@ class TurretEnv(gym.Env):
             )
             
         self.target_provider = map_target 
-
-        def map_to_dispatch_action(parsed_action: TurretAction): 
-            
-            mapped_action: TurretAction = {
-                "azimuth_angle": int(map_range(
-                    parsed_action["azimuth_angle"],
-                    self.ACTION_SPACE_RANGE_IN["azimuth_angle"][0],
-                    self.ACTION_SPACE_RANGE_IN["azimuth_angle"][1], 
-                    self.ACTION_SPACE_RANGE_OUT["azimuth_angle"][0], 
-                    self.ACTION_SPACE_RANGE_OUT["azimuth_angle"][1]
-                )),
-                "is_clockwise": parsed_action["is_clockwise"],
-                "speed": int(map_range(
-                    parsed_action["speed"], 
-                    self.ACTION_SPACE_RANGE_IN["speed"][0], 
-                    self.ACTION_SPACE_RANGE_IN["speed"][1], 
-                    self.ACTION_SPACE_RANGE_OUT["speed"][0], 
-                    self.ACTION_SPACE_RANGE_OUT["speed"][1]
-                )),
-                "is_firing": parsed_action["is_firing"]
-            }
-            action_dispatcher(mapped_action)
-
              
-        self.dispatch_action = map_to_dispatch_action
+        self.dispatch_action = lambda x: action_dispatcher(self.map_to_dispatch_action(x))
         
     def step(self, action: np.ndarray) -> Tuple:
         """
@@ -163,6 +140,30 @@ class TurretEnv(gym.Env):
         # info (dict): contains auxiliary diagnostic information (helpful for debugging, and sometimes learning)
         return np.array(target, dtype=np.float16), reward, done, { 'step': self.step_n } 
 
+    
+    def map_to_dispatch_action(self, parsed_action: TurretAction): 
+            
+            mapped_action: TurretAction = {
+                "azimuth_angle": int(map_range(
+                    parsed_action["azimuth_angle"],
+                    self.ACTION_SPACE_RANGE_IN["azimuth_angle"][0],
+                    self.ACTION_SPACE_RANGE_IN["azimuth_angle"][1], 
+                    self.ACTION_SPACE_RANGE_OUT["azimuth_angle"][0], 
+                    self.ACTION_SPACE_RANGE_OUT["azimuth_angle"][1]
+                )),
+                "is_clockwise": parsed_action["is_clockwise"],
+                "speed": int(map_range(
+                    parsed_action["speed"], 
+                    self.ACTION_SPACE_RANGE_IN["speed"][0], 
+                    self.ACTION_SPACE_RANGE_IN["speed"][1], 
+                    self.ACTION_SPACE_RANGE_OUT["speed"][0], 
+                    self.ACTION_SPACE_RANGE_OUT["speed"][1]
+                )),
+                "is_firing": parsed_action["is_firing"]
+            }
+            return mapped_action
+
+
 
     def map_action_vector_to_object(self, action: np.ndarray) -> TurretAction:
         """Takes a raw output from the action space and maps it to a object."""
@@ -183,9 +184,24 @@ class TurretEnv(gym.Env):
     
     def map_action_object_to_vector(self, action: TurretAction) -> np.ndarray:
         """Takes a object and maps it to a raw output for the action space."""
-        azimuth_angle = action["azimuth_angle"]
+        azimuth_angle = map_range(
+                    action["azimuth_angle"],
+                    self.ACTION_SPACE_RANGE_OUT["azimuth_angle"][0],
+                    self.ACTION_SPACE_RANGE_OUT["azimuth_angle"][1], 
+                    self.ACTION_SPACE_RANGE_IN["azimuth_angle"][0], 
+                    self.ACTION_SPACE_RANGE_IN["azimuth_angle"][1]
+                )
+        
         is_clockwise = int(action["is_clockwise"])
-        speed = action["speed"]
+        
+        
+        speed = map_range(
+                    action["speed"],
+                    self.ACTION_SPACE_RANGE_OUT["speed"][0],
+                    self.ACTION_SPACE_RANGE_OUT["speed"][1], 
+                    self.ACTION_SPACE_RANGE_IN["speed"][0], 
+                    self.ACTION_SPACE_RANGE_IN["speed"][1]
+                )
         is_firing = int(action["is_firing"])
 
         parsed_action = np.array(( azimuth_angle, is_clockwise, speed, is_firing))

@@ -54,7 +54,11 @@ parser.add_argument("--time-steps", "-ts", help="The amount of training timestep
 parser.add_argument("--model-save-frequency", "-msf", help="The amount of training timesteps.", type=int, default=30)
 
 parser.add_argument("--delay", "-d", help="Delay to limit the data flow into the websocket server.", default=0.3, type=float)
+
+parser.add_argument("--benchmark", "-b",help="Wether to measure the script performance and output in the logs.", action='store_true', default=False)
+
 args = parser.parse_args()
+
 logging.basicConfig(level=args.log_level)
 logging.debug(f"\nArgs: {args}\n")
 url = f"http://{args.web_host}:{args.web_port}"
@@ -105,8 +109,9 @@ def try_to_bind_to_socket() -> socket.socket:
     return sock
 
 
-def listen_for_targets(controller: AiController, first_target_found_emitter: Callable, set_current_state: Callable[[TargetAndFrame],None]):
+def listen_for_targets(controller: AiController, first_target_found_emitter: Callable, set_current_state: Callable[[TargetAndFrame], None]):
     """Listen for targets and store them in a global variable ready for the controller to use."""
+    sock: Optional[socket.socket] = None
     
     first_found =  False
     while True:
@@ -116,7 +121,7 @@ def listen_for_targets(controller: AiController, first_target_found_emitter: Cal
             logging.debug('Benchmarking loop: ' + str(time.time() - start_time) + ' seconds')
             start_time = time.time()
         if not sock:
-            try_to_bind_to_socket()
+            sock = try_to_bind_to_socket()
         
         else:
                  
@@ -154,7 +159,7 @@ def listen_for_targets(controller: AiController, first_target_found_emitter: Cal
                 set_current_state(NO_TARGET_STATE)
 
 
-def create_expert():
+def create_expert() -> AiController:
     """Create the expert which will train the policy."""
     args =  Namespace(
         target_padding=10, 
@@ -171,10 +176,10 @@ def create_expert():
         x_smoothing=1, 
         azimuth_dp=1
     )
-    return AiController(args)
+    return AiController(args.__dict__)
 
 
-def sample_expert_transitions(expert: AiController):   
+def sample_expert_transitions(expert: AiController, env: TurretEnv):   
     """Sample expert transitions using the expert policy to gain experience."""
     
     step_limit = 10_000
@@ -186,12 +191,15 @@ def sample_expert_transitions(expert: AiController):
     infos: np.ndarray = np.array([])
     terminal: bool = False
     rews: np.ndarray = np.array([])
+    
     for _ in range(step_limit):
         
-        action = expert.get_action_for_target(current_state['target'], current_state['view_dimensions'])
-        
-        mapped_action = env.map_action_object_to_vector(action)
-        
+        mapped_action = np.array([0,0,0,0,0,0])
+        if current_state != env.NO_TARGET_STATE:
+            action = expert.get_action_for_target(current_state['target'], current_state['view_dimensions'])
+            mapped_action = env.map_action_object_to_vector(action)
+       
+            
         observation, reward, done, info  = env.step(mapped_action)
         
         obs = np.append(obs, observation)
@@ -235,20 +243,34 @@ def create_env() -> TurretEnv:
     return env
 
 
-sock: Optional[socket.socket] = None
+
 
 expert: AiController = create_expert()
 
-transitions = sample_expert_transitions(expert)
+environment = create_env()
 
 env = create_env()
+
+# Create threads for both functions
+experience_episode_gathering = threading.Thread(target=sample_expert_transitions, args=(expert, environment))
+server_thread = threading.Thread(
+    target=listen_for_targets, 
+    args=(expert , lambda: experience_episode_gathering.start(), lambda x: set_current_state(x))
+)
+
+server_thread.start()
+
+while not experience_episode_gathering.is_alive():
+    logging.info('Waiting for experience gathering thread to start')
+
+experience_episode_gathering.join()
 
 rng = np.random.default_rng(0)
 
 bc_trainer = bc.BC(
     observation_space=env.observation_space,
     action_space=env.action_space,
-    demonstrations=transitions,
+    demonstrations=experience_episode_gathering.result, # type: ignore
     rng=rng,
 )
 
@@ -257,12 +279,6 @@ bc_trainer.train(n_epochs=1)
 
 
 eval_func(env, bc_trainer)
-
-
-
-
-
-
 
 
 
@@ -279,9 +295,3 @@ eval_func(env, bc_trainer)
 
 
 
-# Create threads for both functions
-# experience_episode_gathering = threading.Thread(target=sample_expert_transitions)
-# model_training_thread = threading.Thread(target=run_model_training_process)
-# server_thread = threading.Thread(target=listen_for_targets, args=(lambda: model_training_thread.start(),))
-
-# server_thread.start()

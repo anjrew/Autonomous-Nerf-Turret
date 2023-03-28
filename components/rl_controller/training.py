@@ -18,6 +18,7 @@ from stable_baselines3.common.env_checker import check_env
 # Local application imports
 file_directory = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(file_directory + '/..')
+
 from camera_vision.models import CameraVisionDetection, CameraVisionTarget
 from nerf_turret_utils.turret_controller import TurretAction
 from turret_env import TurretEnv
@@ -132,7 +133,7 @@ def listen_for_targets(first_target_found_emitter: Callable):
         else:
                  
             # Receive data from a client
-            data, addr = sock.recvfrom(1024) # type: ignore
+            data, _ = sock.recvfrom(1024) # type: ignore
             if not data:
                 continue
             

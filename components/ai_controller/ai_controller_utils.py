@@ -47,6 +47,7 @@ def get_priority_target_index(targets: List[CameraVisionTarget], type: str,  tar
         index = get_priority_target_index(targets, ids, type)
         # Returns 1 (index of the "002" target in the `targets` list)
     """
+    
     if len(target_ids) > 0: # If there are target IDs just check if the target IDs face is in the list
         assert type == "face", "The `type` argument must be 'face' if the `ids` argument is not empty, as these are face IDs."
         for i, target in enumerate(targets):
@@ -90,10 +91,10 @@ def get_elevation_speed(args: Any, view_height:int, movement_vector:Tuple, targe
     if top == 0:
         return 1 # Do this of the target is to the edge of the camera view but filling it up
     
-    elevation_speed_adjusted = map_range(abs_movement_vector - args.accuracy_threshold_y, 0, max_elevation, 0 , args.max_elevation_speed) * float(args.y_speed)
+    elevation_speed_adjusted = map_range(abs_movement_vector - args['accuracy_threshold_y'], 0, max_elevation, 0 , args['max_elevation_speed']) * float(args['y_speed'])
     # TODO: implement a smoothing function to smooth out the speed
     # smooth_elevation_speed_adjusted = min(0,slow_start_fast_end_smoothing(elevation_speed_adjusted, float(args.y_smoothing) + 1.0, 10))                
-    final_speed = round(elevation_speed_adjusted / 2 , args.elevation_dp)
+    final_speed = round(elevation_speed_adjusted / 2 , args['elevation_dp'])
     return int(final_speed)
 
 
