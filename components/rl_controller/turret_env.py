@@ -10,7 +10,8 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/..')
 
 from models import TurretEnvState, TurretObservationSpace
 from nerf_turret_utils.turret_controller import TurretAction
-# import gymnasium as gym
+from nerf_turret_utils.number_utils  import map_range
+
 import gym
 from gym import spaces
 
@@ -38,19 +39,36 @@ class TurretEnv(gym.Env):
     
     state = INITIAL_STATE
     
-    # action_space = spaces.Dict({
-    #         "azimuth_angle": spaces.Box(low=-90, high=90, shape=(), dtype=int),
-    #         # "azimuth_angle": spaces.Discrete(181),
-    #         "is_clockwise": spaces.Discrete(n=2),
-    #         "speed": spaces.Box(low=0, high=10, shape=(), dtype=int),
-    #         # "speed": spaces.Discrete(11),
-    #         "is_firing": spaces.Discrete(n=2)
-    #     })
+    ACTION_SPACE_RANGE_IN = {
+        'azimuth_angle': (0, 1),
+        'is_clockwise': (0, 1),
+        'speed': (0, 1),
+        'is_firing': (0, 1)
+        }
+    
+    ACTION_SPACE_RANGE_OUT = {
+        'azimuth_angle': (-40, 40),
+        'is_clockwise': (0, 1),
+        'speed': (0, 10),
+        'is_firing': (0, 1)
+        }
+    
     # Define combined action space
     action_space = spaces.Box(
-        low=np.array([-90, 0, 0, 0], np.int8), # type: ignore
-        high=np.array([90, 1, 10, 1], np.int8), # type: ignore
-        dtype=np.int64
+        low=np.array([
+            ACTION_SPACE_RANGE_IN['azimuth_angle'][0],
+            ACTION_SPACE_RANGE_IN['is_clockwise'][0],
+            ACTION_SPACE_RANGE_IN['speed'][0], 
+            ACTION_SPACE_RANGE_IN['is_firing'][0]
+        ], np.float32), # type: ignore
+        
+        high=np.array([
+            ACTION_SPACE_RANGE_IN['azimuth_angle'][1],
+            ACTION_SPACE_RANGE_IN['is_clockwise'][1],
+            ACTION_SPACE_RANGE_IN['speed'][1], 
+            ACTION_SPACE_RANGE_IN['is_firing'][1]
+        ], np.int8), # type: ignore
+        dtype=np.float32
     )
      
     observation_space = spaces.Box(low=-1, high=1, shape=(6,), dtype=np.float16)
@@ -70,25 +88,49 @@ class TurretEnv(gym.Env):
     
     
     def __init__(self, 
-                 target_provider: Callable[[], TurretObservationSpace], 
-                 action_dispatcher: Callable[[TurretAction], None],
-                 episode_step_limit:int = 10_000_000,
-                 step_delay_s :float = 0.1 
+            target_provider: Callable[[], TurretObservationSpace], 
+            action_dispatcher: Callable[[TurretAction], None],
+            episode_step_limit:int = 10_000_000,
+            step_delay_s :float = 0.1 
         ) -> None:
+        
         super(TurretEnv, self).__init__()
         self.episode_time = episode_step_limit
-        self.dispatch_action = action_dispatcher
         self.step_delay_s = step_delay_s
         
         def map_target() -> Tuple[int, int, int, int, int, int]:
             target:TurretObservationSpace = target_provider()
-            return ( 
-                *target['box'],
+            return ( *target['box'],
                 target['view_dimensions'][1],
                 target['view_dimensions'][0],
             )
+            
         self.target_provider = map_target 
 
+        def map_to_dispatch_action(parsed_action: TurretAction): 
+            
+            mapped_action: TurretAction = {
+                "azimuth_angle": int(map_range(
+                    parsed_action["azimuth_angle"],
+                    self.ACTION_SPACE_RANGE_IN["azimuth_angle"][0],
+                    self.ACTION_SPACE_RANGE_IN["azimuth_angle"][1], 
+                    self.ACTION_SPACE_RANGE_OUT["azimuth_angle"][0], 
+                    self.ACTION_SPACE_RANGE_OUT["azimuth_angle"][1]
+                )),
+                "is_clockwise": parsed_action["is_clockwise"],
+                "speed": int(map_range(
+                    parsed_action["speed"], 
+                    self.ACTION_SPACE_RANGE_IN["speed"][0], 
+                    self.ACTION_SPACE_RANGE_IN["speed"][1], 
+                    self.ACTION_SPACE_RANGE_OUT["speed"][0], 
+                    self.ACTION_SPACE_RANGE_OUT["speed"][1]
+                )),
+                "is_firing": parsed_action["is_firing"]
+            }
+            action_dispatcher(mapped_action)
+
+             
+        self.dispatch_action = map_to_dispatch_action
         
     def step(self, action: np.ndarray) -> Tuple:
         """
@@ -100,9 +142,9 @@ class TurretEnv(gym.Env):
         is_clockwise, is_firing = bool(is_clockwise), bool(is_firing)
 
         parsed_action: TurretAction = {
-            "azimuth_angle": int(azimuth_angle),
+            "azimuth_angle": azimuth_angle,
             "is_clockwise": is_clockwise,
-            "speed": int(speed),
+            "speed": speed,
             "is_firing": is_firing,
         }
         self.dispatch_action(parsed_action)

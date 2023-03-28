@@ -37,6 +37,9 @@ parser.add_argument("--web-host", help="Set the web server server hostname. to s
 
 parser.add_argument("--test", "-t", help="For testing it will not send requests to the driver.", action="store_true")
 
+parser.add_argument("--time-steps", "-ts", help="The amount of training timesteps per learning episode.",  type=int, default=1000)
+parser.add_argument("--model-save-frequency", "-msf", help="The amount of training timesteps.", type=int, default=30)
+
 parser.add_argument("--delay", "-d", help="Delay to limit the data flow into the websocket server.", default=0.2, type=float)
 parser.add_argument("--benchmark", "-b",help="Wether to measure the script performance and output in the logs.", action='store_true', default=False)
 parser.add_argument('--target-type', '-ty', type=lambda x: str(x.lower()), default='person', 
@@ -73,11 +76,13 @@ def try_to_bind_to_socket():
 
     logging.info(f'Connected by {server_address}')
 
-        
-current_state: TurretObservationSpace = {
+
+NO_TARGET_STATE: TurretObservationSpace = {
     'box': (0,0,0,0),
     "view_dimensions": (0,0),
 }
+        
+current_state = NO_TARGET_STATE
 
 get_current_state = lambda: current_state
 
@@ -96,12 +101,22 @@ check_env(env, warn=True)
 
 run_id = datetime.now().strftime('%H%M%S%Y%m%d') # type: ignore
 
+start_time =0
+
+# Define the PPO model
+model = PPO('MlpPolicy', env, verbose=2, tensorboard_log=f"{file_directory}/turret_tensorboard/{run_id}")
+# Define where the model will be saved
+model_directory=f'{file_directory}/turret_models/{run_id}'
+if not os.path.exists(model_directory):
+    os.makedirs(model_directory)
 
 def run_model_training_process():
-    # Define the PPO model
-    model = PPO('MlpPolicy', env, verbose=2, tensorboard_log=f"{file_directory}/turret_tensorboard/{run_id}")
-        # Train the model
-    model.learn(total_timesteps=10000)
+    TIME_STEPS = args.time_steps
+    
+    # Train the agent
+    for i in range(args.model_save_frequency):
+        model.learn(total_timesteps=TIME_STEPS, reset_num_timesteps=False, progress_bar=True, tb_log_name=f"run_{run_id}-{i}")
+        model.save(f"{model_directory/TIME_STEPS*i}")
 
 
 def listen_for_targets(first_target_found_emitter: Callable):
@@ -109,6 +124,8 @@ def listen_for_targets(first_target_found_emitter: Callable):
     while True:
         time.sleep(args.delay)
         if args.benchmark:
+            global start_time
+            logging.debug('Benchmarking loop: ' + str(time.time() - start_time) + ' seconds')
             start_time = time.time()
         if not sock:
             try_to_bind_to_socket()
@@ -146,6 +163,8 @@ def listen_for_targets(first_target_found_emitter: Callable):
                 if not first_found:
                     first_found = True
                     first_target_found_emitter()
+            else:
+                current_state = NO_TARGET_STATE
 
 
 # Create threads for both functions
