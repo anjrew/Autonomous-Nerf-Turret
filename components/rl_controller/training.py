@@ -40,7 +40,7 @@ parser.add_argument("--test", "-t", help="For testing it will not send requests 
 parser.add_argument("--time-steps", "-ts", help="The amount of training timesteps per learning episode.",  type=int, default=1000)
 parser.add_argument("--model-save-frequency", "-msf", help="The amount of training timesteps.", type=int, default=30)
 
-parser.add_argument("--delay", "-d", help="Delay to limit the data flow into the websocket server.", default=0.2, type=float)
+parser.add_argument("--delay", "-d", help="Delay to limit the data flow into the websocket server.", default=0.3, type=float)
 parser.add_argument("--benchmark", "-b",help="Wether to measure the script performance and output in the logs.", action='store_true', default=False)
 parser.add_argument('--target-type', '-ty', type=lambda x: str(x.lower()), default='person', 
                     help="""
@@ -116,7 +116,7 @@ def run_model_training_process():
     # Train the agent
     for i in range(args.model_save_frequency):
         model.learn(total_timesteps=TIME_STEPS, reset_num_timesteps=False, progress_bar=True, tb_log_name=f"run_{run_id}-{i}")
-        model.save(f"{model_directory/TIME_STEPS*i}")
+        model.save(f"{model_directory}/{TIME_STEPS*i}")
 
 
 def listen_for_targets(first_target_found_emitter: Callable):
