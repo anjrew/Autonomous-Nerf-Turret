@@ -1,10 +1,13 @@
 import os
 import sys
+import numpy as np
+
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/..')
 
 import pytest
 from typing import Callable, Tuple
 from nerf_turret_utils.turret_controller import TurretAction
+from rl_controller.models import TurretObservationSpace
 from turret_env import TurretEnv, TurretEnvState
 import logging
 
@@ -12,8 +15,8 @@ logger = logging.getLogger(__name__)
 
 
 # A simple target provider function for testing
-def dummy_target_provider(target = (0, 0, 0, 0, 100, 100)) -> Callable[[],Tuple[int, int, int, int,int, int]]:
-    def target_producer() -> tuple:
+def dummy_target_provider(target = { 'box': (0, 0, 0, 0), 'view_dimensions': (100, 100)}) -> Callable[[], TurretObservationSpace]:
+    def target_producer() -> TurretObservationSpace:
         return target
     return target_producer
 
@@ -24,19 +27,20 @@ def dummy_action_dispatcher(_: TurretAction) -> None:
 def test_turret_environment_init():
     provider = dummy_target_provider()
     env = TurretEnv(provider, dummy_action_dispatcher)
-    assert env.target_provider == provider
+    assert env.target_provider != provider # Should be a mapped version of the provider so not the exact same
     assert env.state == env.INITIAL_STATE
     assert env.step_n == 0
 
 
 def test_turret_environment_step_no_target():
     env = TurretEnv(dummy_target_provider(), dummy_action_dispatcher)
-    test_action: TurretAction = {
-        'azimuth_angle': 90,
-        'is_clockwise': False,
-        'speed': 0,
-        'is_firing': False
-    }
+    # test_action: TurretAction = {
+    #     'azimuth_angle': 90,
+    #     'is_clockwise': False,
+    #     'speed': 0,
+    #     'is_firing': False
+    # }
+    test_action: np.ndarray = np.array((90, 0, 0, 0))
     state, reward, done, info = env.step(test_action)
     assert reward == 1 # Get base reward for doing nothing wrong
     assert done == False
@@ -44,12 +48,13 @@ def test_turret_environment_step_no_target():
 
 def test_turret_environment_step_right_on_target_and_firing():
     env = TurretEnv(dummy_target_provider((25, 25, 75, 75, 100, 100)), dummy_action_dispatcher)
-    test_action: TurretAction = {
-        'azimuth_angle': 90,
-        'is_clockwise': False,
-        'speed': 0,
-        'is_firing': True
-    }
+    # test_action: TurretAction = {
+    #     'azimuth_angle': 90,
+    #     'is_clockwise': False,
+    #     'speed': 0,
+    #     'is_firing': True
+    # }
+    test_action: np.ndarray = np.array((90, 0, 0, 1))
     state, reward, done, info = env.step(test_action)
     assert reward == 2 # because firing
     assert done == False

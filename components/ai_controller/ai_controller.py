@@ -39,10 +39,6 @@ parser.add_argument("--max-elevation-speed", "-mes",
 
 parser.add_argument("--benchmark", "-b",help="Wether to measure the script performance and output in the logs.", action='store_true', default=False)
 
-
-parser.add_argument('--targets', nargs='+', type=lambda x: str(x.lower().replace(" ", "_")), 
-                    help='List of target ids to track. This will only be valid if a target type of "person" is selected', default=[])
-
 parser.add_argument('--search',  action='store_true', help='If this flag is set the gun will try to find targets if there are none currently in sight', default=False)
 
 parser.add_argument("--target-padding", "-p",help="""
@@ -65,6 +61,8 @@ parser.add_argument('--target-type', '-ty', type=lambda x: str(x.lower()), defau
                     The type of object to shoot at. This can be anything available in yolov8 objects but it will default to shoot people, preferably in the face'.
                     """ )
 
+parser.add_argument('--targets', nargs='+', type=lambda x: str(x.lower().replace(" ", "_")), 
+                    help='List of target ids to track. This will only be valid if a target type of "person" is selected', default=[])
 
 
 # TODO: Implement this feature

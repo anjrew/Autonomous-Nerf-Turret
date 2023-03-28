@@ -38,3 +38,4 @@ components/nerf_turret_utils/build
 components/camera_vision/yolo_object_detection/YOLOWrapper_latencies_63b4c528-6.json
 components/camera_vision/yolo_object_detection/quantized_model
 components/camera_vision/yolo_object_detection/yolov8n_openvino_model
+components/rl_controller/turret_tensorboard

@@ -1,8 +1,9 @@
-
 from typing import List, Optional
 
+from camera_vision.models import CameraVisionTarget
 
-def get_priority_target_index(targets: List[dict], type: str,  target_ids: List[str]=[]) -> Optional[int]:
+
+def get_priority_target_index(targets: List[CameraVisionTarget], type: str,  target_ids: List[str]=[]) -> Optional[int]:
     """
     Returns the index of the highest priority target in the `targets` list based on the input `ids` and `type`.
 

@@ -2,12 +2,13 @@ from typing import List, Optional, Tuple
 import logging
 import cv2
 import face_recognition
+from models import CameraVisionTarget
 from nerf_turret_utils.image_utils import get_frame_box_vec_delta
 import math
 import numpy as np
 
 
-def get_face_location_details(image_compression:int, face_location:tuple) -> dict:
+def get_face_location_details(image_compression:int, face_location:tuple) -> CameraVisionTarget:
     """
     Calculate face location details based on the given image dimensions and face location.
     
@@ -28,13 +29,13 @@ def get_face_location_details(image_compression:int, face_location:tuple) -> dic
     left *= image_compression
         
                             
-    target = { "box": [left, top, right, bottom], 'type': "face"}
+    target: CameraVisionTarget = { "id": None, "mask": None ,"box": (left, top, right, bottom), 'type': "face"}
     
     return target
 
 
 
-def get_target_id(frame, box:list, target_names: list, target_images: list) -> Optional[str]:
+def get_target_id(frame, box:Tuple, target_names: list, target_images: list) -> Optional[str]:
     """
     Identify a target based on the face bounding box coordinates, target names, and target images.
 
@@ -90,7 +91,7 @@ def find_faces_in_frame(frame) -> List[Tuple[int, int, int, int]]:
 
 
 
-def draw_face_box(frame: np.ndarray, target: dict, is_on_target: bool ) -> np.ndarray:
+def draw_face_box(frame: np.ndarray, target: CameraVisionTarget, is_on_target: bool ) -> np.ndarray:
     left, top, right, bottom = target["box"]
     box_width = right-left
 

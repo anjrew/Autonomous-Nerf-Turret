@@ -1,30 +1,19 @@
 from collections import OrderedDict
 import os
 import sys
+import time
 from typing import Any, Callable, Optional, Tuple
 import math
 
 import numpy as np
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/..')
 
+from models import TurretEnvState, TurretObservationSpace
 from nerf_turret_utils.turret_controller import TurretAction
-# import gymnasium as gym
+from nerf_turret_utils.number_utils  import map_range
+
 import gym
 from gym import spaces
-from typing import TypedDict
-
-class TurretEnvState(TypedDict):
-    previous_action: TurretAction
-    target: Tuple[int,int,int,int, int, int]
-    previous_state: Optional['TurretEnvState']  # use forward reference for recursive type    
-
-class TurretObservationSpace(TypedDict):
-    left:int
-    top:int
-    right:int
-    bottom:int
-    frame_height:int
-    frame_width:int
 
 class TurretEnv(gym.Env):
     
@@ -44,32 +33,42 @@ class TurretEnv(gym.Env):
             'previous_state': None
         }
     
-    INITIAL_OBSERVATION_SPACE: TurretObservationSpace= {
-        'left': 0,
-        'top': 0,
-        'right': 0,
-        'bottom': 0,
-        'frame_height': 0,
-        'frame_width': 0,
-    }
+
     
     """The state object with its initial values"""
     
     state = INITIAL_STATE
     
-    # action_space = spaces.Dict({
-    #         "azimuth_angle": spaces.Box(low=-90, high=90, shape=(), dtype=int),
-    #         # "azimuth_angle": spaces.Discrete(181),
-    #         "is_clockwise": spaces.Discrete(n=2),
-    #         "speed": spaces.Box(low=0, high=10, shape=(), dtype=int),
-    #         # "speed": spaces.Discrete(11),
-    #         "is_firing": spaces.Discrete(n=2)
-    #     })
+    ACTION_SPACE_RANGE_IN = {
+        'azimuth_angle': (0, 1),
+        'is_clockwise': (0, 1),
+        'speed': (0, 1),
+        'is_firing': (0, 1)
+        }
+    
+    ACTION_SPACE_RANGE_OUT = {
+        'azimuth_angle': (-40, 40),
+        'is_clockwise': (0, 1),
+        'speed': (0, 10),
+        'is_firing': (0, 1)
+        }
+    
     # Define combined action space
     action_space = spaces.Box(
-        low=np.array([-90, 0, 0, 0], np.int8), # type: ignore
-        high=np.array([90, 1, 10, 1], np.int8), # type: ignore
-        dtype=np.int64
+        low=np.array([
+            ACTION_SPACE_RANGE_IN['azimuth_angle'][0],
+            ACTION_SPACE_RANGE_IN['is_clockwise'][0],
+            ACTION_SPACE_RANGE_IN['speed'][0], 
+            ACTION_SPACE_RANGE_IN['is_firing'][0]
+        ], np.float32), # type: ignore
+        
+        high=np.array([
+            ACTION_SPACE_RANGE_IN['azimuth_angle'][1],
+            ACTION_SPACE_RANGE_IN['is_clockwise'][1],
+            ACTION_SPACE_RANGE_IN['speed'][1], 
+            ACTION_SPACE_RANGE_IN['is_firing'][1]
+        ], np.int8), # type: ignore
+        dtype=np.float32
     )
      
     observation_space = spaces.Box(low=-1, high=1, shape=(6,), dtype=np.float16)
@@ -89,36 +88,74 @@ class TurretEnv(gym.Env):
     
     
     def __init__(self, 
-                 target_provider: Callable[[], Tuple[int, int, int, int,int, int]], 
-                 action_dispatcher: Callable[[TurretAction], None],
-                 episode_step_limit = 100 
+            target_provider: Callable[[], TurretObservationSpace], 
+            action_dispatcher: Callable[[TurretAction], None],
+            episode_step_limit:int = 10_000_000,
+            step_delay_s :float = 0.1 
         ) -> None:
+        
         super(TurretEnv, self).__init__()
         self.episode_time = episode_step_limit
-        self.target_provider = target_provider 
-        self.dispatch_action = action_dispatcher
+        self.step_delay_s = step_delay_s
         
+        def map_target() -> Tuple[int, int, int, int, int, int]:
+            target:TurretObservationSpace = target_provider()
+            return ( *target['box'],
+                target['view_dimensions'][1],
+                target['view_dimensions'][0],
+            )
+            
+        self.target_provider = map_target 
 
+        def map_to_dispatch_action(parsed_action: TurretAction): 
+            
+            mapped_action: TurretAction = {
+                "azimuth_angle": int(map_range(
+                    parsed_action["azimuth_angle"],
+                    self.ACTION_SPACE_RANGE_IN["azimuth_angle"][0],
+                    self.ACTION_SPACE_RANGE_IN["azimuth_angle"][1], 
+                    self.ACTION_SPACE_RANGE_OUT["azimuth_angle"][0], 
+                    self.ACTION_SPACE_RANGE_OUT["azimuth_angle"][1]
+                )),
+                "is_clockwise": parsed_action["is_clockwise"],
+                "speed": int(map_range(
+                    parsed_action["speed"], 
+                    self.ACTION_SPACE_RANGE_IN["speed"][0], 
+                    self.ACTION_SPACE_RANGE_IN["speed"][1], 
+                    self.ACTION_SPACE_RANGE_OUT["speed"][0], 
+                    self.ACTION_SPACE_RANGE_OUT["speed"][1]
+                )),
+                "is_firing": parsed_action["is_firing"]
+            }
+            action_dispatcher(mapped_action)
+
+             
+        self.dispatch_action = map_to_dispatch_action
         
     def step(self, action: np.ndarray) -> Tuple:
-
+        """
+        Makes a single step of of an experience episode dispatching an action 
+        and getting new state with a calculated reward
+        """
+        time.sleep(self.step_delay_s)
         azimuth_angle, is_clockwise, speed, is_firing = action
         is_clockwise, is_firing = bool(is_clockwise), bool(is_firing)
 
         parsed_action: TurretAction = {
-            "azimuth_angle": int(azimuth_angle),
+            "azimuth_angle": azimuth_angle,
             "is_clockwise": is_clockwise,
-            "speed": int(speed),
+            "speed": speed,
             "is_firing": is_firing,
         }
         self.dispatch_action(parsed_action)
         # Finish the episode if the step limit is reached
-        done = self.step_n >= self.episode_time
+        # done = self.step_n >= self.episode_time
+        done = False
         
         # Get the new information from the camera on the turret
         target = self.target_provider()
         
-        reward = self.calc_reward(target, parsed_action) # type: ignore
+        reward = self.calc_reward(target, parsed_action)
         
         self.state = {
             'target': target,
@@ -186,12 +223,14 @@ class TurretEnv(gym.Env):
 
 
     def get_center_coords(self, frame_height, frame_width):
+        """Calculates center coordinates of the camera frame"""
         center_x = frame_width // 2
         center_y = frame_height // 2
         return center_x,center_y
     
 
     def check_center_within_bounds(self, left, top, right, bottom, center_x, center_y) -> bool:
+        """Returns true when the Camera central crosshair is within the target bounding box"""
         return top <= center_y <= bottom and left <= center_x <= right
 
 
@@ -256,32 +295,9 @@ class TurretEnv(gym.Env):
 
         # reset environment state to initial state
         self.state = self.INITIAL_STATE
-        self.step_n = 0
-        
-        # Return the initial observation
-        # (
-        #     np.array([0.0]), # First continuous space
-        #     np.array([0.0]), # Second continuous space
-        #     np.array([0.0]), # Third continuous space
-        #     np.array([0.0]), # Fourth continuous space
-        # )
-        # observation = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-        # observation = np.array(observation, dtype=np.float32)
-        
-        # return observation
-        # return self.INITIAL_OBSERVATION_SPACE
-        # observation = {
-        #     'left': np.array([1.0]),
-        #     'top': np.array([1.0]),
-        #     'right': np.array([1.0]),
-        #     'bottom': np.array([1.0]),
-        #     'frame_height': np.array([1.0]),
-        #     'frame_width': np.array([1.0]),
-        # }
-        
-        # left, top, right, bottom, frame_height, frame_width 
+        self.step_n = 0 
+        # self.done = False
         
         observation = [0, 0, 0, 0, 0, 0]
-        
         
         return np.array(observation, dtype=np.float16)

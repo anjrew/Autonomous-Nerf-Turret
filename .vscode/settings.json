@@ -10,6 +10,7 @@
         "JOYBUTTONDOWN",
         "JOYBUTTONUP",
         "JOYHATMOTION",
+        "logdir",
         "Macbook",
         "meshgrid",
         "nerf",
