@@ -109,7 +109,6 @@ cached_action: TurretAction =  {
 sock: Optional[socket.socket] = None
 controller = AiController(args)
 
-    
 def try_to_bind_to_socket():
     """Try to bind to the socket and accept the connection"""
     global sock

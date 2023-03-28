@@ -1,8 +1,7 @@
-from collections import OrderedDict
 import os
 import sys
 import time
-from typing import Any, Callable, Optional, Tuple
+from typing import Any, Callable, Tuple
 import math
 
 import numpy as np
@@ -138,15 +137,9 @@ class TurretEnv(gym.Env):
         and getting new state with a calculated reward
         """
         time.sleep(self.step_delay_s)
-        azimuth_angle, is_clockwise, speed, is_firing = action
-        is_clockwise, is_firing = bool(is_clockwise), bool(is_firing)
-
-        parsed_action: TurretAction = {
-            "azimuth_angle": azimuth_angle,
-            "is_clockwise": is_clockwise,
-            "speed": speed,
-            "is_firing": is_firing,
-        }
+        
+        parsed_action = self.map_action_vector_to_object(action)
+        
         self.dispatch_action(parsed_action)
         # Finish the episode if the step limit is reached
         # done = self.step_n >= self.episode_time
@@ -168,8 +161,36 @@ class TurretEnv(gym.Env):
         # reward (float) : amount of reward returned after previous action
         # done (bool): whether the episode has ended, in which case further step() calls will return undefined results
         # info (dict): contains auxiliary diagnostic information (helpful for debugging, and sometimes learning)
-        return np.array(target, dtype=np.float16), reward, done, { 'step': self.step_n }    
+        return np.array(target, dtype=np.float16), reward, done, { 'step': self.step_n } 
+
+
+    def map_action_vector_to_object(self, action: np.ndarray) -> TurretAction:
+        """Takes a raw output from the action space and maps it to a object."""
+        if not  0 <= len(action) <= 4:
+            raise ValueError('The length of the action tuple must be between 0 and 4.')
+       
+        azimuth_angle, is_clockwise, speed, is_firing = action
+        is_clockwise, is_firing = bool(is_clockwise), bool(is_firing)
+
+        parsed_action: TurretAction = {
+            "azimuth_angle": azimuth_angle,
+            "is_clockwise": is_clockwise,
+            "speed": speed,
+            "is_firing": is_firing,
+        }
+        
+        return parsed_action   
     
+    def map_action_object_to_vector(self, action: TurretAction) -> np.ndarray:
+        """Takes a object and maps it to a raw output for the action space."""
+        azimuth_angle = action["azimuth_angle"]
+        is_clockwise = int(action["is_clockwise"])
+        speed = action["speed"]
+        is_firing = int(action["is_firing"])
+
+        parsed_action = np.array(( azimuth_angle, is_clockwise, speed, is_firing))
+        
+        return parsed_action
     
     def calc_reward(self, new_target_state: Tuple[int, int, int, int, int, int], action:TurretAction) -> float:
         """Calculates the reward for the current state of the environment.

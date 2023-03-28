@@ -7,7 +7,6 @@ import pytest
 from argparse import Namespace
 from ai_controller_model import AiController
 from camera_vision.models import CameraVisionDetection
-from nerf_turret_utils.turret_controller import TurretAction
 
 
 @pytest.fixture
@@ -16,7 +15,8 @@ def mock_args():
         target_padding=10, 
         search=True,
         target_type='person', 
-        targets=[], 
+        # targets=[], 
+        target_ids=[],
         accuracy_threshold_x=3, 
         accuracy_threshold_y=30,
         max_azimuth_angle=90, 
@@ -45,7 +45,6 @@ def mock_detection() -> CameraVisionDetection:
                 'box': (400, 100, 600, 300),
             },
         ],
-        'heading_vect': (320, 240),
         'view_dimensions': (640, 480),
     }
 

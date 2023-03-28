@@ -223,7 +223,6 @@ while True:
             center_y = frame_height // 2
             data: CameraVisionDetection = {
                 "targets": targets,
-                "heading_vect": (center_x, center_y),
                 "view_dimensions": (frame_width, frame_height),
             }
             json_data = json.dumps(data).encode('utf-8') # Encode the JSON object as a byte string

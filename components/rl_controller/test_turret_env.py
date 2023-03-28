@@ -280,3 +280,67 @@ def test_get_center_coords_large_dimensions():
     center_x, center_y = env.get_center_coords(frame_height, frame_width)
     assert center_x == 960
     assert center_y == 540
+    
+    
+
+def test_map_action_tuple_to_dict():
+    env = TurretEnv(dummy_target_provider(), dummy_action_dispatcher)
+
+    # Test case 1: valid input
+    action_tuple = np.array((45, 1, 10, 0))
+    expected_output = {
+        "azimuth_angle": 45,
+        "is_clockwise": True,
+        "speed": 10,
+        "is_firing": False,
+    }
+    assert env.map_action_vector_to_object(action_tuple) == expected_output
+
+    # Test case 2: invalid input (wrong number of elements)
+    action_tuple = (45, 1, 10)
+    with pytest.raises(ValueError):
+        env.map_action_vector_to_object(action_tuple) # type: ignore
+
+    # TODO: implement these test cases
+    # Test case 3: invalid input (invalid type)
+    # action_tuple = (45, 1, "10", 0)
+    # with pytest.raises(TypeError):
+    #     env.map_action_tuple_to_dict(action_tuple) # type: ignore
+
+    # # Test case 4: invalid input (out of range value)
+    # action_tuple = (450, 1, 10, 0)
+    # with pytest.raises(ValueError):
+    #     env.map_action_tuple_to_dict(action_tuple)
+    
+    
+def test_map_action_object_to_vector():
+    env = TurretEnv(dummy_target_provider(), dummy_action_dispatcher)
+    
+    # Test case 1: all values are valid
+    action_dict:TurretAction = {
+        "azimuth_angle": 90,
+        "is_clockwise": True,
+        "speed": 50,
+        "is_firing": False
+    }
+    expected_output = np.array((90, 1, 50, 0))
+    assert np.array_equal(env.map_action_object_to_vector(action_dict) ,expected_output)
+
+    # Test case 2: is_clockwise and is_firing are strings
+    action_dict:TurretAction  = {
+        "azimuth_angle": 180,
+        "is_clockwise": "True",
+        "speed": 0,
+        "is_firing": "False"
+    } # type: ignore
+    with pytest.raises(ValueError):
+        env.map_action_object_to_vector(action_dict)
+
+    # Test case 3: missing azimuth_angle value
+    action_dict:TurretAction  = {
+        "is_clockwise": False,
+        "speed": 100,
+        "is_firing": True
+    } # type: ignore
+    with pytest.raises(KeyError):
+        env.map_action_object_to_vector(action_dict)

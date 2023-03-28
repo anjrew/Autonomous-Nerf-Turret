@@ -23,9 +23,6 @@ class CameraVisionDetection(TypedDict):
     targets: List[CameraVisionTarget]
     """A list of target detections"""
     
-    heading_vect: Tuple[int,int]
-    """The Center x,y of the view coordinates"""
-    
     view_dimensions: Tuple[int,int]
     """The frame width and frame height"""
 

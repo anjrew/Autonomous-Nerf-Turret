@@ -65,8 +65,6 @@ sock: Optional[socket.socket] = None
 UDP_HOST = args.udp_host  # IP address of the server
 UDP_PORT = args.udp_port  # Port number to listen on
 
-sock: Optional[socket.socket] = None
-
 def try_to_bind_to_socket():
     """Try to bind to the socket and accept the connection"""
     global sock

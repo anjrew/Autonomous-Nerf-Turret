@@ -3,15 +3,15 @@ import sys
 import os
 import json
 import logging
+from typing import List, Optional, Tuple
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/..')
 
 from nerf_turret_utils.turret_controller import TurretAction
-from camera_vision.models import CameraVisionDetection
+from camera_vision.models import CameraVisionDetection, CameraVisionTarget
 from nerf_turret_utils.image_utils import get_frame_box_dimensions_delta
 from nerf_turret_utils.number_utils import map_range
 from ai_controller_utils import slow_start_fast_end_smoothing, get_priority_target_index, get_elevation_speed, get_elevation_clockwise
-
 
 
 class AiController:
@@ -52,7 +52,7 @@ class AiController:
         # Check if there are any targets in the frame
         if detection is not None and len(detection['targets']) > 0:
             logging.debug('Data obtained:' + json.dumps(detection))
-            target_index = get_priority_target_index(detection['targets'], args.target_type, args.targets)
+            target_index = self.get_priority_target_index(detection['targets'])
             
             if target_index is None:
                 logging.debug(f'No valid target found from type {args.target_type} with ids {args.targets}')
@@ -61,67 +61,75 @@ class AiController:
             
             else:
             
-                center_x, center_y =  detection['heading_vect']
-                target = detection['targets'][target_index] # Extract the first target from the targets list
+                target: CameraVisionTarget = detection['targets'][target_index] # Extract the first target from the targets list
                 
                 logging.debug('Targeting:' + json.dumps(target))
 
-                left, top, right, bottom = target['box']
-                
-                # calculate box coordinates
-                box_width = right - left
-                box_height = bottom - top
-                
-                view_width = detection['view_dimensions'][0]
-                view_height = detection['view_dimensions'][1]
-
-                # Get movement vector to align gun with center of target
-                movement_vector = get_frame_box_dimensions_delta(left, top, right, bottom, view_width, view_height)
-                
-                # Add padding as a percentage of the original dimensions
-                padding_width = box_width * args.target_padding
-                padding_height = box_height * args.target_padding
-
-                # Calculate box coordinates
-                padded_left = left + padding_width
-                padded_right = right - padding_width
-                padded_top = top + padding_height
-                padded_bottom = bottom - padding_height
-                    
-                is_on_target = False  
-                if padded_top <= center_y <= padded_bottom and padded_left <= center_x <= padded_right:
-                    is_on_target=True
-                
-                current_distance_from_the_middle = movement_vector[0]
-                max_distance_from_the_middle_left = -(view_width / 2)
-                max_distance_from_the_middle_right = view_width / 2
-            
-                predicted_azimuth_angle = map_range(
-                    current_distance_from_the_middle - args.accuracy_threshold_x,
-                    max_distance_from_the_middle_left, 
-                    max_distance_from_the_middle_right ,
-                    -args.max_azimuth_angle ,
-                    args.max_azimuth_angle
-                )
-                azimuth_speed_adjusted = min(predicted_azimuth_angle , args.x_speed)
-                smoothed_speed_adjusted_azimuth = slow_start_fast_end_smoothing(azimuth_speed_adjusted, float(args.x_smoothing) + 1.0, 90)
-                azimuth_formatted = round(smoothed_speed_adjusted_azimuth, args.azimuth_dp)
-
-                action: TurretAction = {
-                    'azimuth_angle': int(azimuth_formatted),
-                    'is_clockwise': get_elevation_clockwise(movement_vector),
-                    'speed': get_elevation_speed(args, view_height, movement_vector, target['box']),
-                    'is_firing': is_on_target,
-                }
-                self.cached_action_state = action
-                                
-                return action       
+                return self.get_action_for_target(target, detection['view_dimensions'])
 
         else:
             return self.handle_no_target(self.search_state)
+           
+           
                 
-                    
-                      
+    def get_action_for_target(self, target: CameraVisionTarget, frame: Tuple[int,int]) -> TurretAction:
+        """Handle the case where a target is found in the frame"""
+        args = self.args
+
+        view_width = frame[0]
+        view_height = frame[1]
+        
+        center_x, center_y =  view_width//2, view_height//2
+        
+        left, top, right, bottom = target['box']
+        
+        # calculate box coordinates
+        box_width = right - left
+        box_height = bottom - top
+        
+        # Get movement vector to align gun with center of target
+        movement_vector = get_frame_box_dimensions_delta(left, top, right, bottom, view_width, view_height)
+        
+        # Add padding as a percentage of the original dimensions
+        padding_width = box_width * args.target_padding
+        padding_height = box_height * args.target_padding
+
+        # Calculate box coordinates
+        padded_left = left + padding_width
+        padded_right = right - padding_width
+        padded_top = top + padding_height
+        padded_bottom = bottom - padding_height
+            
+        is_on_target = False  
+        if padded_top <= center_y <= padded_bottom and padded_left <= center_x <= padded_right:
+            is_on_target=True
+        
+        current_distance_from_the_middle = movement_vector[0]
+        max_distance_from_the_middle_left = -(view_width / 2)
+        max_distance_from_the_middle_right = view_width / 2
+    
+        predicted_azimuth_angle = map_range(
+            current_distance_from_the_middle - args.accuracy_threshold_x,
+            max_distance_from_the_middle_left, 
+            max_distance_from_the_middle_right ,
+            -args.max_azimuth_angle ,
+            args.max_azimuth_angle
+        )
+        azimuth_speed_adjusted = min(predicted_azimuth_angle , args.x_speed)
+        smoothed_speed_adjusted_azimuth = slow_start_fast_end_smoothing(azimuth_speed_adjusted, float(args.x_smoothing) + 1.0, 90)
+        azimuth_formatted = round(smoothed_speed_adjusted_azimuth, args.azimuth_dp)
+
+        action: TurretAction = {
+            'azimuth_angle': int(azimuth_formatted),
+            'is_clockwise': get_elevation_clockwise(movement_vector),
+            'speed': get_elevation_speed(args, view_height, movement_vector, target['box']),
+            'is_firing': is_on_target,
+        }
+        self.cached_action_state = action
+                        
+        return action                
+    
+             
     def handle_no_target(self, search: dict) -> TurretAction:
         """
         Handle the scenario where the turret has no target to aim at. 
@@ -148,3 +156,8 @@ class AiController:
                 'speed': 0,
                 'is_firing': False,
             }
+            
+            
+    def get_priority_target_index(self, targets: List[CameraVisionTarget]) -> Optional[int]:
+        """Get the index of the target that has the highest priority"""
+        return  get_priority_target_index(targets, self.args.target_type, self.args.target_ids)
