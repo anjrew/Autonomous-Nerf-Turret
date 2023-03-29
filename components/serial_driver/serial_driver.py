@@ -20,6 +20,7 @@ parser.add_argument("--baud", help="Set the Baud Rate of the serial communicatio
 parser.add_argument("--host", help="Set the http server hostname.", default="localhost")
 parser.add_argument("--log-level", "-ll" ,help="Set the logging level by integer value.", default=logging.WARNING, type=map_log_level)
 parser.add_argument("--delay", "-d",help="Delay to rate the data is sent to the Arduino in seconds", default=0, type=int)
+parser.add_argument("--throttle-interval", "-tr",help="How to throttle requests sent over serial in seconds", default=0.1, type=float)
 parser.add_argument("--test", "-t", help="For testing it will not send requests to the driver.", action="store_true")
 
 parser_args = parser.parse_args()
@@ -82,10 +83,11 @@ try:
                 slowest_speed=SLOWEST_EL_SPEED, 
                 fasted_speed=FASTEST_EL_SPEED, 
                 test=parser_args.test,
+                throttle_interval= parser_args.throttle_interval
                 *args, **kwargs
                 ))
         
-        print("Server started http://%s:%s" % (parser_args.host, parser_args.port))
+        logging.info("Server started http://%s:%s" % (parser_args.host, parser_args.port))
 
         webServer.serve_forever()
       

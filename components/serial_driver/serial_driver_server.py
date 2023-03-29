@@ -8,7 +8,7 @@ import json
 class SerialDriverServer(BaseHTTPRequestHandler):
     
     def __init__(self, *args, **kwargs):
-        keys_used = ['serial_inst', 'slowest_speed', 'fasted_speed', 'test']
+        keys_used = ['serial_inst', 'slowest_speed', 'fasted_speed', 'test', 'throttle_interval']
         self.properties = {}
         for key in keys_used:
             if key not in kwargs:
@@ -16,6 +16,8 @@ class SerialDriverServer(BaseHTTPRequestHandler):
             else:
                 self.properties[key] = kwargs[key]
                 del kwargs[key]
+                
+        self.last_request_time = time.monotonic()
   
         BaseHTTPRequestHandler.__init__(self, *args, **kwargs)
 
@@ -33,9 +35,19 @@ class SerialDriverServer(BaseHTTPRequestHandler):
     
 
     def do_POST(self):
-
+        
+        # If the test flag is set, then just return a 200 response without doing anything
         if self.properties.get('test') == True:
+            logging.debug("Test flag is set, returning 200 response and not sending data to serial")
             self.send_response(200)
+            return
+        
+        time_since_last_request = time.monotonic() - self.last_request_time
+        should_throttle_request = time_since_last_request < self.properties.get('throttle_interval', 0)
+        if should_throttle_request:
+            logging.debug("Too many requests, returning 429 response")
+            self.send_response(429)
+            self.wfile.write(b'Too many requests. Please try again later.')
             return
         
         start_time = time.time()
