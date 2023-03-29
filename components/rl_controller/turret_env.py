@@ -127,12 +127,6 @@ class TurretEnv(gym.Env):
         
         reward = self.calc_reward(target, parsed_action)
         
-        self.state = {
-            'target': target,
-            'previous_action': action,
-            'previous_state': self.state
-        }
-        
         self.step_n += 1
         # observation (object): agent's observation of the current environment
         # reward (float) : amount of reward returned after previous action
@@ -331,10 +325,14 @@ class TurretEnv(gym.Env):
         """Resets the environment to the initial state to start a new episode"""
 
         # reset environment state to initial state
-        self.state = self.INITIAL_STATE
         self.step_n = 0 
         # self.done = False
         
         observation = [0, 0, 0, 0, 0, 0]
         
         return np.array(observation, dtype=np.float16)
+
+
+    def render(self, *args, **kwargs) -> None:
+        """Renders of the environment are done through the camera."""
+        pass

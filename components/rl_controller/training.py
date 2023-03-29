@@ -28,6 +28,7 @@ from utils import get_priority_target_index
 
 
 parser = argparse.ArgumentParser("Reinforcement Learning Controller")
+
 parser.add_argument("--log-level", "-ll" , help="Set the logging level by integer value or string representation.", default=logging.WARNING, type=map_log_level)
 
 parser.add_argument("--udp-port", help="Set the web socket server port to recieve messages from.", default=6565, type=int)
@@ -43,13 +44,20 @@ parser.add_argument("--model-save-frequency", "-msf", help="The amount of traini
 
 parser.add_argument("--delay", "-d", help="Delay to limit the data flow into the websocket server.", default=0.3, type=float)
 parser.add_argument("--benchmark", "-b",help="Wether to measure the script performance and output in the logs.", action='store_true', default=False)
-parser.add_argument('--target-type', '-ty', type=lambda x: str(x.lower()), default='person', 
-                    help="""
-                    The type of object to shoot at. This can be anything available in yolov8 objects but it will default to shoot people, preferably in the face'.
-                    """ )
+parser.add_argument(
+    '--target-type', '-ty', 
+    type=lambda x: str(x.lower()), default='person', 
+    help="""
+    The type of object to shoot at. This can be anything available in yolov8 objects but it will default to shoot people, preferably in the face'.
+    """ 
+)
 
-parser.add_argument('--targets', nargs='+', type=lambda x: str(x.lower().replace(" ", "_")), 
-                    help='List of target ids to track. This will only be valid if a target type of "person" is selected', default=[])
+parser.add_argument(
+    '--targets', nargs='+', 
+    type=lambda x: str(x.lower().replace(" ", "_")), 
+    help='List of target ids to track. This will only be valid if a target type of "person" is selected', 
+    default=[]
+)
 # parser.add_argument("--web-port", help="Set the web server server port to send commands too.", default=5565, type=int)
 # parser.add_argument("--web-host", help="Set the web server server hostname. to send commands too", default="localhost")
 # parser.add_argument("--test", "-t", help="For testing it will not send requests to the driver.", action="store_true")
@@ -93,6 +101,7 @@ def dispatch_action(action: TurretAction) -> None:
             requests.post(url, json=action)
         except requests.exceptions.ConnectionError as e:
             logging.error(f"Error sending request to {url}: {e}")
+ 
      
 # Define the environment
 env = TurretEnv(get_current_state, dispatch_action)
@@ -103,10 +112,27 @@ run_id = datetime.now().strftime('%H%M%S%Y%m%d') # type: ignore
 
 start_time =0
 
+
 # Define the PPO model
-model = PPO('MlpPolicy', env, verbose=2, tensorboard_log=f"{file_directory}/turret_tensorboard/{run_id}")
+hyperparameters = {
+    "n_steps": 2048,
+    "ent_coef": 0.01,
+    "learning_rate": 0.00025,
+    "batch_size": 64,
+    "n_epochs": 10,
+    "gamma": 0.99, # Discount factor
+    "gae_lambda": 0.95,
+    "clip_range": 0.2,
+    "clip_range_vf": None,
+    "vf_coef": 0.5,
+    "max_grad_norm": 0.5,
+}
+
+model = PPO('MlpPolicy', env, verbose=2, tensorboard_log=f"{file_directory}/turret_tensorboard/{run_id}", **hyperparameters)
+
 # Define where the model will be saved
 model_directory=f'{file_directory}/turret_models/{run_id}'
+
 if not os.path.exists(model_directory):
     os.makedirs(model_directory)
 

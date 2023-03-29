@@ -27,8 +27,6 @@ import gym
 import numpy as np
 from stable_baselines3 import PPO
 from stable_baselines3.common.evaluation import evaluate_policy
-from stable_baselines3.common.vec_env import DummyVecEnv
-from stable_baselines3.ppo import MlpPolicy
 
 from imitation.algorithms import bc
 from imitation.data import rollout
@@ -187,15 +185,16 @@ def create_expert() -> AiController:
 def sample_expert_transitions(expert: AiController, env: TurretEnv) -> types.Transitions:   
     """Sample expert transitions using the expert policy to gain experience."""
     
-    step_limit = 10_000
+    # step_limit = 10_000
+    step_limit = 1_000
 
     logging.info(f"Sampling expert transitions.")
 
-    obs: np.ndarray = np.array([])
-    acts: np.ndarray = np.array([])
-    infos: np.ndarray = np.array([])
+    obs: np.ndarray = np.array([env.NO_TARGET_STATE])
+    acts: np.ndarray = np.empty((0,4))
+    infos: np.ndarray = np.empty((0,1))
     terminal: bool = False
-    rews: np.ndarray = np.array([])
+    rews: np.ndarray = np.empty((0,))
     
     for i in range(step_limit):
         logging.info(f'Sampling expert transitions {i}')
@@ -210,14 +209,17 @@ def sample_expert_transitions(expert: AiController, env: TurretEnv) -> types.Tra
             logging.debug(f"Expert output action. {str(action)} for target {str(current_state)}")     
             mapped_action = env.map_action_object_to_vector(action)
              
-        observation, reward, done, info  = env.step(mapped_action)
+        result = env.step(mapped_action)
+        print('Result: ', result)
+        observation, reward, done, info  = result
         
-        obs = np.append(obs, observation)
-        acts = np.append(acts, mapped_action)
-        infos = np.append(infos, info)
-        terminal = done
+        obs =  np.vstack((obs, observation))
+        acts =  np.vstack((acts, mapped_action))
         rews = np.append(rews, reward)
-
+        infos = np.vstack((infos, info))
+        terminal = done
+        
+    print(len(obs), len(acts), len(rews), terminal)
     episode = types.TrajectoryWithRew(
         obs=obs,
         acts=acts,
@@ -231,6 +233,7 @@ def sample_expert_transitions(expert: AiController, env: TurretEnv) -> types.Tra
     
     
 def eval_func(env, bc_trainer, is_after = False):
+    logging.info("Evaluating policy")
     reward, _ = evaluate_policy(
         bc_trainer.policy,  # type: ignore[arg-type]
         env,
@@ -286,7 +289,7 @@ bc_trainer = bc.BC(
     rng=rng,
 )
 
-print("Training a policy using Behavior Cloning")
+logging.info("Training a policy using Behavior Cloning")
 bc_trainer.train(n_epochs=1)
 
 
