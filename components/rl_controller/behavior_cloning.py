@@ -170,8 +170,8 @@ def create_expert() -> AiController:
         search=True,
         target_type='person', 
         targets=[], 
-        accuracy_threshold_x=3, 
-        accuracy_threshold_y=30,
+        accuracy_threshold_x=1, 
+        accuracy_threshold_y=20,
         x_smoothing=1, 
         max_azimuth_angle=10, 
         azimuth_dp=1,
@@ -197,7 +197,8 @@ def sample_expert_transitions(expert: AiController, env: TurretEnv):
     terminal: bool = False
     rews: np.ndarray = np.array([])
     
-    for _ in range(step_limit):
+    for i in range(step_limit):
+        logging.info(f'Sampling expert transitions {i}')
         
         mapped_action = np.array([0,0,0,0])
         
@@ -247,7 +248,9 @@ def create_env() -> TurretEnv:
             try:
                 requests.post(url, json=action)
             except requests.exceptions.ConnectionError as e:
-                logging.error(f"Error sending request to {url}: {e}")
+                logging.error(f"ConnectionError sending request to serial driver at {url}: {e}")
+            except Exception as e:
+                logging.error(f"Unknown Error sending request to serial driver at {url}: {e}")
     
     env = TurretEnv(get_current_state, dispatch_action)
     return env

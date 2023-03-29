@@ -90,7 +90,7 @@ class TurretEnv(gym.Env):
             target_provider: Callable[[], TurretObservationSpace], 
             action_dispatcher: Callable[[TurretAction], None],
             episode_step_limit:int = 10_000_000,
-            step_delay_s :float = 0.2 
+            step_delay_s :float = 0 
         ) -> None:
         
         super(TurretEnv, self).__init__()
