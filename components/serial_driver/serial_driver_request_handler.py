@@ -40,6 +40,7 @@ class SerialDriverRequestHandler(BaseHTTPRequestHandler):
         if self.properties.get('test') == True:
             logging.debug("Test flag is set, returning 200 response and not sending data to serial")
             self.send_response(200)
+            self.end_headers()
             return
         
         time_since_last_request = time.monotonic() - self.last_request_time
@@ -47,6 +48,7 @@ class SerialDriverRequestHandler(BaseHTTPRequestHandler):
         if should_throttle_request:
             logging.debug("Too many requests, returning 429 response")
             self.send_response(429)
+            self.end_headers()
             self.wfile.write(b'Too many requests. Please try again later.')
             return
         

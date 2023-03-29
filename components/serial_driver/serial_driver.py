@@ -84,7 +84,7 @@ try:
                 slowest_speed=SLOWEST_EL_SPEED, 
                 fasted_speed=FASTEST_EL_SPEED, 
                 test=parser_args.test,
-                throttle_interval= parser_args.throttle_interval
+                throttle_interval= parser_args.throttle_interval,
                 *args, **kwargs
                 ))
         

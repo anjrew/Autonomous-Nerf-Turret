@@ -4,6 +4,7 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 MAX_REQUESTS = 1
 
 class SerialDriverServer(HTTPServer):
+
     def handle_request(self):
         # Handle the next request
         super().handle_request()

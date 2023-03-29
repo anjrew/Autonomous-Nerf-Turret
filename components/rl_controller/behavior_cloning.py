@@ -201,7 +201,6 @@ def sample_expert_transitions(expert: AiController, env: TurretEnv):
         
         mapped_action = np.array([0,0,0,0])
         
-        print(current_state['target']['box'], type(current_state['target']['box']), env.NO_TARGET_STATE, type(env.NO_TARGET_STATE))
         has_target = current_state['target']['box'][:4] != env.NO_TARGET_STATE[:4]
         logging.debug(f"Expert has target: {has_target}")     
         
