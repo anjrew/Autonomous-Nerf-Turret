@@ -70,6 +70,29 @@ def get_priority_target_index(targets: List[CameraVisionTarget], type: str,  tar
     return None
     
     
+def get_azimuth_angle(args: dict, view_width:int, movement_vector: Tuple[int,int]) -> int:
+    """
+    Gets the azimuth angle of the turret from the movement vector and returns the angle in degrees.
+    Taking into account the smoothing and speed settings.
+    """
+    current_distance_from_the_middle = movement_vector[0]
+    max_distance_from_the_middle_left = -(view_width / 2)
+    max_distance_from_the_middle_right = view_width / 2
+
+    no_input_range = max_distance_from_the_middle_right - max_distance_from_the_middle_left == 0
+    
+    azimuth_predicted_angle = 0 if no_input_range else map_range(
+        current_distance_from_the_middle,
+        max_distance_from_the_middle_left, 
+        max_distance_from_the_middle_right ,
+        -args['max_azimuth_angle'] ,
+        args['max_azimuth_angle']
+    )
+    azimuth_speed_adjusted = min(azimuth_predicted_angle , args['x_speed_max'])
+    azimuth_smoothed_speed_adjusted = slow_start_fast_end_smoothing(azimuth_speed_adjusted, float(args['x_smoothing']) + 1.0, args['x_speed_max'])
+    azimuth_formatted = round(azimuth_smoothed_speed_adjusted, args['azimuth_dp'])
+    return int(azimuth_formatted)
+    
     
 def get_elevation_speed(args: Any, view_height:int, movement_vector:Tuple, target_box: Tuple[int,int,int,int]) -> int:
     """

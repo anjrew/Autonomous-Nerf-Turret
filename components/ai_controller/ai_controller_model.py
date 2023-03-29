@@ -16,7 +16,7 @@ from nerf_turret_utils.turret_controller import TurretAction
 from camera_vision.models import CameraVisionDetection, CameraVisionTarget
 from nerf_turret_utils.image_utils import get_frame_box_dimensions_delta
 from nerf_turret_utils.number_utils import map_range
-from ai_controller_utils import slow_start_fast_end_smoothing, get_priority_target_index, get_elevation_speed, get_elevation_clockwise
+from ai_controller_utils import get_priority_target_index, get_elevation_speed, get_elevation_clockwise, get_azimuth_angle
 
 
 class AiController:
@@ -119,31 +119,16 @@ class AiController:
         is_on_target = False  
         if padded_top <= center_y <= padded_bottom and padded_left <= center_x <= padded_right:
             is_on_target=True
-        
-        current_distance_from_the_middle = movement_vector[0]
-        max_distance_from_the_middle_left = -(view_width / 2)
-        max_distance_from_the_middle_right = view_width / 2
-    
-        azimuth_predicted_angle = map_range(
-            current_distance_from_the_middle,
-            max_distance_from_the_middle_left, 
-            max_distance_from_the_middle_right ,
-            -args['max_azimuth_angle'] ,
-            args['max_azimuth_angle']
-        )
-        azimuth_speed_adjusted = min(azimuth_predicted_angle , args['x_speed_max'])
-        azimuth_smoothed_speed_adjusted = slow_start_fast_end_smoothing(azimuth_speed_adjusted, float(args['x_smoothing']) + 1.0, args['x_speed_max'])
-        azimuth_formatted = round(azimuth_smoothed_speed_adjusted, args['azimuth_dp'])
 
         action: TurretAction = {
-            'azimuth_angle': int(azimuth_formatted),
+            'azimuth_angle': get_azimuth_angle(args, view_width, movement_vector),
             'is_clockwise': get_elevation_clockwise(movement_vector),
             'speed': get_elevation_speed(args, view_height, movement_vector, target['box']),
             'is_firing': is_on_target,
         }
         self.cached_action_state = action
                         
-        return action                
+        return action           
     
              
     def handle_no_target(self, search: dict) -> TurretAction:

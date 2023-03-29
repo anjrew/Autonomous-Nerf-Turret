@@ -29,14 +29,14 @@ def yolo_post_processing(outputs: Dict[str, np.ndarray],
         # Calculate the absolute coordinates, confidence scores, and class probabilities
         grid_size = int(np.sqrt(output.shape[1]))
         cell_size = input_shape[0] / grid_size
-        anchors = np.array(anchors).reshape(-1, 2)
+        anchors = np.array(anchors).reshape(-1, 2) # type: ignore
         
         tx, ty, tw, th = np.split(output[..., :4], 4, axis=-1)
         cx, cy = np.meshgrid(np.arange(grid_size), np.arange(grid_size))
         bx = (sigmoid(tx) + cx) * cell_size
         by = (sigmoid(ty) + cy) * cell_size
-        bw = np.exp(tw) * anchors[:, 0:1] * cell_size
-        bh = np.exp(th) * anchors[:, 1:2] * cell_size
+        bw = np.exp(tw) * anchors[:, 0:1] * cell_size # type: ignore
+        bh = np.exp(th) * anchors[:, 1:2] * cell_size # type: ignore
         
         box_confidence = sigmoid(output[..., 4:5])
         box_class_probs = sigmoid(output[..., 5:])
@@ -121,7 +121,7 @@ for result in output:
 from ultralytics.yolo.utils import ROOT, yaml_load
 from ultralytics.yolo.utils.checks import check_yaml
 
-CLASSES = yaml_load(check_yaml('coco128.yaml'))['names']
+CLASSES = yaml_load(check_yaml('coco128.yaml'))['names'] # type: ignore
 
 colors = np.random.uniform(0, 255, size=(len(CLASSES), 3))
     

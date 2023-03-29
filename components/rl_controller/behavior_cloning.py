@@ -31,7 +31,6 @@ from stable_baselines3.ppo import MlpPolicy
 
 from imitation.algorithms import bc
 from imitation.data import rollout
-from imitation.data.wrappers import RolloutInfoWrapper
 
 from ai_controller.ai_controller_model import AiController
 
@@ -85,7 +84,7 @@ current_state:TargetAndFrame = NO_TARGET_STATE
 
 def get_current_state()-> TurretObservationSpace:
     global current_state
-    logging.debug('Sending current state: ' + str(current_state['target']['box']) + ' view dimensions: ' + str(current_state['view_dimensions']) + ' to the environment.')
+    logging.debug('Processing current state: ' + str(current_state['target']['box']) + ' view dimensions: ' + str(current_state['view_dimensions']) + ' to the environment.')
     return {
         "box": current_state['target']['box'],
         "view_dimensions": current_state['view_dimensions']
@@ -276,6 +275,7 @@ while not experience_episode_gathering.is_alive():
 
 logging.info('First target found, waiting for experience gathering thread to finish')
 experience_episode_gathering.join()
+logging.info('Finished collecting experience')
 
 rng = np.random.default_rng(0)
 

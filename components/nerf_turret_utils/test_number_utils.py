@@ -48,8 +48,9 @@ def test_map_range():
     # Test case where input_value is negative and at the maximum of the input range
     assert map_range(0, -100, 0, 0, 1) == 1
 
-    # Test case where min_input and max_input are equal so return min output
-    assert map_range(50, 0, 0, 0, 1) == 0
+    # Test case where min_input and max_input are equal so raise error
+    with pytest.raises(ZeroDivisionError):
+        map_range(50, 0, 0, 0, 1)
 
     # Test case where min_output and max_output are equal
     assert map_range(50, 0, 100, 0, 0) == 0
@@ -59,3 +60,4 @@ def test_map_range():
 
     # Test case where input_value is larger than max_input
     assert map_range(105, 0, 100, 0, 1) == pytest.approx(1.05, 1e-5)
+

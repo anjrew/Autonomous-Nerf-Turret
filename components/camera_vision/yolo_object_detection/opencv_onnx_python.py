@@ -30,7 +30,7 @@ class ONNXObjectDetector(ObjectDetector):
             model_name: Name of the ONNX model file to use.
         """
         self.model: cv2.dnn.Net = cv2.dnn.readNetFromONNX(f'{directory_path}/{model_name}')
-        self.class_names = yaml_load(check_yaml('coco128.yaml'))['names']
+        self.class_names = yaml_load(check_yaml('coco128.yaml'))['names'] # type: ignore
         logging.debug("Detecting from : " + str(self.class_names))
         self.colors = np.random.uniform(0, 255, size=(len(self.class_names), 3))
         self.class_name_id = { v:k for k, v in self.class_names.items() } # type: ignore
@@ -46,7 +46,7 @@ class ONNXObjectDetector(ObjectDetector):
         Returns:
             A tuple representing the RGB color value for the class.
         """                    
-        return self.colors[self.class_name_id[class_name]]
+        return tuple(self.colors[self.class_name_id[class_name]])
     
     
     def draw_bounding_box(self, img: np.ndarray, class_id: int, confidence: float, x: int, y: int, x_plus_w: int, y_plus_h: int) -> None:

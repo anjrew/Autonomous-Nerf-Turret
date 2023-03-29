@@ -28,8 +28,6 @@ def map_range(
     """
     bottom_input = input_value - min_input
     input_range = max_input - min_input
-    if input_range == 0:
-        return min_output
     
     mapped_value = (bottom_input / input_range) * (max_output - min_output) + min_output
     return mapped_value
