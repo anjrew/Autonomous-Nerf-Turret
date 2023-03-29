@@ -65,6 +65,8 @@ logging.basicConfig(level=args.log_level)
 
 logging.debug(f"\nArgs: {args}\n")
 
+# Set the random seed so the target box colors are consistent
+np.random.seed(42)
 
 target_images = []
 target_names = [ ]

@@ -90,7 +90,7 @@ class TurretEnv(gym.Env):
             target_provider: Callable[[], TurretObservationSpace], 
             action_dispatcher: Callable[[TurretAction], None],
             episode_step_limit:int = 10_000_000,
-            step_delay_s :float = 0.1 
+            step_delay_s :float = 0.2 
         ) -> None:
         
         super(TurretEnv, self).__init__()
@@ -168,7 +168,7 @@ class TurretEnv(gym.Env):
     def map_action_vector_to_object(self, action: np.ndarray) -> TurretAction:
         """Takes a raw output from the action space and maps it to a object."""
         if not  0 <= len(action) <= 4:
-            raise ValueError('The length of the action tuple must be between 0 and 4.')
+            raise ValueError(f'The length of the action tuple must be between 0 and 4 but a length of {len(action)} was given.{action}')
        
         azimuth_angle, is_clockwise, speed, is_firing = action
         is_clockwise, is_firing = bool(is_clockwise), bool(is_firing)

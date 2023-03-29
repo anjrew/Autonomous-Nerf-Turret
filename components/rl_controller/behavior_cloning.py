@@ -85,6 +85,7 @@ current_state:TargetAndFrame = NO_TARGET_STATE
 
 def get_current_state()-> TurretObservationSpace:
     global current_state
+    logging.debug('Sending current state: ' + str(current_state['target']['box']) + ' view dimensions: ' + str(current_state['view_dimensions']) + ' to the environment.')
     return {
         "box": current_state['target']['box'],
         "view_dimensions": current_state['view_dimensions']
@@ -151,7 +152,6 @@ def listen_for_targets(controller: AiController, first_target_found_emitter: Cal
                 
                 target: CameraVisionTarget = detection_data['targets'][target_index] # Extract the first target from the targets list
                 
-                
                 set_current_state({
                     'target': target,  
                     'view_dimensions': detection_data['view_dimensions']
@@ -180,6 +180,7 @@ def create_expert() -> AiController:
         x_smoothing=1, 
         azimuth_dp=1
     )
+    logging.debug(f"Expert created with args: {args}")
     return AiController(args.__dict__)
 
 
@@ -188,8 +189,8 @@ def sample_expert_transitions(expert: AiController, env: TurretEnv):
     
     step_limit = 10_000
 
-    print("Sampling expert transitions.")
-    
+    logging.info(f"Sampling expert transitions.")
+
     obs: np.ndarray = np.array([])
     acts: np.ndarray = np.array([])
     infos: np.ndarray = np.array([])
@@ -198,10 +199,17 @@ def sample_expert_transitions(expert: AiController, env: TurretEnv):
     
     for _ in range(step_limit):
         
-        mapped_action = np.array([0,0,0,0,0,0])
-        if current_state != env.NO_TARGET_STATE:
+        mapped_action = np.array([0,0,0,0])
+        
+        print(current_state['target']['box'], type(current_state['target']['box']), env.NO_TARGET_STATE, type(env.NO_TARGET_STATE))
+        has_target = current_state['target']['box'][:4] != env.NO_TARGET_STATE[:4]
+        logging.debug(f"Expert has target: {has_target}")     
+        
+        if has_target:
             action = expert.get_action_for_target(current_state['target'], current_state['view_dimensions'])
+            logging.debug(f"Expert output action. {str(action)} for target {str(current_state)}")     
             mapped_action = env.map_action_object_to_vector(action)
+            
        
             
         observation, reward, done, info  = env.step(mapped_action)
@@ -237,6 +245,7 @@ def eval_func(env, bc_trainer, is_after = False):
 def create_env() -> TurretEnv:   
     """Create the turret environment"""      
     def dispatch_action(action: TurretAction) -> None:
+        logging.debug('Dispatching action: ' + str(action))
         if not args.test: 
             try:
                 requests.post(url, json=action)
@@ -248,12 +257,9 @@ def create_env() -> TurretEnv:
 
 
 
-
 expert: AiController = create_expert()
 
 environment = create_env()
-
-env = create_env()
 
 # Create threads for both functions
 experience_episode_gathering = threading.Thread(target=sample_expert_transitions, args=(expert, environment))
@@ -266,14 +272,16 @@ server_thread.start()
 
 while not experience_episode_gathering.is_alive():
     logging.info('Waiting for experience gathering thread to start')
+    time.sleep(1)
 
+logging.info('First target found, waiting for experience gathering thread to finish')
 experience_episode_gathering.join()
 
 rng = np.random.default_rng(0)
 
 bc_trainer = bc.BC(
-    observation_space=env.observation_space,
-    action_space=env.action_space,
+    observation_space=environment.observation_space,
+    action_space=environment.action_space,
     demonstrations=experience_episode_gathering.result, # type: ignore
     rng=rng,
 )
@@ -282,7 +290,7 @@ print("Training a policy using Behavior Cloning")
 bc_trainer.train(n_epochs=1)
 
 
-eval_func(env, bc_trainer)
+eval_func(environment, bc_trainer)
 
 
 # def run_model_training_process():
