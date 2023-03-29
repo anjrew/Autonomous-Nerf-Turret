@@ -176,7 +176,7 @@ def create_expert() -> AiController:
         max_elevation_speed=10,
         elevation_dp=0,
         y_speed=2,
-        x_speed=10, 
+        x_speed_max=30, 
         x_smoothing=1, 
         azimuth_dp=1
     )
@@ -208,9 +208,7 @@ def sample_expert_transitions(expert: AiController, env: TurretEnv):
             action = expert.get_action_for_target(current_state['target'], current_state['view_dimensions'])
             logging.debug(f"Expert output action. {str(action)} for target {str(current_state)}")     
             mapped_action = env.map_action_object_to_vector(action)
-            
-       
-            
+             
         observation, reward, done, info  = env.step(mapped_action)
         
         obs = np.append(obs, observation)

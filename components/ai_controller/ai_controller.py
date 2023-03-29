@@ -28,7 +28,7 @@ parser.add_argument("--azimuth-dp", help="Set how many decimal places the azimut
 parser.add_argument("--elevation-dp", help="Set how many decimal places the elevation is taken too.", default=0, type=int)
 parser.add_argument("--delay", "-d", help="Delay to limit the data flow into the websocket server.", default=0, type=int)
 parser.add_argument("--test", "-t", help="For testing it will not send requests to the driver.", action="store_true")
-parser.add_argument("--x-speed", "-xs", help="Set the limit for the the azimuth speed", default=30, type=int)
+parser.add_argument("--x-speed-max", "-xs", help="Set the limit for the the azimuth speed", default=30, type=int)
 parser.add_argument("--x-smoothing", "-smx", help="The amount of smoothing factor for speed to optimal position on the azimuth angle", default=1, type=int)
 parser.add_argument("--max-azimuth-angle", "-ma", help="The maximum angle that the turret will try to turn in one step on the azimuth plane", default=55, type=int)
 parser.add_argument("--y-speed", "-ys", help="Set the factor to multiply the elevation speed", default=2, type=int)

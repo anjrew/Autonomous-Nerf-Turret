@@ -23,7 +23,7 @@ def mock_args():
         max_elevation_speed=10,
         elevation_dp=0,
         y_speed=2,
-        x_speed=10, 
+        x_speed_max=10, 
         x_smoothing=1, 
         azimuth_dp=1
     )

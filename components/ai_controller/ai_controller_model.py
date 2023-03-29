@@ -124,16 +124,16 @@ class AiController:
         max_distance_from_the_middle_left = -(view_width / 2)
         max_distance_from_the_middle_right = view_width / 2
     
-        predicted_azimuth_angle = map_range(
-            current_distance_from_the_middle - args['accuracy_threshold_x'],
+        azimuth_predicted_angle = map_range(
+            current_distance_from_the_middle,
             max_distance_from_the_middle_left, 
             max_distance_from_the_middle_right ,
             -args['max_azimuth_angle'] ,
             args['max_azimuth_angle']
         )
-        azimuth_speed_adjusted = min(predicted_azimuth_angle , args['x_speed'])
-        smoothed_speed_adjusted_azimuth = slow_start_fast_end_smoothing(azimuth_speed_adjusted, float(args['x_smoothing']) + 1.0, 90)
-        azimuth_formatted = round(smoothed_speed_adjusted_azimuth, args['azimuth_dp'])
+        azimuth_speed_adjusted = min(azimuth_predicted_angle , args['x_speed_max'])
+        azimuth_smoothed_speed_adjusted = slow_start_fast_end_smoothing(azimuth_speed_adjusted, float(args['x_smoothing']) + 1.0, args['x_speed_max'])
+        azimuth_formatted = round(azimuth_smoothed_speed_adjusted, args['azimuth_dp'])
 
         action: TurretAction = {
             'azimuth_angle': int(azimuth_formatted),

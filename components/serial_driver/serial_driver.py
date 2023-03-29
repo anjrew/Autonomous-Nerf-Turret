@@ -21,7 +21,7 @@ parser.add_argument("--baud", help="Set the Baud Rate of the serial communicatio
 parser.add_argument("--host", help="Set the http server hostname.", default="localhost")
 parser.add_argument("--log-level", "-ll" ,help="Set the logging level by integer value.", default=logging.WARNING, type=map_log_level)
 parser.add_argument("--delay", "-d",help="Delay to rate the data is sent to the Arduino in seconds", default=0, type=int)
-parser.add_argument("--throttle-interval", "-tr",help="How to throttle requests sent over serial in seconds", default=0.1, type=float)
+parser.add_argument("--throttle-interval", "-tr",help="How to throttle requests sent over serial in seconds", default=0.00001, type=float)
 parser.add_argument("--test", "-t", help="For testing it will not send requests to the driver.", action="store_true")
 
 parser_args = parser.parse_args()
