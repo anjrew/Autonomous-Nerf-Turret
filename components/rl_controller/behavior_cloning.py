@@ -19,6 +19,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/..')
 
 
 from rl_controller.turret_env import TurretEnv, TurretObservationSpace
+from nerf_turret_utils.thread_executor import ThreadExecutor
 from nerf_turret_utils.turret_controller import TurretAction
 from nerf_turret_utils.args_utils import map_log_level
 from camera_vision.models import CameraVisionDetection, CameraVisionTarget
@@ -183,7 +184,7 @@ def create_expert() -> AiController:
     return AiController(args.__dict__)
 
 
-def sample_expert_transitions(expert: AiController, env: TurretEnv):   
+def sample_expert_transitions(expert: AiController, env: TurretEnv) -> types.Transitions:   
     """Sample expert transitions using the expert policy to gain experience."""
     
     step_limit = 10_000
@@ -255,13 +256,12 @@ def create_env() -> TurretEnv:
     return env
 
 
-
 expert: AiController = create_expert()
 
 environment = create_env()
 
 # Create threads for both functions
-experience_episode_gathering = threading.Thread(target=sample_expert_transitions, args=(expert, environment))
+experience_episode_gathering = ThreadExecutor[types.Transitions](target=sample_expert_transitions, args=(expert, environment))
 server_thread = threading.Thread(
     target=listen_for_targets, 
     args=(expert , lambda: experience_episode_gathering.start(), lambda x: set_current_state(x))
