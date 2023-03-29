@@ -32,7 +32,7 @@ class YoloObjectDetector(ObjectDetector):
         
     def get_color_for_class_name(self, class_name: str) -> Tuple[int, int, int]:
         """Gets the color for a particular class by name"""                
-        return self.colors[self._class_name_id[class_name]]
+        return tuple(self.colors[self._class_name_id[class_name]])
 
 
     def detect(self, source: Union[str, int, np.ndarray], confidence: float = 0.7, save=False, save_txt=False) -> List[dict]:

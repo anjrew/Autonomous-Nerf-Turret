@@ -22,5 +22,6 @@ void loop() {
   delay(3000);
   
   azimuthServo.write(180);              
-  delay(3000);                     
+  delay(3000);
+
 }
