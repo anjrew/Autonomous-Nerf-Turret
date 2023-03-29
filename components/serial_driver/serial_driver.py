@@ -10,6 +10,7 @@ from typing import Optional
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/..')
 
 from serial_driver_server import SerialDriverServer
+from serial_driver_request_handler import SerialDriverRequestHandler
 from serial_driver_utils import map_log_level
     
 
@@ -76,9 +77,9 @@ try:
     
     if __name__ == "__main__":
 
-        webServer = HTTPServer(
+        webServer = SerialDriverServer(
             (parser_args.host, parser_args.port),
-            lambda *args, **kwargs: SerialDriverServer(
+            lambda *args, **kwargs: SerialDriverRequestHandler(
                 serial_inst=serialInst, 
                 slowest_speed=SLOWEST_EL_SPEED, 
                 fasted_speed=FASTEST_EL_SPEED, 
