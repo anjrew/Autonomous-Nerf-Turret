@@ -45,12 +45,8 @@ class SerialDriverRequestHandler(BaseHTTPRequestHandler):
         
         global last_request_time
         throttle_interval = self.properties.get('throttle_interval', 0)
-        print('last_request_time', last_request_time)
-        print('throttle_interval', throttle_interval)
         current_time = time.time()
-        print('current_time', current_time)
         time_since_last_request = current_time - last_request_time
-        print('time_since_last_request', time_since_last_request)
         should_throttle_request = time_since_last_request < throttle_interval
         if should_throttle_request:
             logging.debug("Too many requests, returning 429 response")
@@ -59,7 +55,6 @@ class SerialDriverRequestHandler(BaseHTTPRequestHandler):
             self.wfile.write(b'Too many requests. Please try again later.')
             return
         
-        print('Assining time here')
         start_time = last_request_time = time.time()
         # Get the content type and content length of the request
         content_length = int(self.headers.get('content-length', 0))
