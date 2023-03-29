@@ -8,7 +8,7 @@ import json
 class SerialDriverServer(BaseHTTPRequestHandler):
     
     def __init__(self, *args, **kwargs):
-        keys_used = ['serial_inst', 'slowest_speed', 'fasted_speed']
+        keys_used = ['serial_inst', 'slowest_speed', 'fasted_speed', 'test']
         self.properties = {}
         for key in keys_used:
             if key not in kwargs:
@@ -33,6 +33,11 @@ class SerialDriverServer(BaseHTTPRequestHandler):
     
 
     def do_POST(self):
+
+        if self.properties.get('test') == True:
+            self.send_response(200)
+            return
+        
         start_time = time.time()
         # Get the content type and content length of the request
         content_length = int(self.headers.get('content-length', 0))
@@ -48,7 +53,6 @@ class SerialDriverServer(BaseHTTPRequestHandler):
         slowest_speed = self.properties.get('slowest_speed')
         fasted_speed = self.properties.get('fasted_speed')
         serial_inst: Serial = self.properties.get('serial_inst')# type: ignore
-        
         if speed_in and (speed_in < slowest_speed or speed_in > self.properties.get('fasted_speed')):
                 # Send a response
                 self.send_response(400)

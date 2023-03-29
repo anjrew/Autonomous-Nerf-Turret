@@ -20,12 +20,13 @@ parser.add_argument("--baud", help="Set the Baud Rate of the serial communicatio
 parser.add_argument("--host", help="Set the http server hostname.", default="localhost")
 parser.add_argument("--log-level", "-ll" ,help="Set the logging level by integer value.", default=logging.WARNING, type=map_log_level)
 parser.add_argument("--delay", "-d",help="Delay to rate the data is sent to the Arduino in seconds", default=0, type=int)
+parser.add_argument("--test", "-t", help="For testing it will not send requests to the driver.", action="store_true")
 
-args = parser.parse_args()
+parser_args = parser.parse_args()
 
-logging.basicConfig(level=args.log_level)
+logging.basicConfig(level=parser_args.log_level)
 
-logging.debug(f"\nArgs: {args}\n")
+logging.debug(f"\nArgs: {parser_args}\n")
 
 webServer:Optional[HTTPServer] = None
 serialInst:Optional[serial.Serial] = None
@@ -43,7 +44,7 @@ try:
 
     portsList = []
 
-    if args.is_port_man:
+    if parser_args.is_port_man:
         
         print("\nSerial Port options: ")
         for i, onePort in enumerate(ports):
@@ -65,7 +66,7 @@ try:
     if not serialInst.port:
         raise Exception("No Arduino Found")
 
-    serialInst.baudrate = args.baud
+    serialInst.baudrate = parser_args.baud
     serialInst.open()
     print("Connected to Serial Port:", serialInst.port, "at", serialInst.baudrate, "baud rate.")    
 
@@ -75,15 +76,16 @@ try:
     if __name__ == "__main__":
 
         webServer = HTTPServer(
-            (args.host, args.port),
+            (parser_args.host, parser_args.port),
             lambda *args, **kwargs: SerialDriverServer(
                 serial_inst=serialInst, 
                 slowest_speed=SLOWEST_EL_SPEED, 
                 fasted_speed=FASTEST_EL_SPEED, 
+                test=parser_args.test,
                 *args, **kwargs
                 ))
         
-        print("Server started http://%s:%s" % (args.host, args.port))
+        print("Server started http://%s:%s" % (parser_args.host, parser_args.port))
 
         webServer.serve_forever()
       

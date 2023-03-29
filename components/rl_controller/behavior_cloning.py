@@ -53,7 +53,7 @@ parser.add_argument("--test", "-t", help="For testing it will not send requests 
 parser.add_argument("--time-steps", "-ts", help="The amount of training timesteps per learning episode.",  type=int, default=1000)
 parser.add_argument("--model-save-frequency", "-msf", help="The amount of training timesteps.", type=int, default=30)
 
-parser.add_argument("--delay", "-d", help="Delay to limit the data flow into the websocket server.", default=0.3, type=float)
+parser.add_argument("--delay", "-d", help="Delay to limit the data flow into the websocket server.", default=0.1, type=float)
 
 parser.add_argument("--benchmark", "-b",help="Wether to measure the script performance and output in the logs.", action='store_true', default=False)
 
