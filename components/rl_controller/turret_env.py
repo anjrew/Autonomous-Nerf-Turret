@@ -33,8 +33,8 @@ class TurretEnv(gym.Env):
         }
     
 
-    
-    """The state object with its initial values"""
+    done = False
+    """weather the episode is done or not"""
     
     state = INITIAL_STATE
     
@@ -119,8 +119,7 @@ class TurretEnv(gym.Env):
         
         self.dispatch_action(parsed_action)
         # Finish the episode if the step limit is reached
-        # done = self.step_n >= self.episode_time
-        done = False
+        
         
         # Get the new information from the camera on the turret
         target = self.target_provider()
@@ -132,7 +131,7 @@ class TurretEnv(gym.Env):
         # reward (float) : amount of reward returned after previous action
         # done (bool): whether the episode has ended, in which case further step() calls will return undefined results
         # info (dict): contains auxiliary diagnostic information (helpful for debugging, and sometimes learning)
-        return np.array(target, dtype=np.float16), reward, done, { 'step': self.step_n } 
+        return np.array(target, dtype=np.float16), reward, self.done, { 'step': self.step_n } 
 
     
     def map_to_dispatch_action(self, parsed_action: TurretAction): 

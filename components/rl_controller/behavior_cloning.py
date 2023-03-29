@@ -109,12 +109,17 @@ def try_to_bind_to_socket() -> socket.socket:
     return sock
 
 
-def listen_for_targets(controller: AiController, first_target_found_emitter: Callable, set_current_state: Callable[[TargetAndFrame], None]):
+def listen_for_targets(
+    controller: AiController, 
+    first_target_found_emitter: Callable, 
+    set_current_state: Callable[[TargetAndFrame], None],
+    stop_event: threading.Event
+) -> None:
     """Listen for targets and store them in a global variable ready for the controller to use."""
     sock: Optional[socket.socket] = None
     
     first_found =  False
-    while True:
+    while not stop_event.is_set():
         time.sleep(args.delay)
         if args.benchmark:
             global start_time
@@ -263,11 +268,13 @@ expert: AiController = create_expert()
 
 environment = create_env()
 
+stop_event = threading.Event()
+
 # Create threads for both functions
 experience_episode_gathering = ThreadExecutor[types.Transitions](target=sample_expert_transitions, args=(expert, environment))
 server_thread = threading.Thread(
     target=listen_for_targets, 
-    args=(expert , lambda: experience_episode_gathering.start(), lambda x: set_current_state(x))
+    args=(expert , lambda: experience_episode_gathering.start(), lambda x: set_current_state(x), stop_event)
 )
 
 server_thread.start()
@@ -279,6 +286,8 @@ while not experience_episode_gathering.is_alive():
 logging.info('First target found, waiting for experience gathering thread to finish')
 experience_episode_gathering.join()
 logging.info('Finished collecting experience')
+# Set the stop event to stop the thread
+stop_event.set()
 
 rng = np.random.default_rng(0)
 
@@ -289,11 +298,16 @@ bc_trainer = bc.BC(
     rng=rng,
 )
 
+# Stop the environment running
+environment.done = True
+
 logging.info("Training a policy using Behavior Cloning")
+
+eval_func(environment, bc_trainer, False)
+
 bc_trainer.train(n_epochs=1)
 
-
-eval_func(environment, bc_trainer)
+eval_func(environment, bc_trainer , True)
 
 
 # def run_model_training_process():
