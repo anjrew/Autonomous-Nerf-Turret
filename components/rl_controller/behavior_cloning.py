@@ -98,6 +98,7 @@ def set_current_state(x: TargetAndFrame)-> None:
 
 def try_to_bind_to_socket() -> socket.socket:
     """Try to bind to the socket and accept the connection"""
+    
     UDP_HOST = args.udp_host  # IP address of the server
     UDP_PORT = args.udp_port  # Port number to listen on
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -121,8 +122,11 @@ def listen_for_targets(controller: AiController, first_target_found_emitter: Cal
             logging.debug('Benchmarking loop: ' + str(time.time() - start_time) + ' seconds')
             start_time = time.time()
         if not sock:
-            sock = try_to_bind_to_socket()
-        
+            try:
+                sock = try_to_bind_to_socket()
+            except Exception as e:
+                logging.error(f"Error binding to socket: {e}")
+                continue
         else:
                  
             # Receive data from a client
@@ -279,8 +283,6 @@ bc_trainer.train(n_epochs=1)
 
 
 eval_func(env, bc_trainer)
-
-
 
 
 # def run_model_training_process():

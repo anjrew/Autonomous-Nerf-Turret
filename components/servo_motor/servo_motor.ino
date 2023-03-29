@@ -13,14 +13,14 @@ void setup() {
 
 void loop() {
   azimuthServo.write(0);  // tell servo to go to a particular angle
-  delay(1000);
+  delay(3000);
   
   azimuthServo.write(90);              
-  delay(500); 
+  delay(3000); 
   
   azimuthServo.write(135);              
-  delay(500);
+  delay(3000);
   
   azimuthServo.write(180);              
-  delay(1500);                     
+  delay(3000);                     
 }
