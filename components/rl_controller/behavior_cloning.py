@@ -55,6 +55,8 @@ parser.add_argument("--delay", "-d", help="Delay to limit the data flow into the
 
 parser.add_argument("--benchmark", "-b",help="Wether to measure the script performance and output in the logs.", action='store_true', default=False)
 
+parser.add_argument("--step-limit", "-sl",help="How many steps of experience to collect from the expert.", default=10_000, type=int)
+
 args = parser.parse_args()
 
 logging.basicConfig(level=args.log_level)
@@ -187,11 +189,11 @@ def create_expert() -> AiController:
     return AiController(args.__dict__)
 
 
-def sample_expert_transitions(expert: AiController, env: TurretEnv) -> types.Transitions:   
+def sample_expert_transitions(expert: AiController, env: TurretEnv, step_limit: int) -> types.Transitions:   
     """Sample expert transitions using the expert policy to gain experience."""
     
     # step_limit = 10_000
-    step_limit = 1_000
+    
 
     logging.info(f"Sampling expert transitions.")
 
@@ -215,7 +217,6 @@ def sample_expert_transitions(expert: AiController, env: TurretEnv) -> types.Tra
             mapped_action = env.map_action_object_to_vector(action)
              
         result = env.step(mapped_action)
-        print('Result: ', result)
         observation, reward, done, info  = result
         
         obs =  np.vstack((obs, observation))
@@ -224,7 +225,6 @@ def sample_expert_transitions(expert: AiController, env: TurretEnv) -> types.Tra
         infos = np.vstack((infos, info))
         terminal = done
         
-    print(len(obs), len(acts), len(rews), terminal)
     episode = types.TrajectoryWithRew(
         obs=obs,
         acts=acts,
@@ -248,7 +248,7 @@ def eval_func(env, bc_trainer, is_after = False):
     print(f"Reward { 'after' if is_after else 'before'} training: {reward}")
 
 
-def create_env() -> TurretEnv:   
+def create_env() -> gym.Env:   
     """Create the turret environment"""      
     def dispatch_action(action: TurretAction) -> None:
         logging.debug('Dispatching action: ' + str(action))
@@ -261,6 +261,8 @@ def create_env() -> TurretEnv:
                 logging.error(f"Unknown Error sending request to serial driver at {url}: {e}")
     
     env = TurretEnv(get_current_state, dispatch_action)
+    # Wrap the environment with the Monitor class
+    # env = Monitor(env, filename="monitor_log.csv")
     return env
 
 
@@ -271,7 +273,7 @@ environment = create_env()
 stop_event = threading.Event()
 
 # Create threads for both functions
-experience_episode_gathering = ThreadExecutor[types.Transitions](target=sample_expert_transitions, args=(expert, environment))
+experience_episode_gathering = ThreadExecutor[types.Transitions](target=sample_expert_transitions, args=(expert, environment, args.step_limit))
 server_thread = threading.Thread(
     target=listen_for_targets, 
     args=(expert , lambda: experience_episode_gathering.start(), lambda x: set_current_state(x), stop_event)
@@ -299,7 +301,7 @@ bc_trainer = bc.BC(
 )
 
 # Stop the environment running
-environment.done = True
+environment.done = True # type: ignore
 
 logging.info("Training a policy using Behavior Cloning")
 
