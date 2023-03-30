@@ -36,7 +36,7 @@ class AiController:
     
     search_state = {
         'is_active': False,
-        'clockwise': True,
+        'clockwise': False,
         'heading': 0,
     }
     """The state of the search behavior of the turret"""
@@ -89,6 +89,9 @@ class AiController:
                 
     def get_action_for_target(self, target: CameraVisionTarget, frame: Tuple[int,int]) -> TurretAction:
         """Handle the case where a target is found in the frame"""
+        
+        if target['box'] == (0, 0, 0, 0) or frame == (0, 0):
+            return self.handle_no_target(self.search_state)
         
         args = self.args
 
@@ -153,7 +156,7 @@ class AiController:
         else:
             return {
                 **self.cached_action_state,
-                'azimuth_angle': 1 if search["clockwise"] else -1,
+                'azimuth_angle': 0,
                 'speed': 0,
                 'is_firing': False,
             }

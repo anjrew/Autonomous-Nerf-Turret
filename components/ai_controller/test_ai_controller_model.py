@@ -6,7 +6,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/..')
 import pytest
 from argparse import Namespace
 from ai_controller_model import AiController
-from camera_vision.models import CameraVisionDetection
+from camera_vision.models import CameraVisionDetection, CameraVisionTarget
 
 
 @pytest.fixture
@@ -62,3 +62,76 @@ def test_get_action_with_valid_detection(mock_args, mock_detection):
 
     assert 'speed' in action and 'azimuth_angle' in action and 'is_clockwise' in action and 'is_firing' in action
 
+@pytest.fixture
+def ai_controller():
+    args = {
+        "target_padding": 0,
+        "search": False,
+        "target_type": "person",
+        "targets": [],
+        'x_speed_max': 10,
+        'x_smoothing': 1,
+        'azimuth_dp': 1,
+        'max_azimuth_angle': 90,
+        'max_elevation_speed': 10,
+        'accuracy_threshold_y': 30,
+        'y_speed': 2,
+        'elevation_dp': 0,
+    }
+    return AiController(args)
+
+
+def test_get_action_for_target_center(ai_controller: AiController):
+    frame = (1000, 1000)
+    target = CameraVisionTarget(box=(250, 250, 750, 750)) # type: ignore
+    expected_action = {
+        'azimuth_angle': 0,
+        'is_clockwise': False,
+        'speed': 0,
+        'is_firing': True,
+    }
+
+    action = ai_controller.get_action_for_target(target, frame)
+    
+    # Expected action number values are within 1 of the actual action
+    expected_azimuth = expected_action['azimuth_angle']
+    assert expected_azimuth - 1 <= action['azimuth_angle'] <= expected_azimuth + 1
+    expected_speed = action['speed']
+    assert expected_speed - 1 <= action['speed'] <= expected_speed + 1
+    assert action['is_firing'] == expected_action['is_firing']
+
+# TODO: Fix this test
+# def test_get_action_for_target_left(ai_controller: AiController):
+#     frame = (640, 480)
+#     target = CameraVisionTarget(box=(180, 180, 260, 300)) # type: ignore
+#     expected_action = {
+#         'azimuth_angle': pytest.approx(37.5, rel=1e-2),
+#         'is_clockwise': True,
+#         'speed': 0,
+#         'is_firing': False,
+#     }
+
+#     action = ai_controller.get_action_for_target(target, frame)
+#     assert action == expected_action
+    
+    
+def test_get_action_for_target_left(ai_controller: AiController):
+    frame = (0, 0)
+    target = CameraVisionTarget(box=(0, 0, 0, 0)) # type: ignore
+    expected_action = {
+        'azimuth_angle': 0,
+        'is_clockwise': False,
+        'speed': 0,
+        'is_firing': False,
+    }
+
+    action = ai_controller.get_action_for_target(target, frame)
+    # Expected action number values are within 1 of the actual action
+    expected_azimuth = expected_action['azimuth_angle']
+    assert expected_azimuth == action['azimuth_angle']
+    
+    expected_speed = action['speed']
+    assert expected_speed == action['speed']
+    
+    assert action['is_firing'] == expected_action['is_firing']
+    

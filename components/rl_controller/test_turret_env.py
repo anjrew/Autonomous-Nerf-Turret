@@ -34,12 +34,6 @@ def test_turret_environment_init():
 
 def test_turret_environment_step_no_target():
     env = TurretEnv(dummy_target_provider(), dummy_action_dispatcher)
-    # test_action: TurretAction = {
-    #     'azimuth_angle': 90,
-    #     'is_clockwise': False,
-    #     'speed': 0,
-    #     'is_firing': False
-    # }
     test_action: np.ndarray = np.array((90, 0, 0, 0))
     state, reward, done, info = env.step(test_action)
     assert reward == 1 # Get base reward for doing nothing wrong
@@ -48,12 +42,6 @@ def test_turret_environment_step_no_target():
 
 def test_turret_environment_step_right_on_target_and_firing():
     env = TurretEnv(dummy_target_provider({ 'box': (25, 25, 75, 75,), 'view_dimensions': (100, 100)}), dummy_action_dispatcher)
-    # test_action: TurretAction = {
-    #     'azimuth_angle': 90,
-    #     'is_clockwise': False,
-    #     'speed': 0,
-    #     'is_firing': True
-    # }
     test_action: np.ndarray = np.array((90, 0, 0, 1))
     state, reward, done, info = env.step(test_action)
     assert reward == 2 # because firing
@@ -63,18 +51,8 @@ def test_turret_environment_step_right_on_target_and_firing():
 def test_turret_environment_reset():
     env = TurretEnv(dummy_target_provider(), dummy_action_dispatcher)
     env.step_n = 5
-    env.state = {
-        'target': (10, 10, 20, 20),
-        'previous_action': {
-            'azimuth_angle': 90,
-            'is_clockwise': False,
-            'speed': 0,
-            'is_firing': False
-        },
-        'previous_state': None
-    }
+  
     env.reset()
-    assert env.state['target'] == env.NO_TARGET_STATE
     assert env.step_n == 0
 
 

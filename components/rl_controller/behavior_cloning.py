@@ -1,40 +1,35 @@
-from argparse import Namespace
-import argparse
-import os
-import sys
-import time
-import types
-from typing import Callable, Optional, Sequence, Tuple, TypedDict
-import logging
 # Standard library imports
+import argparse
 import json
 import logging
+import os
 import socket
+import sys
 import threading
-import requests
-import numpy as np
+import time
+from argparse import Namespace
+from typing import Callable, Optional, Sequence, Tuple, TypedDict
 
-
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/..')
-
-
-from rl_controller.turret_env import TurretEnv, TurretObservationSpace
-from nerf_turret_utils.thread_executor import ThreadExecutor
-from nerf_turret_utils.turret_controller import TurretAction
-from nerf_turret_utils.args_utils import map_log_level
-from camera_vision.models import CameraVisionDetection, CameraVisionTarget
+# Third-party imports
 import gym
 import numpy as np
+import requests
 from stable_baselines3 import PPO
 from stable_baselines3.common.evaluation import evaluate_policy
+from stable_baselines3.common.monitor import Monitor
 
-from imitation.algorithms import bc
-from imitation.data import rollout
-
+# Local imports
+directory = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(directory + '/..')
 from ai_controller.ai_controller_model import AiController
+from camera_vision.models import CameraVisionDetection, CameraVisionTarget
+from imitation.algorithms import bc
+from imitation.data import rollout, types
+from nerf_turret_utils.args_utils import map_log_level
+from nerf_turret_utils.thread_executor import ThreadExecutor
+from nerf_turret_utils.turret_controller import TurretAction
+from rl_controller.turret_env import TurretEnv, TurretObservationSpace
 
-
-from imitation.data import types
 
 
 parser = argparse.ArgumentParser("Reinforcement Learning Controller")
@@ -56,6 +51,8 @@ parser.add_argument("--delay", "-d", help="Delay to limit the data flow into the
 parser.add_argument("--benchmark", "-b",help="Wether to measure the script performance and output in the logs.", action='store_true', default=False)
 
 parser.add_argument("--step-limit", "-sl",help="How many steps of experience to collect from the expert.", default=10_000, type=int)
+
+parser.add_argument("--n-epochs", "-ne",help="The number of epochs for the behavior cloning model to pass through the dataset.", default=10, type=int)
 
 args = parser.parse_args()
 
@@ -191,9 +188,6 @@ def create_expert() -> AiController:
 
 def sample_expert_transitions(expert: AiController, env: TurretEnv, step_limit: int) -> types.Transitions:   
     """Sample expert transitions using the expert policy to gain experience."""
-    
-    # step_limit = 10_000
-    
 
     logging.info(f"Sampling expert transitions.")
 
@@ -260,7 +254,7 @@ def create_env() -> gym.Env:
             except Exception as e:
                 logging.error(f"Unknown Error sending request to serial driver at {url}: {e}")
     
-    env = TurretEnv(get_current_state, dispatch_action)
+    env = TurretEnv(get_current_state, dispatch_action, step_delay_s=args.delay)
     # Wrap the environment with the Monitor class
     # env = Monitor(env, filename="monitor_log.csv")
     return env
@@ -301,17 +295,18 @@ bc_trainer = bc.BC(
 )
 
 # Stop the environment running
-environment.done = True # type: ignore
+# environment.done = True # type: ignore
 
 logging.info("Training a policy using Behavior Cloning")
 
 eval_func(environment, bc_trainer, False)
 
-bc_trainer.train(n_epochs=1)
+bc_trainer.train(n_epochs=args.n_epochs)
 
 eval_func(environment, bc_trainer , True)
 
-
+bc_model_save_path = f"{directory}/bc_model.zip"
+bc_trainer.policy.save(bc_model_save_path)
 # def run_model_training_process():
 #     TIME_STEPS = args.time_steps
     

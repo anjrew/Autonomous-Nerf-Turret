@@ -89,12 +89,10 @@ class TurretEnv(gym.Env):
     def __init__(self, 
             target_provider: Callable[[], TurretObservationSpace], 
             action_dispatcher: Callable[[TurretAction], None],
-            episode_step_limit:int = 10_000_000,
             step_delay_s :float = 0 
         ) -> None:
         
         super(TurretEnv, self).__init__()
-        self.episode_time = episode_step_limit
         self.step_delay_s = step_delay_s
         
         def map_target() -> Tuple[int, int, int, int, int, int]:

@@ -24,6 +24,7 @@ __pycache__/
 *.bak
 .dist
 *.onnx
+*.zip
 
 **/*YOLOWrapper_latencies*
 *.pt
