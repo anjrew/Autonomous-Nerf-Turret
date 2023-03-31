@@ -2,7 +2,7 @@ import sys
 import os
 import json
 import logging
-from typing import List, Optional, Tuple, Union, get_type_hints, cast
+from typing import List, Optional, Tuple, Union, get_type_hints
 
 upper_dir = os.path.dirname(os.path.abspath(__file__)) + '/..'
 sys.path.append(upper_dir)
@@ -14,11 +14,10 @@ sys.path.append(curr_dir)
 from nerf_turret_utils.controller_action import ControllerAction
 from camera_vision.models import CameraVisionDetection, CameraVisionTarget
 from nerf_turret_utils.image_utils import get_frame_box_dimensions_delta
-from ai_controller_args import AiControllerArgs
 from ai_controller_utils import get_priority_target_index, get_y_speed, get_x_speed
+from typing import List, get_type_hints
 
 
-AI_CONTROLLER_KEY_TYPES = get_type_hints(AiControllerArgs)
 
 
 class AiControllerSearchState:
@@ -40,6 +39,8 @@ class AiControllerSearchState:
     def is_valid(self):
         return all(getattr(self, prop, None) is not None for prop in get_type_hints(AiControllerSearchState))
     
+
+
 class AiController:
     """A class to control the Nerf Turret based on the input from a Camera Vision Detection system. """
     
@@ -58,25 +59,21 @@ class AiController:
     """The state of the search behavior of the turret"""
     
     
-    def __init__(self, args: Union[AiControllerArgs, dict] ):
-        """Initialize the AiController with the given arguments"""
-        if isinstance(args, AiControllerArgs):
-            self.args  = args
-        else:
-            for prop in AI_CONTROLLER_KEY_TYPES.keys():
-                if prop not in args: 
-                    raise KeyError(f'Invalid arguments passed to AiController. Missing key "{prop}"')
-            
-            self.args = AiControllerArgs(**args)
-             
-        self.search_state.is_active = self.args.search
-        self.args.target_padding = self.args.target_padding/100
-        
+    def __init__(self, 
+        target_padding: float,
+        search: bool,
+        target_type: str,
+        target_ids: List[str],
+    ):
+        """Initialize the AiController with the given arguments""" 
+        self.search_state.is_active = search
+        self.target_padding = target_padding/100
+        self.target_type = target_type
+        self.target_ids = target_ids
+      
       
     def get_action(self, detection: CameraVisionDetection) -> ControllerAction:
         """Generate a ControllerAction based on the input detection"""
-        
-        args = self.args
         
         # Check if there are any targets in the frame
         if detection is not None and len(detection['targets']) > 0:
@@ -84,7 +81,7 @@ class AiController:
             target_index = self.get_priority_target_index(detection['targets'])
             
             if target_index is None:
-                logging.debug(f'No valid target found from type {args.target_type} with ids {args.target_ids}')
+                logging.debug(f'No valid target found from type {self.target_type} with ids {self.target_ids}')
                 # If no valid target was found, then just move onto the next frame
                 return self.handle_no_target(self.search_state)
             
@@ -115,7 +112,6 @@ class AiController:
         if target['box'] == (0, 0, 0, 0) or frame == (0, 0):
             return self.handle_no_target(self.search_state)
         
-        args = self.args
 
         view_width = frame[0]
         view_height = frame[1]
@@ -132,8 +128,8 @@ class AiController:
         movement_vector = get_frame_box_dimensions_delta(left, top, right, bottom, view_width, view_height)
         
         # Add padding as a percentage of the original dimensions
-        padding_width = box_width * args.target_padding
-        padding_height = box_height * args.target_padding
+        padding_width = box_width * self.target_padding
+        padding_height = box_height * self.target_padding
 
         # Calculate box coordinates
         padded_left = left + padding_width
@@ -183,7 +179,7 @@ class AiController:
             
     def get_priority_target_index(self, targets: List[CameraVisionTarget]) -> Optional[int]:
         """Get the index of the target that has the highest priority"""
-        return  get_priority_target_index(targets, self.args.target_type, self.args.target_ids)
+        return  get_priority_target_index(targets, self.target_type, self.target_ids)
     
     def is_valid(self):
         return all(getattr(self, prop, None) is not None for prop in get_type_hints(AiController))

@@ -61,7 +61,6 @@ logging.basicConfig(level=args.log_level)
 
 logging.debug(f"\nArgs: {args}\n")
 
-TARGET_PADDING_PERCENTAGE = args.target_padding/100
 
 UDP_HOST = args.udp_host  # IP address of the server
 UDP_PORT = args.udp_port  # Port number to listen on
@@ -80,7 +79,12 @@ cached_action= ControllerAction(
     is_firing = False  
 )
 
-controller = AiController(args.__dict__)
+controller = AiController(
+    target_padding=args.target_padding,
+    target_type=args.target_type,
+    search=args.search,
+    target_ids=args.target_ids
+)
 
 sock: Optional[socket.socket] = None
 latest_request = None

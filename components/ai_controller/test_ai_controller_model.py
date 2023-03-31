@@ -44,19 +44,19 @@ def mock_detection() -> CameraVisionDetection:
 
 
 def test_ai_controller_init(mock_args):
-    ai_controller = AiController(mock_args.__dict__)
+    ai_controller = AiController(**mock_args.__dict__)
 
     assert ai_controller.search_state.is_active== mock_args.__dict__['search']
 
 
 def test_get_action_with_valid_detection(mock_args, mock_detection):
-    ai_controller = AiController(mock_args.__dict__)
+    ai_controller = AiController(**mock_args.__dict__)
     action = ai_controller.get_action(mock_detection)
     assert hasattr(action, 'x') and hasattr(action, 'y') and hasattr(action ,'is_firing')
 
 
 def test_get_action_for_target_center(mock_args, ):
-    ai_controller = AiController(mock_args.__dict__)
+    ai_controller = AiController(**mock_args.__dict__)
     frame = (1000, 1000)
     target = CameraVisionTarget(box=(250, 250, 750, 750)) # type: ignore
     expected_action = ControllerAction(

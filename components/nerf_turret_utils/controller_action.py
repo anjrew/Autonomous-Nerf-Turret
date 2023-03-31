@@ -9,9 +9,9 @@ class ControllerAction:
     """A bool representing whether or not the gun is firing"""
     
     def __init__(self, x: int, y: int, is_firing: bool):
-        assert x >= -10 and x <= 10, "x must be between -10 and 10"
+        assert x >= -10 and x <= 10, "x must be between -10 and 10 but was: " + str(x) 
         self.x = x
-        assert y >= -10 and y <= 10, "y must be between -10 and 10"
+        assert y >= -10 and y <= 10, "y must be between -10 and 10 but was" + str(x) 
         self.y = y
         assert isinstance(is_firing, bool), "is_firing must be a bool"
         self.is_firing = is_firing

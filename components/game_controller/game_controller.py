@@ -12,6 +12,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/..')
 from nerf_turret_utils.controller_action import ControllerAction
 from nerf_turret_utils.args_utils import map_log_level
 from nerf_turret_utils.number_utils import map_range
+from nerf_turret_utils.constants import CONTROLLER_X_OUTPUT_RANGE, CONTROLLER_Y_OUTPUT_RANGE
 
 
 parser = argparse.ArgumentParser()
@@ -21,6 +22,11 @@ parser.add_argument("--host", help="Set the http server hostname.", default="loc
 parser.add_argument("--test", "-t", help="Test without trying to emit data.", action='store_true', default=False)
 parser.add_argument("--log-level", "-ll" , help="Set the logging level by integer value.", default=logging.INFO, type=map_log_level)
 parser.add_argument("--delay", "-d",help="Delay to rate the data is sent from the controller in seconds. This can help with buffering problems", default=0.05, type=float)
+
+# Buttons
+parser.add_argument("--fire-button", "-fb",help="The button code for firing\n - Macbook(5)\n - Ubuntu(5)", default=5, type=int)
+parser.add_argument("--elevation-button", "-eb",help="The button code for moving elevation\n - Ubuntu(4)", default=4, type=int)
+parser.add_argument("--azimuth-button", "-ab",help="The button code for moving azimuth\n - Ubuntu(0)", default=0, type=int)
 
 
 args = parser.parse_args()
@@ -67,8 +73,7 @@ joystick = pygame.joystick.Joystick(int(selectionIdx))
 joystick.init()
 logging.info('Initialized ' + joystick.get_name())
 
-is_clockwise_cache = False # False is the default direction
-speed_cache = 0 # 0 is the default speed
+elevation_cache = 0 # 0 is the default speed
 azimuth_cache = 0 # 0 is the default position
 fire_cache = False # False is the default state
 
@@ -78,59 +83,53 @@ try:
         
         something_changed = False # Keeps track of whether or not a request should be sent to the serve        
         
-        for event in pygame.event.get():
+        events = pygame.event.get()
+        
+        for event in events:
             logging.debug("Controller Event:" + str(event))
-            
-            
-            if event.type == pygame.JOYBUTTONDOWN:
-                if event.button == 7:
-                    # Fire gun when user presses A
-                    fire_cache = True
-                    something_changed =True
-
-                        
-            if event.type == pygame.JOYBUTTONUP:
-                if event.button == 7:
-                    fire_cache = False
-                    something_changed =True
                 
             if event.type == pygame.JOYAXISMOTION:
-                if event.axis == 3:
-                    
-                    # Speed calculation 
-                    speed = round(abs(event.value * 9), 0)
-                    
-                    if speed != speed_cache:
-                        speed_cache = speed
-                        something_changed =True
-                    
-                    # Direction calculation
-                    clockwise_state = event.value > 0
-                    if clockwise_state != is_clockwise_cache:
-                        is_clockwise_cache = clockwise_state
-                        something_changed =True
+
                         
+                if event.axis == args.fire_button:
+                    should_fire = event.value == 1
+                    something_changed = should_fire != fire_cache
+                    fire_cache = should_fire
+                
+                
+                if event.axis == args.elevation_button:
                     
-                if event.axis == 2:
+                    elevation = math.ceil(map_range(event.value, -1, 1, CONTROLLER_Y_OUTPUT_RANGE[0], CONTROLLER_Y_OUTPUT_RANGE[1]))
+                    
+                    if elevation != elevation_cache:
+                        elevation_cache = elevation
+                        something_changed =True                 
+                    
+                if event.axis == args.azimuth_button:
                    
-                        azimuth_angle = math.ceil(map_range(event.value,-1,1,-10, 10))
-                        if azimuth_angle != azimuth_cache:
-                            azimuth_cache = azimuth_angle - 1 # Minus 1 for rounding error
-                            something_changed =True
+                    azimuth_angle = math.ceil(map_range(event.value,-1, 1, CONTROLLER_X_OUTPUT_RANGE[0], CONTROLLER_X_OUTPUT_RANGE[1]))
+                    
+                    if azimuth_angle != azimuth_cache:
+                        azimuth_cache = azimuth_angle # Minus 1 for rounding error
+                        something_changed =True
      
         # if something_changed and not args.test:
-        if not args.test:
-            controller_state = ControllerAction(
-                    x=-int(azimuth_cache),# Invert the azimuth angle because with the current config it was sending it backwar
-                    y=int(speed_cache),
-                    is_firing =  bool(fire_cache)
-            )
-            try:
-                logging.debug('Sending controller state to server: ' + json.dumps(controller_state))
-                requests.post(url, json=controller_state)       
-            except:
-                logging.error("Failed to send controller state to server.")
+        controller_state = ControllerAction(
+                x=-int(azimuth_cache),# Invert the azimuth angle because with the current config it was sending it backwar
+                y=int(elevation_cache),
+                is_firing =  bool(fire_cache)
+        )
         
+        if something_changed:
+            logging.info(f'Controller State: {controller_state.__dict__}')
+            
+            if not args.test:
+                try:
+                    logging.debug('Sending controller state to serial port.')
+                    requests.post(url, json=controller_state)       
+                except:
+                    logging.error("Failed to send controller state to server.")
+            
             
 except Exception as e:
     # Close the joystick and quit Pygame
