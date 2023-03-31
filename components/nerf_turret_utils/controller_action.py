@@ -15,3 +15,6 @@ class ControllerAction:
         self.y = y
         assert isinstance(is_firing, bool), "is_firing must be a bool"
         self.is_firing = is_firing
+        
+    def __repr__(self) -> str:
+        return f"ControllerAction(x={self.x}, y={self.y}, is_firing={self.is_firing})"

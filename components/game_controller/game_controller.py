@@ -126,9 +126,9 @@ try:
             if not args.test:
                 try:
                     logging.debug('Sending controller state to serial port.')
-                    requests.post(url, json=controller_state)       
-                except:
-                    logging.error("Failed to send controller state to server.")
+                    requests.post(url, json=controller_state.__dict__)       
+                except Exception as e:
+                    logging.error("Failed to send controller state to server." + str(e))
             
             
 except Exception as e:

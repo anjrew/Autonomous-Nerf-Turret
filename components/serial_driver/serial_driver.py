@@ -7,6 +7,7 @@ import serial
 import serial.tools.list_ports
 from typing import Optional
 
+
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/..')
 
 from serial_driver_server import SerialDriverServer
@@ -44,6 +45,10 @@ serialInst:Optional[serial.Serial] = None
 ## For the elevation stepper motor speed ordinal values
 SLOWEST_EL_SPEED = 0
 FASTEST_EL_SPEED = 10
+EL_SPEED_RANGE=(SLOWEST_EL_SPEED, FASTEST_EL_SPEED)
+SLOWEST_AZ_SPEED = 0
+FASTEST_AZ_SPEED = 30
+AZ_SPEED_RANGE=(SLOWEST_AZ_SPEED, FASTEST_AZ_SPEED)
 
 
 try:
@@ -89,11 +94,12 @@ try:
             (parser_args.host, parser_args.port),
             lambda *args, **kwargs: SerialDriverRequestHandler(
                 serial_inst=serialInst, 
-                slowest_speed=SLOWEST_EL_SPEED, 
-                fasted_speed=FASTEST_EL_SPEED, 
+                azimuth_speed_range= AZ_SPEED_RANGE,
+                elevation_speed_range= EL_SPEED_RANGE,
                 test=parser_args.test,
                 throttle_interval= parser_args.throttle_interval,
-                *args, **kwargs
+                base_args=args,  # Pass args to the new parameter
+                base_kwargs=kwargs
                 ))
         
         logging.info("Server started http://%s:%s" % (parser_args.host, parser_args.port))

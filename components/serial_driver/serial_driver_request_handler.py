@@ -1,13 +1,14 @@
 import logging
 from http.server import BaseHTTPRequestHandler
-from typing import Optional
-from serial_driver_utils import encode
+from typing import Optional, Tuple
+from serial_driver_utils import encode, map_controller_action_to_turret_action
 from serial import Serial
 
 import os
 import sys
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/..')
+from nerf_turret_utils.controller_action import ControllerAction
 from nerf_turret_utils.turret_controller import TurretAction
 import time
 import json
@@ -18,17 +19,23 @@ class SerialDriverRequestHandler(BaseHTTPRequestHandler):
     
     last_action:Optional[TurretAction] = None
     
-    def __init__(self, *args, **kwargs):
-        keys_used = ['serial_inst', 'slowest_speed', 'fasted_speed', 'test', 'throttle_interval']
-        self.properties = {}
-        for key in keys_used:
-            if key not in kwargs:
-                raise Exception(f"Missing required key: {key}")
-            else:
-                self.properties[key] = kwargs[key]
-                del kwargs[key]        
+    def __init__(self, 
+        serial_inst: Serial,
+        azimuth_speed_range: Tuple[int, int],
+        elevation_speed_range: Tuple[int, int],
+        test: bool,
+        throttle_interval: int,
+        base_args: Tuple,  # Add this line
+        base_kwargs: dict
+        ):
+        self.serial_inst = serial_inst
+        self.azimuth_speed_range = azimuth_speed_range
+        self.elevation_speed_range = elevation_speed_range
+        self.test = test
+        self.throttle_interval = throttle_interval
+         
   
-        BaseHTTPRequestHandler.__init__(self, *args, **kwargs)
+        super().__init__(*base_args, **base_kwargs)
 
         
     def do_GET(self):
@@ -46,7 +53,7 @@ class SerialDriverRequestHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         
         # If the test flag is set, then just return a 200 response without doing anything
-        if self.properties.get('test') == True:
+        if self.test == True:
             logging.debug("Test flag is set, returning 200 response and not sending data to serial")
             self.send_response(200)
             self.end_headers()
@@ -58,9 +65,11 @@ class SerialDriverRequestHandler(BaseHTTPRequestHandler):
         data = self.rfile.read(content_length)
         
         # Parse the JSON data
-        turret_action: TurretAction = json.loads(data)
-        logging.debug("Got Data: " + json.dumps(turret_action))
-        if turret_action == self.last_action:
+        raw_data = json.loads(data)
+        print(raw_data)
+        controller_action = ControllerAction(**raw_data)
+        logging.debug("Got Data: " + json.dumps(controller_action.__dict__))
+        if controller_action == self.last_action:
             logging.debug("Same as last action, returning 200 response")
             self.send_response(200)
             self.end_headers()
@@ -68,7 +77,7 @@ class SerialDriverRequestHandler(BaseHTTPRequestHandler):
         
                
         global last_request_time
-        throttle_interval = self.properties.get('throttle_interval', 0)
+        throttle_interval = self.throttle_interval
         current_time = time.time()
         time_since_last_request = current_time - last_request_time
         should_throttle_request = time_since_last_request < throttle_interval
@@ -81,21 +90,12 @@ class SerialDriverRequestHandler(BaseHTTPRequestHandler):
         
         start_time = last_request_time = time.time()
         
-        speed_in = turret_action.get('speed', 0)
+        speed_in = controller_action.y
         
-        slowest_speed = self.properties.get('slowest_speed', 0)
-        fasted_speed = self.properties.get('fasted_speed', 0)
-        serial_inst: Serial = self.properties.get('serial_inst')# type: ignore
-        if speed_in and (speed_in < slowest_speed or speed_in > fasted_speed):
-                # Send a response
-                self.send_response(400)
-                self.end_headers()
-                # Send the bad request data
-                self.wfile.write(f"""
-                Received a speed that was outside the min({slowest_speed}) max({fasted_speed}) bounds: {speed_in}
-                """.encode())
-                return
+        serial_inst: Serial = self.serial_inst# type: ignore
             
+        turret_action:TurretAction = map_controller_action_to_turret_action(action=controller_action, azimuth_speed_range=self.azimuth_speed_range ,elevation_speed_range=self.elevation_speed_range)   
+        
         logging.debug("Sending before encoding: " + str([round(turret_action.get("azimuth_angle", 0)), turret_action.get("is_clockwise", False), round(speed_in), turret_action['is_firing']]))
         encoded_message = encode(round(turret_action.get("azimuth_angle", 0)), turret_action.get("is_clockwise", False), round(speed_in), turret_action['is_firing'])
         logging.debug("Encoded Message HEX: " + str(encoded_message) + "  BINARY: " + str(bin(encoded_message[0])) + " " + str(bin(encoded_message[1])))

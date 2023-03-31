@@ -2,6 +2,16 @@ import logging
 import argparse
 from typing import Tuple, Union
 
+import os
+import sys
+
+directory = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(directory + '/..')
+from nerf_turret_utils.turret_controller import TurretAction
+from nerf_turret_utils.controller_action import ControllerAction
+from nerf_turret_utils.constants import CONTROLLER_X_OUTPUT_RANGE, CONTROLLER_Y_OUTPUT_RANGE
+
+
 # Define the conversion function
 def map_log_level(level_str) -> int:
     if type(level_str) == int or level_str.isdigit():
@@ -223,3 +233,28 @@ def get_elevation_clockwise(movement_vector: Tuple[float, float]) -> bool:
 
     is_clockwise = movement_vector[1] < 0
     return is_clockwise
+
+
+def map_controller_action_to_turret_action(
+        action: ControllerAction, 
+        azimuth_speed_range: Tuple[int,int],
+        elevation_speed_range: Tuple[int,int]
+    ) -> TurretAction:
+    return {
+        'azimuth_angle': int(map_range(
+            action.x,
+            CONTROLLER_X_OUTPUT_RANGE[0],
+            CONTROLLER_X_OUTPUT_RANGE[1],
+            azimuth_speed_range[0],
+            azimuth_speed_range[1]
+        )),
+        'speed': int(map_range(
+            action.x,
+            CONTROLLER_Y_OUTPUT_RANGE[0],
+            CONTROLLER_Y_OUTPUT_RANGE[1],
+            elevation_speed_range[0],
+            elevation_speed_range[1]
+        )),
+        'is_firing': action.is_firing,
+        'is_clockwise': action.y > 0, 
+    }
