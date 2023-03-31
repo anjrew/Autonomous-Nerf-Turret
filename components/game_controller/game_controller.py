@@ -126,7 +126,7 @@ try:
      
         # if something_changed and not args.test:
         controller_state = ControllerAction(
-                x=-int(azimuth_cache),# Invert the azimuth angle because with the current config it was sending it backwar
+                x=int(azimuth_cache),# Invert the azimuth angle because with the current config it was sending it backwar
                 y=int(elevation_cache),
                 is_firing =  bool(fire_cache)
         )
