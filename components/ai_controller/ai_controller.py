@@ -10,69 +10,43 @@ import traceback
 import os
 import sys
 
+
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/..')
 
 from camera_vision.models import CameraVisionDetection
 from ai_controller_model import AiController
-from nerf_turret_utils.turret_controller import TurretAction
+from nerf_turret_utils.controller_action import ControllerAction
 from nerf_turret_utils.logging_utils import map_log_level
-from nerf_turret_utils.number_utils import assert_in_int_range
 
 
 parser = argparse.ArgumentParser("AI Controller for the Nerf Turret")
+
+# Networking
 parser.add_argument("--udp-port", help="Set the web socket server port to recieve messages from.", default=6565, type=int)
 parser.add_argument("--udp-host", help="Set the web socket server hostname to recieve messages from.", default="localhost")
 parser.add_argument("--web-port", help="Set the web server server port to send commands too.", default=5565, type=int)
 parser.add_argument("--web-host", help="Set the web server server hostname. to send commands too", default="localhost")
+
+# Script arguments
 parser.add_argument("--log-level", "-ll" , help="Set the logging level by integer value or string representation.", default=logging.WARNING, type=map_log_level)
-parser.add_argument("--azimuth-dp", help="Set how many decimal places the azimuth is taken too.", default=2, type=int)
-parser.add_argument("--elevation-dp", help="Set how many decimal places the elevation is taken too.", default=0, type=int)
 parser.add_argument("--delay", "-d", help="Delay to limit the data flow into the websocket server.", default=0.15, type=int)
 parser.add_argument("--test", "-t", help="For testing it will not send requests to the driver.", action="store_true")
-parser.add_argument("--x-speed-max", "-xs", help="Set the limit for the the azimuth speed", default=5, type=int)
-parser.add_argument("--x-smoothing", "-smx", help="The amount of smoothing factor for speed to optimal position on the azimuth angle", default=1, type=int)
-parser.add_argument("--max-azimuth-angle", "-ma", help="The maximum angle that the turret will try to turn in one step on the azimuth plane", default=55, type=int)
-parser.add_argument("--y-speed", "-ys", help="Set the factor to multiply the elevation speed", default=2, type=int)
-parser.add_argument("--y-smoothing", "-smy", help="The amount of smoothing factor for speed to optimal position on the elevation angle", default=1, type=int)
-parser.add_argument("--max-elevation-speed", "-mes", 
-                    help="The maximum speed at which the elevation of the gun angle can change as an integrer value between [1-10]", 
-                    default=10, 
-                    type=lambda x: assert_in_int_range(int(x), 1, 10), ) # type: ignore
-
 parser.add_argument("--benchmark", "-b",help="Wether to measure the script performance and output in the logs.", action='store_true', default=False)
 
+# AI Controller arguments
 parser.add_argument('--search',  action='store_true', help='If this flag is set the gun will try to find targets if there are none currently in sight', default=False)
 
+# Targets
 parser.add_argument("--target-padding", "-p",help="""
                     Set the padding for when the gun will try and shoot relative to the edge of the target in %.
                     The amount of padding around the target bounding box in pixels that the gun will ignore before shooting
                     """, default=10, type=int)
-
-parser.add_argument('--accuracy-threshold-x', '-atx', type=int, default=1, 
-                    help="""
-                    The threshold of how accurate the gun will try to get the target in the center of the crosshair in pixels horizontally.
-                    """ )
-
-parser.add_argument('--accuracy-threshold-y', '-aty', type=int, default=30, 
-                    help="""
-                    The threshold of how accurate the gun will try to get the target in the center of the crosshair in pixels vertically.
-                    """ )
-
 parser.add_argument('--target-type', '-ty', type=lambda x: str(x.lower()), default='person', 
                     help="""
                     The type of object to shoot at. This can be anything available in yolov8 objects but it will default to shoot people, preferably in the face'.
                     """ )
-
 parser.add_argument('--target_ids', nargs='+', type=lambda x: str(x.lower().replace(" ", "_")), 
                     help='List of target ids to track. This will only be valid if a target type of "person" is selected', default=[])
-
-
-# TODO: Implement this feature
-# parser.add_argument('--vert-offset', '-v', type=int, default=5, 
-#                     help="""
-#                     The percentage of vertical offset the gun will aim for from the center of the crosshair in negative correlation to the size of the target box so gravity is taken into account. 
-#                     This means that the smaller the target the further it must be form the gun and therefore the higher the gun will aim.
-#                     """ )
 
 
 args = parser.parse_args()
@@ -100,12 +74,12 @@ if args.target_ids:
     logging.info(f'Tracking targets with ids: {args.target_ids}')
 
 # Cache the controller state to prevent sending the same values over and over again
-cached_action: TurretAction =  {
-    'azimuth_angle': 0, # The angle of the gun in the horizontal plane adjustment
-    'is_clockwise': False,
-    'speed': 0,
-    'is_firing': False,
-} 
+cached_action= ControllerAction(
+    x=0,
+    y=0,
+    is_firing = False  
+)
+
 controller = AiController(args.__dict__)
 
 sock: Optional[socket.socket] = None
@@ -147,7 +121,7 @@ def handle_request():
                 
                 action = controller.get_action(object_detections)
                 
-                logging.debug(f"Action decision of controller: {action}")
+                logging.debug(f"Action decision of controller: {action.__dict__}")
                 global cached_action
                 if action == cached_action:
                     logging.debug("No new action, skipping request")
@@ -158,7 +132,7 @@ def handle_request():
                 if not args.test: 
                     logging.debug(f"Sending action to serial driver {url}")
                     # Only send requests on new action states    
-                    requests.post(url, json=action)      
+                    requests.post(url, json=action.__dict__)      
 
 
 t = Thread(target=handle_request)
@@ -180,10 +154,6 @@ while True:
             with lock:
                 latest_request = (data, addr)
             
-            
-            
-            
-    
     except KeyboardInterrupt as e:
         stop_thread = True
         # On a keyboard interrupt

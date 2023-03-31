@@ -125,5 +125,5 @@ CLASSES = yaml_load(check_yaml('coco128.yaml'))['names'] # type: ignore
 
 colors = np.random.uniform(0, 255, size=(len(CLASSES), 3))
     
-post_processed = yolo_post_processing(res, anchors, len(CLASSES), input_shape, conf_threshold=0.7)
+# post_processed = yolo_post_processing(res, anchors, len(CLASSES), input_shape, conf_threshold=0.7)
 

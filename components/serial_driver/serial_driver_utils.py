@@ -1,6 +1,6 @@
 import logging
 import argparse
-from typing import Union
+from typing import Tuple, Union
 
 # Define the conversion function
 def map_log_level(level_str) -> int:
@@ -208,3 +208,18 @@ def decode(encoded_motor_command: bytes) -> dict:
         'speed': decoded_motor_vals['speed'], 
         'is_firing': decoded_motor_vals['is_firing'] 
     }
+
+def get_elevation_clockwise(movement_vector: Tuple[float, float]) -> bool:
+    """
+    Determines whether the Nerf turret elevation stepper motor should rotate clockwise based on its movement vector.
+
+    Args:
+        movement_vector (Tuple[float, float]): A tuple containing the movement vector of the turret,
+            where the first element is the horizontal movement and the second element is the vertical movement.
+
+    Returns:
+        bool: True if the turret elevation should rotate clockwise, False otherwise.
+    """
+
+    is_clockwise = movement_vector[1] < 0
+    return is_clockwise

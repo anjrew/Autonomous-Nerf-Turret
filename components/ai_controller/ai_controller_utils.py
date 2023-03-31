@@ -1,29 +1,8 @@
 from typing import Any, List, Optional, Tuple
 from camera_vision.models import CameraVisionTarget
-from ai_controller_model import AiControllerArgs
+from nerf_turret_utils.constants import CONTROLLER_X_OUTPUT_RANGE, CONTROLLER_Y_OUTPUT_RANGE
 from nerf_turret_utils.number_utils import map_range
     
-    
-def slow_start_fast_end_smoothing(x: float, p: float, max_value: int) -> float:
-    """
-    Maps an input value to an output value using a power function with a slow start and fast end.
-
-    The output value increases slowly at the beginning when the input value is small,
-    but increases more rapidly as the input value approaches the maximum value of 10.
-
-    Args:
-        x (float): The input value to be mapped, in the range of 0 to 10.
-        p (float): The exponent of the power function used to map the input value to the output value.
-            A larger value of p will result in a faster increase in the output value towards the end of the range.
-
-    Returns:
-        float: The mapped output value, in the range of 0 to 10.
-    """
-    
-    ratio = x / max_value
-    output = ratio ** p * max_value
-    return output if x >= 0 else -abs(output)
-
 
 def get_priority_target_index(targets: List[CameraVisionTarget], type: str,  target_ids: List[str]=[]) -> Optional[int]:
     """
@@ -71,79 +50,48 @@ def get_priority_target_index(targets: List[CameraVisionTarget], type: str,  tar
     return None
     
     
-def get_azimuth_angle(args: AiControllerArgs, view_width:int, movement_vector: Tuple[int,int]) -> int:
+def get_x_speed(view_width:int, movement_vector: Tuple[int,int]) -> int:
     """
     Gets the azimuth angle of the turret from the movement vector and returns the angle in degrees.
     Taking into account the smoothing and speed settings.
     """
     current_distance_from_the_middle = movement_vector[0]
-    print('current_distance_from_the_middle', current_distance_from_the_middle)
 
-    max_distance_from_the_middle_left = -(view_width / 2)
-    max_distance_from_the_middle_right = view_width / 2
-    print('max_distance_from_the_middle_left', max_distance_from_the_middle_left)
-    print('max_distance_from_the_middle_right', max_distance_from_the_middle_right)
-
-    no_input_range = max_distance_from_the_middle_right - max_distance_from_the_middle_left == 0
-    print('no_input_range', no_input_range)
-
-    azimuth_predicted_angle = 0 if no_input_range else map_range(
+    max_distance_from_the_middle = view_width / 2
+    azimuth_speed = 0 if view_width == 0 else map_range(
         current_distance_from_the_middle,
-        max_distance_from_the_middle_left, 
-        max_distance_from_the_middle_right ,
-        -args['max_azimuth_angle'] ,
-        args['max_azimuth_angle']
+        -max_distance_from_the_middle, # ;eft extreme
+        max_distance_from_the_middle, # right extreme
+        CONTROLLER_X_OUTPUT_RANGE[0],
+        CONTROLLER_X_OUTPUT_RANGE[1] 
     )
-    print('azimuth_predicted_angle', azimuth_predicted_angle)
-    
-    azimuth_speed_adjusted = min(azimuth_predicted_angle , args['x_speed_max'])
-    print('azimuth_speed_adjusted', azimuth_speed_adjusted)
-    # TODO: Reimplements
-    # azimuth_smoothed_speed_adjusted = slow_start_fast_end_smoothing(azimuth_speed_adjusted, float(args['x_smoothing']) + 1.0, args['x_speed_max'])
-    # print('azimuth_smoothed_speed_adjusted', azimuth_smoothed_speed_adjusted)
-    azimuth_formatted = round(azimuth_speed_adjusted, args['azimuth_dp'])
-    print('azimuth_formatted', azimuth_formatted)
-    return int(azimuth_formatted)
+    return int(azimuth_speed)
     
     
-def get_elevation_speed(args: Any, view_height:int, movement_vector:Tuple, target_box: Tuple[int,int,int,int]) -> int:
+def get_y_speed(view_height:int, movement_vector:Tuple[int,int], target_box: Tuple[int,int,int,int]) -> int:
     """
     Calculates the elevation speed of a Nerf turret.
-
-    Args:
-        args: Any object containing the necessary arguments for the calculation.
-        view_heigh: The height of the camera view in pixels.
-        movement_vector : A tuple containing x,y movement vector of the turret to te center of the view.
-        target_box: A tuple containing the coordinates of the target box [left, top, right, bottom].
 
     Returns:
         int: The elevation speed of the turret.
     """
     top = target_box[1]
+    bottom = target_box[3]
     max_elevation = (view_height/2)
-    abs_movement_vector = abs(movement_vector[1])
+    movement_scalar = movement_vector[1]
 
     if top == 0:
-        return 1 # Do this of the target is to the edge of the camera view but filling it up
+        return 1 # Do this of the target is to the top edge of the camera view but filling it up
+    if bottom == 0:
+        return -1 # Do this of the target is to the bottom edge of the camera view but filling it up
     
-    elevation_speed_adjusted = map_range(abs_movement_vector - args['accuracy_threshold_y'], 0, max_elevation, 0 , args['max_elevation_speed']) * float(args['y_speed'])
-    # TODO: implement a smoothing function to smooth out the speed
-    # smooth_elevation_speed_adjusted = min(0,slow_start_fast_end_smoothing(elevation_speed_adjusted, float(args.y_smoothing) + 1.0, 10))                
-    final_speed = round(elevation_speed_adjusted / 2 , args['elevation_dp'])
-    return int(final_speed)
+    elevation_speed = 0 if view_height == 0 else map_range(
+        movement_scalar, 
+        -max_elevation, 
+        max_elevation, 
+        CONTROLLER_Y_OUTPUT_RANGE[0],
+        CONTROLLER_Y_OUTPUT_RANGE[1]                                  
+    )              
+    return int(elevation_speed)
 
 
-def get_elevation_clockwise(movement_vector: Tuple[float, float]) -> bool:
-    """
-    Determines whether the Nerf turret elevation stepper motor should rotate clockwise based on its movement vector.
-
-    Args:
-        movement_vector (Tuple[float, float]): A tuple containing the movement vector of the turret,
-            where the first element is the horizontal movement and the second element is the vertical movement.
-
-    Returns:
-        bool: True if the turret elevation should rotate clockwise, False otherwise.
-    """
-
-    is_clockwise = movement_vector[1] < 0
-    return is_clockwise

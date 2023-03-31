@@ -11,52 +11,70 @@ sys.path.append(root_dir)
 curr_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(curr_dir)
 
-from nerf_turret_utils.turret_controller import TurretAction
+from nerf_turret_utils.controller_action import ControllerAction
 from camera_vision.models import CameraVisionDetection, CameraVisionTarget
 from nerf_turret_utils.image_utils import get_frame_box_dimensions_delta
 from ai_controller_args import AiControllerArgs
-from ai_controller_utils import get_priority_target_index, get_elevation_speed, get_elevation_clockwise, get_azimuth_angle
+from ai_controller_utils import get_priority_target_index, get_y_speed, get_x_speed
 
 
 AI_CONTROLLER_KEY_TYPES = get_type_hints(AiControllerArgs)
 
+
+class AiControllerSearchState:
+    is_active: bool
+    clockwise: bool
+    heading: int
+    
+    def __init__(self, 
+        is_active: bool = False,
+        clockwise: bool = False,
+        heading: int = 0, 
+    ):  
+        self.is_active = is_active
+        self.clockwise = clockwise
+        self.heading = heading
+       
+        assert self.is_valid(), 'Invalid AiControllerSearchState created'
+
+    def is_valid(self):
+        return all(getattr(self, prop, None) is not None for prop in get_type_hints(AiControllerSearchState))
+    
 class AiController:
     """A class to control the Nerf Turret based on the input from a Camera Vision Detection system. """
     
     already_sent_no_targets=False
     """Flag to track if no target message has been sent."""
     
-    cached_action_state: TurretAction = {
-        'azimuth_angle': 0,
-        'is_clockwise': True,
-        'speed': 0,
-        'is_firing': False,
-    }
-    """The last TurretAction instance that was generated"""
+    cached_action_state = ControllerAction(
+         x=0,
+         y=0,
+         is_firing=False,
+    ) 
+    """The last Controller action that was generated"""
     
     
-    search_state = {
-        'is_active': False,
-        'clockwise': False,
-        'heading': 0,
-    }
+    search_state = AiControllerSearchState()
     """The state of the search behavior of the turret"""
     
     
     def __init__(self, args: Union[AiControllerArgs, dict] ):
         """Initialize the AiController with the given arguments"""
-    
-        for prop in AI_CONTROLLER_KEY_TYPES.keys():
-            if prop not in args: 
-                raise KeyError(f'Invalid arguments passed to AiController. Missing key "{prop}"')
+        if isinstance(args, AiControllerArgs):
+            self.args  = args
+        else:
+            for prop in AI_CONTROLLER_KEY_TYPES.keys():
+                if prop not in args: 
+                    raise KeyError(f'Invalid arguments passed to AiController. Missing key "{prop}"')
             
-        self.args = cast(AiControllerArgs, args) 
-        self.args['target_padding'] = args['target_padding']/100
-        self.search_state['active'] = args['search']
+            self.args = AiControllerArgs(**args)
+             
+        self.search_state.is_active = self.args.search
+        self.args.target_padding = self.args.target_padding/100
         
       
-    def get_action(self, detection: CameraVisionDetection) -> TurretAction:
-        """Generate a TurretAction based on the input detection"""
+    def get_action(self, detection: CameraVisionDetection) -> ControllerAction:
+        """Generate a ControllerAction based on the input detection"""
         
         args = self.args
         
@@ -66,7 +84,7 @@ class AiController:
             target_index = self.get_priority_target_index(detection['targets'])
             
             if target_index is None:
-                logging.debug(f'No valid target found from type {args["target_type"]} with ids {args["target_ids"]}')
+                logging.debug(f'No valid target found from type {args.target_type} with ids {args.target_ids}')
                 # If no valid target was found, then just move onto the next frame
                 return self.handle_no_target(self.search_state)
             
@@ -91,7 +109,7 @@ class AiController:
         return target['box'] == (0,0,0,0) and frame == (0,0)
     
                 
-    def get_action_for_target(self, target: CameraVisionTarget, frame: Tuple[int,int]) -> TurretAction:
+    def get_action_for_target(self, target: CameraVisionTarget, frame: Tuple[int,int]) -> ControllerAction:
         """Handle the case where a target is found in the frame"""
         
         if target['box'] == (0, 0, 0, 0) or frame == (0, 0):
@@ -112,11 +130,10 @@ class AiController:
         
         # Get movement vector to align gun with center of target
         movement_vector = get_frame_box_dimensions_delta(left, top, right, bottom, view_width, view_height)
-        print('movement_vector', movement_vector)
         
         # Add padding as a percentage of the original dimensions
-        padding_width = box_width * args['target_padding']
-        padding_height = box_height * args['target_padding']
+        padding_width = box_width * args.target_padding
+        padding_height = box_height * args.target_padding
 
         # Calculate box coordinates
         padded_left = left + padding_width
@@ -128,46 +145,45 @@ class AiController:
         if padded_top <= center_y <= padded_bottom and padded_left <= center_x <= padded_right:
             is_on_target=True
 
-        print('get_azimuth_angle', args, view_width, movement_vector)
-        action: TurretAction = {
-            'azimuth_angle': get_azimuth_angle(args, view_width, movement_vector),
-            'is_clockwise': get_elevation_clockwise(movement_vector),
-            'speed': get_elevation_speed(args, view_height, movement_vector, target['box']),
-            'is_firing': is_on_target,
-        }
+        action = ControllerAction(
+                x=get_x_speed(view_width, movement_vector),
+                y=get_y_speed(view_height, movement_vector, target['box']),
+                is_firing=is_on_target,
+            )
         self.cached_action_state = action
                         
         return action           
     
              
-    def handle_no_target(self, search: dict) -> TurretAction:
+    def handle_no_target(self, search: AiControllerSearchState) -> ControllerAction:
         """
         Handle the scenario where the turret has no target to aim at. 
         
         Makes the turret search the environment for targets if 'is_active' otherwise just returns the cached state 
         """
-        if search['is_active']:
+        if search.is_active:
                     
-            if search['heading'] > 180:
-                search['heading'] = 0
-                search["clockwise"] = not search["clockwise"]
+            if search.heading > 180:
+                search.heading = 0
+                search.clockwise = not search.clockwise
             else:
-                search['heading'] += 1                  
-            return {
-                **self.cached_action_state,
-                'azimuth_angle': 1 if search["clockwise"] else -1,
-                'speed': 0,
-                'is_firing': False,
-            }
+                search.heading += 1                  
+            return ControllerAction(
+                x=1 if search.clockwise else -1,
+                y=0,
+                is_firing=False
+            )
         else:
-            return {
-                **self.cached_action_state,
-                'azimuth_angle': 0,
-                'speed': 0,
-                'is_firing': False,
-            }
+            return ControllerAction(
+                x=0,
+                y=0,
+                is_firing=False
+            )
             
             
     def get_priority_target_index(self, targets: List[CameraVisionTarget]) -> Optional[int]:
         """Get the index of the target that has the highest priority"""
-        return  get_priority_target_index(targets, self.args['target_type'], self.args['target_ids'])
+        return  get_priority_target_index(targets, self.args.target_type, self.args.target_ids)
+    
+    def is_valid(self):
+        return all(getattr(self, prop, None) is not None for prop in get_type_hints(AiController))

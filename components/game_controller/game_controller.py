@@ -9,6 +9,7 @@ import json
 import os
 import sys
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/..')
+from nerf_turret_utils.controller_action import ControllerAction
 from nerf_turret_utils.args_utils import map_log_level
 from nerf_turret_utils.number_utils import map_range
 
@@ -17,8 +18,6 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--set-man", action="store_true",dest="is_man", help="Set the joystick manually instead of using the default.")
 parser.add_argument("--port", help="Set the http server port.", default=5565, type=int)
 parser.add_argument("--host", help="Set the http server hostname.", default="localhost")
-parser.add_argument("--speed-dp", help="Set how many decimal places the speed is taken too.", default=0, type=int)
-parser.add_argument("--azimuth-dp", help="Set how many decimal places the azimuth is taken too.", default=0, type=int)
 parser.add_argument("--test", "-t", help="Test without trying to emit data.", action='store_true', default=False)
 parser.add_argument("--log-level", "-ll" , help="Set the logging level by integer value.", default=logging.INFO, type=map_log_level)
 parser.add_argument("--delay", "-d",help="Delay to rate the data is sent from the controller in seconds. This can help with buffering problems", default=0.05, type=float)
@@ -70,7 +69,7 @@ logging.info('Initialized ' + joystick.get_name())
 
 is_clockwise_cache = False # False is the default direction
 speed_cache = 0 # 0 is the default speed
-azimuth_cache = 90 # 90 is the default position
+azimuth_cache = 0 # 0 is the default position
 fire_cache = False # False is the default state
 
 try:
@@ -99,7 +98,7 @@ try:
                 if event.axis == 3:
                     
                     # Speed calculation 
-                    speed = round(abs(event.value * 9), args.speed_dp)
+                    speed = round(abs(event.value * 9), 0)
                     
                     if speed != speed_cache:
                         speed_cache = speed
@@ -114,20 +113,18 @@ try:
                     
                 if event.axis == 2:
                    
-                        # azimuth_angle = round(map_range(event.value,-1,1,0,180) , args.azimuth_dp)
-                        azimuth_angle = math.ceil(map_range(event.value,-1,1,-15, 15))
+                        azimuth_angle = math.ceil(map_range(event.value,-1,1,-10, 10))
                         if azimuth_angle != azimuth_cache:
                             azimuth_cache = azimuth_angle - 1 # Minus 1 for rounding error
                             something_changed =True
      
         # if something_changed and not args.test:
         if not args.test:
-            controller_state = {
-                'azimuth_angle': -int(azimuth_cache), # Invert the azimuth angle because with the current config it was sending it backwar1010             'is_clockwise': is_clockwise_cache,
-                'is_clockwise': bool(is_clockwise_cache),
-                'speed': int(speed_cache),
-                'is_firing': bool(fire_cache),
-            }
+            controller_state = ControllerAction(
+                    x=-int(azimuth_cache),# Invert the azimuth angle because with the current config it was sending it backwar
+                    y=int(speed_cache),
+                    is_firing =  bool(fire_cache)
+            )
             try:
                 logging.debug('Sending controller state to server: ' + json.dumps(controller_state))
                 requests.post(url, json=controller_state)       

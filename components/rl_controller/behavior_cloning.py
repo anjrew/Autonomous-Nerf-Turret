@@ -172,15 +172,6 @@ def create_expert() -> AiController:
         search=True,
         target_type='person', 
         targets=[], 
-        accuracy_threshold_x=1, 
-        accuracy_threshold_y=20,
-        x_smoothing=1, 
-        max_azimuth_angle=10, 
-        azimuth_dp=1,
-        x_speed_max=10, 
-        max_elevation_speed=10,
-        elevation_dp=0,
-        y_speed=1,
     )
     logging.debug(f"Expert created with args: {args}")
     return AiController(args.__dict__)
