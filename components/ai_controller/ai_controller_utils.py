@@ -77,11 +77,16 @@ def get_azimuth_angle(args: AiControllerArgs, view_width:int, movement_vector: T
     Taking into account the smoothing and speed settings.
     """
     current_distance_from_the_middle = movement_vector[0]
+    print('current_distance_from_the_middle', current_distance_from_the_middle)
+
     max_distance_from_the_middle_left = -(view_width / 2)
     max_distance_from_the_middle_right = view_width / 2
+    print('max_distance_from_the_middle_left', max_distance_from_the_middle_left)
+    print('max_distance_from_the_middle_right', max_distance_from_the_middle_right)
 
     no_input_range = max_distance_from_the_middle_right - max_distance_from_the_middle_left == 0
-    
+    print('no_input_range', no_input_range)
+
     azimuth_predicted_angle = 0 if no_input_range else map_range(
         current_distance_from_the_middle,
         max_distance_from_the_middle_left, 
@@ -89,9 +94,15 @@ def get_azimuth_angle(args: AiControllerArgs, view_width:int, movement_vector: T
         -args['max_azimuth_angle'] ,
         args['max_azimuth_angle']
     )
+    print('azimuth_predicted_angle', azimuth_predicted_angle)
+    
     azimuth_speed_adjusted = min(azimuth_predicted_angle , args['x_speed_max'])
-    azimuth_smoothed_speed_adjusted = slow_start_fast_end_smoothing(azimuth_speed_adjusted, float(args['x_smoothing']) + 1.0, args['x_speed_max'])
-    azimuth_formatted = round(azimuth_smoothed_speed_adjusted, args['azimuth_dp'])
+    print('azimuth_speed_adjusted', azimuth_speed_adjusted)
+    # TODO: Reimplements
+    # azimuth_smoothed_speed_adjusted = slow_start_fast_end_smoothing(azimuth_speed_adjusted, float(args['x_smoothing']) + 1.0, args['x_speed_max'])
+    # print('azimuth_smoothed_speed_adjusted', azimuth_smoothed_speed_adjusted)
+    azimuth_formatted = round(azimuth_speed_adjusted, args['azimuth_dp'])
+    print('azimuth_formatted', azimuth_formatted)
     return int(azimuth_formatted)
     
     

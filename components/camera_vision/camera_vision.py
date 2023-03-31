@@ -168,6 +168,7 @@ while True:
             logging.error("No frame detected. Waiting 1 second and trying again")
             time.sleep(1)
             continue
+        
         # Get the image height and width
         frame_height, frame_width, _ = frame.shape   
         
@@ -229,6 +230,10 @@ while True:
                 # Always draw the cross hai.rindex() if not headless        
             frame =  draw_cross_hair(frame, CROSS_HAIR_SIZE, is_on_target)
 
+            
+        if not HEADLESS:
+            logging.debug(f"Drawing frame")
+            cv2.imshow('Face Detector', frame)
 
         detection_data: CameraVisionDetection = {
                 "targets": targets,
@@ -237,20 +242,15 @@ while True:
         
         if detection_data == cached_detection:
             logging.debug("No new action, skipping request")
-            continue                
         else:
             cached_detection = detection_data   
-     
-        json_data = json.dumps(detection_data).encode('utf-8') # Encode the JSON object as a byte string
-        
-        logging.debug(f'{ "Mock: "if args.test else ""}Sending data({len(json_data)}) to the AI controller:' + json.dumps(detection_data))
-        if upd_socket_client_connection and not args.test:
-            upd_socket_client_connection.sendto(json_data, (HOST, PORT)) # Send the byte string to the server
-
+            json_data = json.dumps(detection_data).encode('utf-8') # Encode the JSON object as a byte string
             
-        if not HEADLESS:
-            cv2.imshow('Face Detector', frame)
-
+            logging.debug(f'{ "Mock: "if args.test else ""}Sending data({len(json_data)}) to the AI controller:' + json.dumps(detection_data))
+            if upd_socket_client_connection and not args.test:
+                upd_socket_client_connection.sendto(json_data, (HOST, PORT)) # Send the byte string to the server
+        
+        # This must be hit in order to render the frame
         c = cv2.waitKey(1)
         ## S 'key'
         if c == 27:

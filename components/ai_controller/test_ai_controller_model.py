@@ -135,3 +135,42 @@ def test_get_action_for_target_left(ai_controller: AiController):
     
     assert action['is_firing'] == expected_action['is_firing']
     
+def test_action_for_seen_cases():
+    
+    args = Namespace(
+        accuracy_threshold_x=1, 
+        accuracy_threshold_y=30, 
+        azimuth_dp=2,
+        delay=0.15, 
+        elevation_dp=0, 
+        max_azimuth_angle=55, 
+        max_elevation_speed=10, 
+        search=False, 
+        target_ids=[], 
+        target_padding=10, 
+        target_type='person', 
+        test=False,  
+        x_smoothing=1, 
+        x_speed_max=5, 
+        y_smoothing=1, 
+        y_speed=2)
+    ai_controller = AiController(args.__dict__)
+    
+    frame = (640, 480)
+    target = CameraVisionTarget(box=(424, 176, 632, 380)) # type: ignore
+    expected_action = {
+        'azimuth_angle': 0,
+        'is_clockwise': False,
+        'speed': 0,
+        'is_firing': False,
+    }
+
+    action = ai_controller.get_action_for_target(target, frame)
+    # Expected action number values are within 1 of the actual action
+    expected_azimuth = expected_action['azimuth_angle']
+    assert expected_azimuth == action['azimuth_angle']
+    
+    expected_speed = action['speed']
+    assert expected_speed == action['speed']
+    
+    assert action['is_firing'] == expected_action['is_firing']

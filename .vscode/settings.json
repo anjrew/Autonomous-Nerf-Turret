@@ -18,6 +18,7 @@
         "onnxruntime",
         "openmpi",
         "openvino",
+        "pytest",
         "rews",
         "scalefactor",
         "stdscr",

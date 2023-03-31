@@ -112,6 +112,7 @@ class AiController:
         
         # Get movement vector to align gun with center of target
         movement_vector = get_frame_box_dimensions_delta(left, top, right, bottom, view_width, view_height)
+        print('movement_vector', movement_vector)
         
         # Add padding as a percentage of the original dimensions
         padding_width = box_width * args['target_padding']
@@ -127,6 +128,7 @@ class AiController:
         if padded_top <= center_y <= padded_bottom and padded_left <= center_x <= padded_right:
             is_on_target=True
 
+        print('get_azimuth_angle', args, view_width, movement_vector)
         action: TurretAction = {
             'azimuth_angle': get_azimuth_angle(args, view_width, movement_vector),
             'is_clockwise': get_elevation_clockwise(movement_vector),

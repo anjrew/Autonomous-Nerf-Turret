@@ -48,3 +48,11 @@ For example:
 |----------|-------------|----------|--------------------|--------------------|-------------|-------|---------|----------------|-------------------|
 | True     | 500         | 4x       | 2,1,10             | 30,1,60            | person      | True  | True    | yolov8n-seg.pt | Base was unstable |
 
+
+## Testing
+
+Tests are run with pytest and output logs can be seen with the following command
+
+```bash
+pytest --log-cli-level=DEBUG --capture=tee-sys
+```
