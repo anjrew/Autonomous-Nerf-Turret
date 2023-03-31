@@ -33,18 +33,26 @@ parser.add_argument('--crosshair_size', '-ch', type=int, default=10, help="The s
 
 parser.add_argument("--port", help="Set the web socket server port to send messages to.", default=6565, type=int)
 parser.add_argument("--host", help="Set the web socket server hostname to send messages to.", default="localhost")
+parser.add_argument("--test", "-t", help="Test without trying to emit data.", action='store_true', default=False)
 
 parser.add_argument("--detector", "-d" , help="The detector to use with inference.", default='yolo', type=str)
 
 parser.add_argument("--log-level", "-ll" , help="Set the logging level by integer value.", default=logging.INFO, type=map_log_level)
+
 parser.add_argument("--delay", help="Delay to limit the data flow into the websocket server.", default=0, type=int)
+
 parser.add_argument("--headless", help="Whether to run the service in headless mode.", action='store_true', default=False)
+
 parser.add_argument("--id-targets", "-it", help="Whether to id targets that are stored in the './data/targets' folder.", action='store_true', default=False)
-parser.add_argument("--test", "-t", help="Test without trying to emit data.", action='store_true', default=False)
+
+
 parser.add_argument("--benchmark", "-b", help="Wether to measure the script performance and output in the logs.", action='store_true', default=False)
+
 parser.add_argument("--image-compression", "-ic", 
                         help="The amount to compress the image. Eg give a value of 2 and the image for inference will have half the pixels", type=int, default=4)
+
 parser.add_argument("--skip-frames", "-sk", help="Skip x amount of frames to process to increase performance", type=int, default=500)
+
 
 parser.add_argument("--detect-faces", "-df", 
                         help="Weather or not to detect faces", type=str2bool, default=True)
