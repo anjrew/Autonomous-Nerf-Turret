@@ -26,7 +26,7 @@ parser.add_argument("--web-host", help="Set the web server server hostname. to s
 parser.add_argument("--log-level", "-ll" , help="Set the logging level by integer value or string representation.", default=logging.WARNING, type=map_log_level)
 parser.add_argument("--azimuth-dp", help="Set how many decimal places the azimuth is taken too.", default=2, type=int)
 parser.add_argument("--elevation-dp", help="Set how many decimal places the elevation is taken too.", default=0, type=int)
-parser.add_argument("--delay", "-d", help="Delay to limit the data flow into the websocket server.", default=0, type=int)
+parser.add_argument("--delay", "-d", help="Delay to limit the data flow into the websocket server.", default=0.15, type=int)
 parser.add_argument("--test", "-t", help="For testing it will not send requests to the driver.", action="store_true")
 parser.add_argument("--x-speed-max", "-xs", help="Set the limit for the the azimuth speed", default=5, type=int)
 parser.add_argument("--x-smoothing", "-smx", help="The amount of smoothing factor for speed to optimal position on the azimuth angle", default=1, type=int)
@@ -140,6 +140,7 @@ while True:
             object_detections:Optional[CameraVisionDetection] = None
             try:
                 object_detections = json.loads(data.decode('utf-8'))
+                logging.debug(f"Received detections from Vision: {object_detections}")
                 if not object_detections:
                     raise  ValueError('Object detection failed')
             except json.JSONDecodeError as e:
@@ -151,7 +152,16 @@ while True:
             
             action = controller.get_action(object_detections)
             
-            if not args.test and action != cached_action:
+            logging.debug(f"Action decision of controller: {action}")
+            
+            if action == cached_action:
+                logging.debug("No new action, skipping request")
+                continue                
+            else:
+                cached_action = action  
+
+            if not args.test: 
+                logging.debug(f"Sending action to serial driver {url}")
                 # Only send requests on new action states    
                 requests.post(url, json=action)      
             

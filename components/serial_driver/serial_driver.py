@@ -26,7 +26,7 @@ parser.add_argument(
     "--throttle-interval", 
     "-tr",
     help="How to throttle requests sent over serial in seconds", 
-    default=0.1, # 0.1 seems to be the max rate the serial to the arduino can handle
+    default=0.15, # 0.1 seems to be the max rate the serial to the arduino can handle but adding a little buffer
     type=float
 )
 

@@ -120,7 +120,7 @@ face_locations = []
 
 skip_frames =  args.skip_frames + 1
 frame_count = 0
-
+cached_detection: Optional[CameraVisionDetection] = None
 
 
 def try_to_create_socket():
@@ -218,25 +218,24 @@ while True:
                 # Always draw the cross hai.rindex() if not headless        
             frame =  draw_cross_hair(frame, CROSS_HAIR_SIZE, is_on_target)
 
- 
-        
-        if len(targets) > 0:
-            center_x = frame_width // 2
-            center_y = frame_height // 2
-            data: CameraVisionDetection = {
+
+        detection_data: CameraVisionDetection = {
                 "targets": targets,
                 "view_dimensions": (frame_width, frame_height),
-            }
-            json_data = json.dumps(data).encode('utf-8') # Encode the JSON object as a byte string
-            
-            # logging.debug(f'{ "Mock: "if args.test else ""}Sending data({len(json_data)}) to the AI controller:' + json.dumps(data))
-            logging.debug(f'{ "Mock: "if args.test else ""}Sending data({len(json_data)}) to the AI controller:' + json.dumps(data))
-            if upd_socket_client_connection and not args.test:
-                upd_socket_client_connection.sendto(json_data, (HOST, PORT)) # Send the byte string to the server
-                
+            } if len(targets) > 0 else {"targets": [], 'view_dimensions': (frame_width, frame_height)}
+        
+        if detection_data == cached_detection:
+            logging.debug("No new action, skipping request")
+            continue                
         else:
-            if upd_socket_client_connection and not args.test:
-                upd_socket_client_connection.sendto(json.dumps({"targets": []}).encode('utf-8'), (HOST, PORT))
+            cached_detection = detection_data   
+     
+        json_data = json.dumps(detection_data).encode('utf-8') # Encode the JSON object as a byte string
+        
+        logging.debug(f'{ "Mock: "if args.test else ""}Sending data({len(json_data)}) to the AI controller:' + json.dumps(detection_data))
+        if upd_socket_client_connection and not args.test:
+            upd_socket_client_connection.sendto(json_data, (HOST, PORT)) # Send the byte string to the server
+
             
         if not HEADLESS:
             cv2.imshow('Face Detector', frame)
@@ -250,7 +249,7 @@ while True:
     except KeyboardInterrupt as e:
         raise e
     except AttributeError as e:
-        logging.error("Wrong property accessed. See logs below. Retrying in 5 seconds...")
+        logging.error(f"Wrong property accessed. See logs below.Retrying in 5 seconds...{e}")     
         print(e)
         time.sleep(5)
         pass
