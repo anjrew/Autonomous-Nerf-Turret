@@ -164,7 +164,7 @@ while True:
         logging.debug(f"Skipping frame: {skip_frame}")
         
         _, frame = cap.read()
-        if not frame:
+        if frame is None:
             logging.error("No frame detected. Waiting 1 second and trying again")
             time.sleep(1)
             continue
