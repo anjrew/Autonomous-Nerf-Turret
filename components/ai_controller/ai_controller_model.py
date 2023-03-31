@@ -1,9 +1,8 @@
-from argparse import Namespace
 import sys
 import os
 import json
 import logging
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Union, get_type_hints, cast
 
 upper_dir = os.path.dirname(os.path.abspath(__file__)) + '/..'
 sys.path.append(upper_dir)
@@ -15,9 +14,11 @@ sys.path.append(curr_dir)
 from nerf_turret_utils.turret_controller import TurretAction
 from camera_vision.models import CameraVisionDetection, CameraVisionTarget
 from nerf_turret_utils.image_utils import get_frame_box_dimensions_delta
-from nerf_turret_utils.number_utils import map_range
+from ai_controller_args import AiControllerArgs
 from ai_controller_utils import get_priority_target_index, get_elevation_speed, get_elevation_clockwise, get_azimuth_angle
 
+
+AI_CONTROLLER_KEY_TYPES = get_type_hints(AiControllerArgs)
 
 class AiController:
     """A class to control the Nerf Turret based on the input from a Camera Vision Detection system. """
@@ -42,14 +43,17 @@ class AiController:
     """The state of the search behavior of the turret"""
     
     
-    def __init__(self, args: dict):
+    def __init__(self, args: Union[AiControllerArgs, dict] ):
         """Initialize the AiController with the given arguments"""
-        self.args = args
+    
+        for prop in AI_CONTROLLER_KEY_TYPES.keys():
+            if prop not in args: 
+                raise KeyError(f'Invalid arguments passed to AiController. Missing key "{prop}"')
+            
+        self.args = cast(AiControllerArgs, args) 
         self.args['target_padding'] = args['target_padding']/100
         self.search_state['active'] = args['search']
         
-        self.args['target_ids'] =  args.get('targets') or args.get('target_ids') or []
-      
       
     def get_action(self, detection: CameraVisionDetection) -> TurretAction:
         """Generate a TurretAction based on the input detection"""
@@ -62,7 +66,7 @@ class AiController:
             target_index = self.get_priority_target_index(detection['targets'])
             
             if target_index is None:
-                logging.debug(f'No valid target found from type {args["target_type"]} with ids {args["targets"]}')
+                logging.debug(f'No valid target found from type {args["target_type"]} with ids {args["target_ids"]}')
                 # If no valid target was found, then just move onto the next frame
                 return self.handle_no_target(self.search_state)
             

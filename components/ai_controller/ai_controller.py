@@ -28,7 +28,7 @@ parser.add_argument("--azimuth-dp", help="Set how many decimal places the azimut
 parser.add_argument("--elevation-dp", help="Set how many decimal places the elevation is taken too.", default=0, type=int)
 parser.add_argument("--delay", "-d", help="Delay to limit the data flow into the websocket server.", default=0, type=int)
 parser.add_argument("--test", "-t", help="For testing it will not send requests to the driver.", action="store_true")
-parser.add_argument("--x-speed-max", "-xs", help="Set the limit for the the azimuth speed", default=20, type=int)
+parser.add_argument("--x-speed-max", "-xs", help="Set the limit for the the azimuth speed", default=5, type=int)
 parser.add_argument("--x-smoothing", "-smx", help="The amount of smoothing factor for speed to optimal position on the azimuth angle", default=1, type=int)
 parser.add_argument("--max-azimuth-angle", "-ma", help="The maximum angle that the turret will try to turn in one step on the azimuth plane", default=55, type=int)
 parser.add_argument("--y-speed", "-ys", help="Set the factor to multiply the elevation speed", default=2, type=int)
@@ -62,7 +62,7 @@ parser.add_argument('--target-type', '-ty', type=lambda x: str(x.lower()), defau
                     The type of object to shoot at. This can be anything available in yolov8 objects but it will default to shoot people, preferably in the face'.
                     """ )
 
-parser.add_argument('--targets', nargs='+', type=lambda x: str(x.lower().replace(" ", "_")), 
+parser.add_argument('--target_ids', nargs='+', type=lambda x: str(x.lower().replace(" ", "_")), 
                     help='List of target ids to track. This will only be valid if a target type of "person" is selected', default=[])
 
 
@@ -77,7 +77,7 @@ parser.add_argument('--targets', nargs='+', type=lambda x: str(x.lower().replace
 args = parser.parse_args()
 
 
-if args.target_type != 'face' and len(args.targets) > 0 :
+if args.target_type != 'face' and len(args.target_ids) > 0 :
     raise argparse.ArgumentTypeError(
         f'You can only track specific targets if the target type is set to \'face\', but it is set to \'{args.target_type}\'')
 
@@ -95,8 +95,8 @@ url = f"http://{args.web_host}:{args.web_port}"
 
 logging.info(f'{"Mocking" if args.test else "" } Forwarding controller values to host at {url}')
 
-if args.targets:
-    logging.info(f'Tracking targets with ids: {args.targets}')
+if args.target_ids:
+    logging.info(f'Tracking targets with ids: {args.target_ids}')
 
 # Cache the controller state to prevent sending the same values over and over again
 cached_action: TurretAction =  {

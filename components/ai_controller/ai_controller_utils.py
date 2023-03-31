@@ -1,5 +1,6 @@
 from typing import Any, List, Optional, Tuple
 from camera_vision.models import CameraVisionTarget
+from ai_controller_model import AiControllerArgs
 from nerf_turret_utils.number_utils import map_range
     
     
@@ -70,7 +71,7 @@ def get_priority_target_index(targets: List[CameraVisionTarget], type: str,  tar
     return None
     
     
-def get_azimuth_angle(args: dict, view_width:int, movement_vector: Tuple[int,int]) -> int:
+def get_azimuth_angle(args: AiControllerArgs, view_width:int, movement_vector: Tuple[int,int]) -> int:
     """
     Gets the azimuth angle of the turret from the movement vector and returns the angle in degrees.
     Taking into account the smoothing and speed settings.
