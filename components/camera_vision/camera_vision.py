@@ -163,8 +163,11 @@ while True:
         skip_frame = frame_count % skip_frames == 0
         logging.debug(f"Skipping frame: {skip_frame}")
         
-        ret, frame = cap.read()
-                
+        _, frame = cap.read()
+        if not frame:
+            logging.error("No frame detected. Waiting 1 second and trying again")
+            time.sleep(1)
+            continue
         # Get the image height and width
         frame_height, frame_width, _ = frame.shape   
         

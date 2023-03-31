@@ -2,6 +2,7 @@ import argparse
 import logging
 import socket
 import json
+from threading import Lock, Thread
 from typing import Optional
 import requests
 import time
@@ -105,9 +106,12 @@ cached_action: TurretAction =  {
     'speed': 0,
     'is_firing': False,
 } 
+controller = AiController(args.__dict__)
 
 sock: Optional[socket.socket] = None
-controller = AiController(args.__dict__)
+latest_request = None
+lock = Lock()
+stop_thread = False
 
 def try_to_bind_to_socket():
     """Try to bind to the socket and accept the connection"""
@@ -120,6 +124,46 @@ def try_to_bind_to_socket():
     logging.info(f'Connected by {server_address}')
 
 
+
+def handle_request():
+    while not stop_thread:
+        with lock:
+            global latest_request
+            if latest_request:
+                data, addr = latest_request
+                latest_request = None
+                object_detections:Optional[CameraVisionDetection] = None
+                try:
+                    object_detections = json.loads(data.decode('utf-8'))
+                    logging.debug(f"Received detections from Vision: {object_detections}")
+                    if not object_detections:
+                        raise  ValueError('Object detection failed')
+                except json.JSONDecodeError as e:
+                    logging.error(f"Error decoding JSON: {e}")
+                    continue
+                except ValueError as e:
+                    logging.error(e)
+                    continue
+                
+                action = controller.get_action(object_detections)
+                
+                logging.debug(f"Action decision of controller: {action}")
+                global cached_action
+                if action == cached_action:
+                    logging.debug("No new action, skipping request")
+                    continue                
+                else:
+                    cached_action = action  
+
+                if not args.test: 
+                    logging.debug(f"Sending action to serial driver {url}")
+                    # Only send requests on new action states    
+                    requests.post(url, json=action)      
+
+
+t = Thread(target=handle_request)
+t.start()
+
 start_time=None
 
 while True:
@@ -129,44 +173,19 @@ while True:
     try:
         if not sock:
             try_to_bind_to_socket()
-        
         else:
-    
              # Receive data from a client
             data, addr = sock.recvfrom(1024) # type: ignore
-            if not data:
-                continue
             
-            object_detections:Optional[CameraVisionDetection] = None
-            try:
-                object_detections = json.loads(data.decode('utf-8'))
-                logging.debug(f"Received detections from Vision: {object_detections}")
-                if not object_detections:
-                    raise  ValueError('Object detection failed')
-            except json.JSONDecodeError as e:
-                logging.error(f"Error decoding JSON: {e}")
-                continue
-            except ValueError as e:
-                logging.error(e)
-                continue
+            with lock:
+                latest_request = (data, addr)
             
-            action = controller.get_action(object_detections)
             
-            logging.debug(f"Action decision of controller: {action}")
             
-            if action == cached_action:
-                logging.debug("No new action, skipping request")
-                continue                
-            else:
-                cached_action = action  
-
-            if not args.test: 
-                logging.debug(f"Sending action to serial driver {url}")
-                # Only send requests on new action states    
-                requests.post(url, json=action)      
             
     
     except KeyboardInterrupt as e:
+        stop_thread = True
         # On a keyboard interrupt
         requests.post(url, json={
             'azimuth_angle': 0,
@@ -197,7 +216,7 @@ while True:
         time.sleep(5)
         pass
     finally:
-        if start_time and  args.benchmark:
+        if start_time and args.benchmark:
             logging.debug("Frame processed in " + str(time.time() - start_time) + " seconds")
         pass
     
