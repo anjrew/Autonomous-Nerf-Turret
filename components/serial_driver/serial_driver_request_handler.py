@@ -52,13 +52,6 @@ class SerialDriverRequestHandler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         
-        # If the test flag is set, then just return a 200 response without doing anything
-        if self.test == True:
-            logging.debug("Test flag is set, returning 200 response and not sending data to serial")
-            self.send_response(200)
-            self.end_headers()
-            return
- 
         # Get the content type and content length of the request
         content_length = int(self.headers.get('content-length', 0))
         # Read the request data
@@ -66,7 +59,6 @@ class SerialDriverRequestHandler(BaseHTTPRequestHandler):
         
         # Parse the JSON data
         raw_data = json.loads(data)
-        print(raw_data)
         controller_action = ControllerAction(**raw_data)
         logging.debug("Got Data: " + json.dumps(controller_action.__dict__))
         if controller_action == self.last_action:
@@ -89,16 +81,25 @@ class SerialDriverRequestHandler(BaseHTTPRequestHandler):
             return
         
         start_time = last_request_time = time.time()
-        
-        speed_in = controller_action.y
-        
+                
         serial_inst: Serial = self.serial_inst# type: ignore
             
         turret_action:TurretAction = map_controller_action_to_turret_action(action=controller_action, azimuth_speed_range=self.azimuth_speed_range ,elevation_speed_range=self.elevation_speed_range)   
         
-        logging.debug("Sending before encoding: " + str([round(turret_action.get("azimuth_angle", 0)), turret_action.get("is_clockwise", False), round(speed_in), turret_action['is_firing']]))
-        encoded_message = encode(round(turret_action.get("azimuth_angle", 0)), turret_action.get("is_clockwise", False), round(speed_in), turret_action['is_firing'])
+        assert self.azimuth_speed_range[0] <= turret_action['azimuth_angle'] <= self.azimuth_speed_range[1], "Azimuth angle should be within the range of the azimuth speed range"
+        assert self.elevation_speed_range[0] <= turret_action['speed'] <= self.elevation_speed_range[1], "Speed should be within the range of the azimuth speed range"
+        assert turret_action['speed'] >= 0, "Speed should be greater than or equal to 0"
+        
+        logging.debug("Sending before encoding: " + str(turret_action))
+        encoded_message = encode(round(turret_action.get("azimuth_angle", 0)), turret_action.get("is_clockwise", False), turret_action['speed'], turret_action['is_firing'])
         logging.debug("Encoded Message HEX: " + str(encoded_message) + "  BINARY: " + str(bin(encoded_message[0])) + " " + str(bin(encoded_message[1])))
+        # If the test flag is set, then just return a 200 response without doing anything
+        if self.test == True:
+            logging.debug("Test flag is set, returning 200 response and not sending data to serial")
+            self.send_response(200)
+            self.end_headers()
+            return
+        
         try:
 
             serial_inst.write(encoded_message)

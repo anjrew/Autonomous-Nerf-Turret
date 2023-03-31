@@ -27,7 +27,7 @@ parser.add_argument(
     "--throttle-interval", 
     "-tr",
     help="How to throttle requests sent over serial in seconds", 
-    default=0.15, # 0.1 seems to be the max rate the serial to the arduino can handle but adding a little buffer
+    default=0.1, # 0.1 seems to be the max rate the serial to the arduino can handle but adding a little buffer
     type=float
 )
 
@@ -46,9 +46,8 @@ serialInst:Optional[serial.Serial] = None
 SLOWEST_EL_SPEED = 0
 FASTEST_EL_SPEED = 10
 EL_SPEED_RANGE=(SLOWEST_EL_SPEED, FASTEST_EL_SPEED)
-SLOWEST_AZ_SPEED = 0
-FASTEST_AZ_SPEED = 30
-AZ_SPEED_RANGE=(SLOWEST_AZ_SPEED, FASTEST_AZ_SPEED)
+FASTEST_AZ_SPEED = 10
+AZ_SPEED_RANGE=(-FASTEST_AZ_SPEED, FASTEST_AZ_SPEED)
 
 
 try:
@@ -57,33 +56,34 @@ try:
     ports = serial.tools.list_ports.comports()
     serialInst = serial.Serial()
 
-    portsList = []
+    if not parser_args.test:
+        portsList = []
 
-    if parser_args.is_port_man:
-        
-        print("\nSerial Port options: ")
-        for i, onePort in enumerate(ports):
-            print(f"{i}: ",onePort.name, " - ", onePort.manufacturer or "Unknown Manufacturer")
-            portsList.append(onePort.device)
+        if parser_args.is_port_man:
             
-        val = None
-        while val == None or int(val) >= len(portsList):
-            val = input("Select Port: ")
-            if int(val) >= len(portsList) or int(val) < 0:
-                print("Invalid Port Selected")
-            else:
-                serialInst.port = portsList[int(val or  0)]
-    else:
-        for port in ports:
-            if "Arduino" in (port.manufacturer or ""):
-                serialInst.port = port.device
+            print("\nSerial Port options: ")
+            for i, onePort in enumerate(ports):
+                print(f"{i}: ",onePort.name, " - ", onePort.manufacturer or "Unknown Manufacturer")
+                portsList.append(onePort.device)
+                
+            val = None
+            while val == None or int(val) >= len(portsList):
+                val = input("Select Port: ")
+                if int(val) >= len(portsList) or int(val) < 0:
+                    print("Invalid Port Selected")
+                else:
+                    serialInst.port = portsList[int(val or  0)]
+        else:
+            for port in ports:
+                if "Arduino" in (port.manufacturer or ""):
+                    serialInst.port = port.device
 
-    if not serialInst.port:
-        raise Exception("No Arduino Found")
+        if not serialInst.port:
+            raise Exception("No Arduino Found")
 
-    serialInst.baudrate = parser_args.baud
-    serialInst.open()
-    print("Connected to Serial Port:", serialInst.port, "at", serialInst.baudrate, "baud rate.")    
+        serialInst.baudrate = parser_args.baud
+        serialInst.open()
+        print("Connected to Serial Port:", serialInst.port, "at", serialInst.baudrate, "baud rate.")    
 
     
     # ============================== SERVER ======================================

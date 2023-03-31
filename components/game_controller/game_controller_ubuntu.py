@@ -4,6 +4,7 @@ import pygame
 import argparse
 import requests
 import logging
+import json
 import os
 import sys
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/..')
@@ -19,12 +20,12 @@ parser.add_argument("--port", help="Set the http server port.", default=5565, ty
 parser.add_argument("--host", help="Set the http server hostname.", default="localhost")
 parser.add_argument("--test", "-t", help="Test without trying to emit data.", action='store_true', default=False)
 parser.add_argument("--log-level", "-ll" , help="Set the logging level by integer value.", default=logging.INFO, type=map_log_level)
-parser.add_argument("--delay", "-d",help="Delay to rate the data is sent from the controller in seconds. This can help with buffering problems", default=0.1, type=float)
+parser.add_argument("--delay", "-d",help="Delay to rate the data is sent from the controller in seconds. This can help with buffering problems", default=0.05, type=float)
 
 # Buttons
-parser.add_argument("--fire-button", "-fb",help="The button code for firing\n - Macbook(7)\n - Ubuntu(5)", default=7, type=int)
-parser.add_argument("--elevation-button", "-eb",help="The button code for moving elevation\n - Macbook(3)\n - Ubuntu(4)", default=3, type=int)
-parser.add_argument("--azimuth-button", "-ab",help="The button code for moving azimuth\n -Macbook(0)\n - Ubuntu(0)", default=0, type=int)
+parser.add_argument("--fire-button", "-fb",help="The button code for firing\n - Macbook(5)\n - Ubuntu(5)", default=5, type=int)
+parser.add_argument("--elevation-button", "-eb",help="The button code for moving elevation\n - Ubuntu(4)", default=4, type=int)
+parser.add_argument("--azimuth-button", "-ab",help="The button code for moving azimuth\n - Ubuntu(0)", default=0, type=int)
 
 
 args = parser.parse_args()
@@ -85,19 +86,6 @@ try:
         
         for event in events:
             logging.debug("Controller Event:" + str(event))
-            
-               
-            if event.type == pygame.JOYBUTTONDOWN:
-                if event.button == args.fire_button:
-                    # Fire gun when user presses A
-                    fire_cache = True
-                    something_changed =True
-
-                        
-            if event.type == pygame.JOYBUTTONUP:
-                if event.button == args.fire_button:
-                    fire_cache = False
-                    something_changed =True
                 
             if event.type == pygame.JOYAXISMOTION:
 
@@ -131,15 +119,15 @@ try:
                 is_firing =  bool(fire_cache)
         )
         
-        # if something_changed:
-        #     logging.info(f'Controller State: {controller_state.__dict__}')
+        if something_changed:
+            logging.info(f'Controller State: {controller_state.__dict__}')
             
-        if not args.test:
-            try:
-                logging.debug('Sending controller state to serial port.')
-                requests.post(url, json=controller_state.__dict__)       
-            except Exception as e:
-                logging.error("Failed to send controller state to server." + str(e))
+            if not args.test:
+                try:
+                    logging.debug('Sending controller state to serial port.')
+                    requests.post(url, json=controller_state.__dict__)       
+                except Exception as e:
+                    logging.error("Failed to send controller state to server." + str(e))
             
             
 except Exception as e:
@@ -147,4 +135,3 @@ except Exception as e:
     joystick.quit()
     pygame.quit()
     raise e
-

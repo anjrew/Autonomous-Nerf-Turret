@@ -1,12 +1,14 @@
 import logging
 import argparse
 from typing import Tuple, Union
+import pytest
 
 import os
 import sys
 
 directory = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(directory + '/..')
+from nerf_turret_utils.number_utils import map_range
 from nerf_turret_utils.turret_controller import TurretAction
 from nerf_turret_utils.controller_action import ControllerAction
 from nerf_turret_utils.constants import CONTROLLER_X_OUTPUT_RANGE, CONTROLLER_Y_OUTPUT_RANGE
@@ -27,7 +29,6 @@ def map_log_level(level_str) -> int:
         raise argparse.ArgumentTypeError(f"Invalid logging level: {level_str}")
     
     
-# def limit_value(value: Union[int,float], minimum=-90, maximum=90):
 def limit_value(value: Union[int,float], minimum:Union[int,float], maximum: Union[int,float]) -> Union[int,float]:
     """Limits the value to the min and max values"""
     if value < minimum:
@@ -36,35 +37,6 @@ def limit_value(value: Union[int,float], minimum:Union[int,float], maximum: Unio
         return maximum
     else:
         return value
-    
-
-def map_range(
-    value:Union[int,float], 
-    value_min: Union[int,float], 
-    value_max:Union[int,float], 
-    new_min_value: Union[int,float], 
-    new_max_value: Union[int,float]
-) -> Union[int,float]:
-    """Converts a value from on range to another
-
-    Args:
-        value (int, optional): Value to convert to the base range. Defaults to 0.
-        min_value (int, optional): The slowest range of the stepper motor step. Defaults to SLOWEST_HALF_STEP_MICROSECONDS.
-        max_value (int, optional): The fastest range of the stepper motor step. Defaults to FASTEST_HALF_STEP_MICROSECONDS.
-        new_min_value (int, optional): The min value to be input here that is human comprehendible. Defaults to 0.
-        new_max_value (int, optional): The max value to be input here that is human comprehendible. Defaults to 10.
-
-    Returns:
-        int: The value of the half step time in micro seconds to be sent to the stepper motor controller
-    """    
-    original_range = value_max - value_min
-    new_range = new_max_value - new_min_value   
-    scaling_factor = original_range / new_range
-    place_in_original_range = value - value_min
-    scaled = place_in_original_range / scaling_factor
-    mapped_value = scaled
-
-    return round(mapped_value)
 
 
 def encode(azimuth: int, is_clockwise: bool, speed: int, is_firing: bool) -> bytes:
@@ -249,8 +221,8 @@ def map_controller_action_to_turret_action(
             azimuth_speed_range[1]
         )),
         'speed': int(map_range(
-            action.x,
-            CONTROLLER_Y_OUTPUT_RANGE[0],
+            abs(action.y),
+            0,
             CONTROLLER_Y_OUTPUT_RANGE[1],
             elevation_speed_range[0],
             elevation_speed_range[1]
@@ -258,3 +230,4 @@ def map_controller_action_to_turret_action(
         'is_firing': action.is_firing,
         'is_clockwise': action.y > 0, 
     }
+  

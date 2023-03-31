@@ -1,13 +1,21 @@
 import pytest
 
+import os
+import sys
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/..')
+
+from nerf_turret_utils.controller_action import ControllerAction
+from nerf_turret_utils.turret_controller import TurretAction
+
+from nerf_turret_utils.number_utils import map_range
 from serial_driver_utils \
     import encode,\
         encode_vals_to_byte,\
         encode_azimuth_val_to_byte,\
-        decode, \
-        map_range, \
+        decode,\
         decode_byte_to_motor_vals, \
-        decode_byte_to_azimuth
+        decode_byte_to_azimuth, \
+        map_controller_action_to_turret_action
 
 
 def assign_id_to_tests(tests: list):
@@ -56,6 +64,7 @@ def test_encode_azimuth_to_binary(id: int, azimuth:int, expected_output:int):
     (False, 9, True,  0b01001001),
     (False, 10, True, 0b01001010),
     (False, 7, True,  0b01000111),
+    (False, 1, False, 0b1),
 ]))
 def test_encode_vals_to_binary(is_clockwise: bool, speed: int, is_firing: bool, expected_output:int, id:int):
     encoded_command = encode_vals_to_byte(is_clockwise, speed, is_firing)
@@ -218,3 +227,51 @@ def test_map_range():
     expected_output = 10
 
     assert map_range(input_value, min_value, max_value, new_min_value, new_max_value) == expected_output
+
+    
+@pytest.fixture
+def azimuth_speed_range():
+    return (-10, 10)   
+  
+    
+@pytest.fixture
+def elevation_speed_range():
+    return (0, 10)
+
+def test_map_controller_action_to_turret_action():
+    with pytest.raises(AssertionError):
+        ControllerAction(0.5, 0.75, True) # type: ignore
+
+def test_map_controller_action_to_turret_action_extreme_input(azimuth_speed_range, elevation_speed_range):
+    action = ControllerAction(0, 1, False)
+    expected_turret_action = TurretAction(
+        azimuth_angle=0,
+        speed=1,
+        is_firing=False,
+        is_clockwise=True,
+    )
+    assert map_controller_action_to_turret_action(
+        action,
+        azimuth_speed_range,
+        elevation_speed_range,
+    ) == expected_turret_action
+
+def test_map_controller_action_to_turret_action_invalid_input():
+    with pytest.raises(AssertionError):
+        ControllerAction(2, 0.5, True) # type: ignore
+
+
+def test_speed_should_always_be_positive(azimuth_speed_range, elevation_speed_range):
+    action = ControllerAction(0, -1, False)
+    expected_turret_action = TurretAction(
+        azimuth_angle=0,
+        speed=1,
+        is_firing=False,
+        is_clockwise=False,
+    )
+    assert map_controller_action_to_turret_action(
+        action,
+        azimuth_speed_range,
+        elevation_speed_range,
+    ) == expected_turret_action
+

@@ -61,3 +61,9 @@ def test_map_range():
     # Test case where input_value is larger than max_input
     assert map_range(105, 0, 100, 0, 1) == pytest.approx(1.05, 1e-5)
 
+
+    
+
+def test_zero_position():
+    assert map_range(0, -1, 1, -10, 10) == 0
+    
