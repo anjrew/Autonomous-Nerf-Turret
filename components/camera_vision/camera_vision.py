@@ -39,7 +39,7 @@ parser.add_argument("--detector", "-d" , help="The detector to use with inferenc
 
 parser.add_argument("--log-level", "-ll" , help="Set the logging level by integer value.", default=logging.INFO, type=map_log_level)
 
-parser.add_argument("--delay", help="Delay to limit the data flow into the websocket server.", default=0, type=int)
+parser.add_argument("--delay", help="Delay in seconds set in the loop to limit the speed of which detections are sent to the controller.", default=0, type=float)
 
 parser.add_argument("--headless", help="Whether to run the service in headless mode.", action='store_true', default=False)
 
@@ -151,7 +151,7 @@ targets = [] # List of targets in the frame to keep out here for skipped frame p
 
 while True:
     time.sleep(args.delay)
-    if args.benchmark:
+    if start_time and args.benchmark:
         print(f'Performance benchmark on 1 loop:{ round(time.time() - start_time, 3) * 1000 }ms', )
         start_time = time.time()
 
@@ -274,11 +274,7 @@ while True:
         time.sleep(5)
         upd_socket_client_connection = None
         pass
-    finally:
-        # Record the time taken to process the frame
-        if start_time and args.benchmark:
-            logging.debug("Frame processed in " + str(time.time() - start_time) + " seconds")
-        pass
+   
         
 cap.release()
 
