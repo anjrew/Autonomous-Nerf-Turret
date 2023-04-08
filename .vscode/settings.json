@@ -4,6 +4,7 @@
         "DGRAM",
         "DSHOW",
         "endwin",
+        "fourcc",
         "getch",
         "james",
         "JOYAXISMOTION",

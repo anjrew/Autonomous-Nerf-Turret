@@ -3,9 +3,11 @@ import socket
 import time
 import os
 import sys
-from typing import List, Optional
+from datetime import datetime
+from typing import List, Optional, cast
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/..')
+directory = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(directory + '/..')
 
 # Third-party imports
 import cv2
@@ -28,6 +30,9 @@ from yolo_object_detection.opencv_onnx_python import ONNXObjectDetector
 parser = ArgumentParser(description="Track faces with bounding boxes")
 
 parser.add_argument('--camera', '-c', type=int, default=0, help="Choose the camera for tracking" )
+
+parser.add_argument('--record', '-r', action='store_true', default=False, help="Weather to record the video output" )
+parser.add_argument('-fps', type=int, default=30, help="The amount of frames per second when recording video" )
 
 parser.add_argument('--crosshair_size', '-ch', type=int, default=10, help="The size of the crosshair" )
 
@@ -68,13 +73,15 @@ parser.add_argument("--box-targets", "-bt",
 
 args = parser.parse_args()
 
-image_compression = args.image_compression
+
 logging.basicConfig(level=args.log_level)
 
 logging.debug(f"\nArgs: {args}\n")
 
 # Set the random seed so the target box colors are consistent
 np.random.seed(42)
+
+session_id = datetime.now().strftime('%H%M%S%Y%m%d') # type: ignore
 
 target_images = []
 target_names = [ ]
@@ -102,6 +109,7 @@ if args.id_targets:
         
     logging.info(f" Labeling targets {target_names}")
             
+image_compression = args.image_compression
 
 object_detector: Optional[ObjectDetector]        
 if args.detect_objects:
@@ -119,16 +127,16 @@ HEADLESS=args.headless
 
 if HEADLESS:
     cv2.CAP_DSHOW = False
+    
+
+IS_RECORD_MODE = args.record
+"""Weather to record the video output"""
+
+fourcc = cv2.VideoWriter_fourcc(*'mp4v') if IS_RECORD_MODE else None # MP4 codec
+video_writer: Optional[cv2.VideoWriter] = None
 
 cap = cv2.VideoCapture(CAMERA_ID)
 
-scaling_factor = 0.5
-upd_socket_client_connection = None
-face_locations = []
-
-skip_frames =  args.skip_frames + 1
-frame_count = 0
-cached_detection: Optional[CameraVisionDetection] = None
 
 
 def try_to_create_socket():
@@ -146,137 +154,162 @@ def try_to_create_socket():
         pass
 
 
-start_time=time.time()
-targets = [] # List of targets in the frame to keep out here for skipped frame processing
+def run_session() -> None:
+    global video_writer
+    upd_socket_client_connection = None
+    face_locations = []
 
-while True:
-    time.sleep(args.delay)
-    if start_time and args.benchmark:
-        print(f'Performance benchmark on 1 loop:{ round(time.time() - start_time, 3) * 1000 }ms', )
-        start_time = time.time()
+    skip_frames =  args.skip_frames + 1
+    frame_count = 0
+    cached_detection: Optional[CameraVisionDetection] = None
+    
+    start_time=time.time()
+    targets = [] # List of targets in the frame to keep out here for skipped frame processing
+    
+    while True:
+        time.sleep(args.delay)
+        if start_time and args.benchmark:
+            print(f'Performance benchmark on 1 loop:{ round(time.time() - start_time, 3) * 1000 }ms', )
+            start_time = time.time()
 
-    if not upd_socket_client_connection and not args.test:
-        try_to_create_socket()
-        
-    try:
-        frame_count += 1
-        skip_frame = frame_count % skip_frames == 0
-        logging.debug(f"Skipping frame: {skip_frame}")
-        
-        _, frame = cap.read()
-        if frame is None:
-            logging.error("No frame detected. Waiting 1 second and trying again")
-            time.sleep(1)
-            continue
-        
-        # Get the image height and width
-        frame_height, frame_width, _ = frame.shape   
-        
-        compressed_image = cv2.resize(frame, (0, 0), fx=1/image_compression, fy=1/image_compression) #type: ignore
-
-        if not skip_frame:
-            targets:List[CameraVisionTarget] = []
-            if args.detect_faces:
-                face_locations = find_faces_in_frame(compressed_image)
-
-        
-        # Loop through each face in this frame of video that were detected
-        for face_location in face_locations:
-            # Scale back up face locations since the frame we detected in was scaled to 1/4 size
-            target: CameraVisionTarget = get_face_location_details(image_compression, face_location)
+        if not upd_socket_client_connection and not args.test:
+            try_to_create_socket()
             
-            if args.id_targets:
-                target["id"]  = get_target_id(frame, target["box"], target_names, target_images)
+        try:
+            frame_count += 1
+            skip_frame = frame_count % skip_frames == 0
+            logging.debug(f"Skipping frame: {skip_frame}")
+            
+            _, frame = cap.read()
+            if frame is None:
+                logging.error("No frame detected. Waiting 1 second and trying again")
+                time.sleep(1)
+                continue
+            
+            # Get the image height and width
+            frame_height, frame_width, _ = frame.shape 
+            
+            compressed_image = cv2.resize(frame, (0, 0), fx=1/image_compression, fy=1/image_compression) #type: ignore
+
+            if not skip_frame:
+                targets:List[CameraVisionTarget] = []
+                if args.detect_faces:
+                    face_locations = find_faces_in_frame(compressed_image)
+
+            
+            # Loop through each face in this frame of video that were detected
+            for face_location in face_locations:
+                # Scale back up face locations since the frame we detected in was scaled to 1/4 size
+                target: CameraVisionTarget = get_face_location_details(image_compression, face_location)
                 
-            targets.append(target)
-            
-        if 'object_detector' in globals() and not skip_frame: 
-            results =  object_detector.detect(compressed_image, args.object_confidence) #type: ignore
-            for result in results:
-
-                target: CameraVisionTarget = { "id": None, "mask": None, "box": (np.array(result["box"]) * image_compression).tolist(), "type": result["class_name"],}
+                if args.id_targets:
+                    target["id"]  = get_target_id(frame, target["box"], target_names, target_images)
+                    
                 targets.append(target)
                 
-        if not HEADLESS: ## Draw targets
-            is_on_target = False
-                
-            for target in targets:
-                logging.debug("Target: " + str(target))
-                
-                if len(args.box_targets or []) == 0 or target['type'] not in args.box_targets:
-                    continue # skip this target if it's not in the list of targets to draw boxes around
-                
-                left, top, right, bottom = target["box"]
-                center_x = frame_width // 2
-                center_y = frame_height // 2
-                
-                
-                if top <= center_y <= bottom and left <= center_x <= right:
-                    is_on_target=True 
-                     
-                if target['type'] == 'face':
-                    frame = draw_face_box(frame, target, is_on_target)
-                    
-                elif object_detector: # type: ignore
-                    
-                    class_color = object_detector.get_color_for_class_name(target['type'])
+            if 'object_detector' in globals() and not skip_frame: 
+                results =  object_detector.detect(compressed_image, args.object_confidence) #type: ignore
+                for result in results:
 
-                    if 'mask' in target and target['mask'] is not None:
-                        frame = draw_object_mask(frame, class_color, np.array(target['mask']))
+                    target: CameraVisionTarget = { "id": None, "mask": None, "box": (np.array(result["box"]) * image_compression).tolist(), "type": result["class_name"],}
+                    targets.append(target)
                     
-                    if 'box' in target:
-                        frame = draw_object_box(frame, left, top, right, bottom, target['type'], class_color)
+            if not HEADLESS: ## Draw targets
+                is_on_target = False
                     
-                # Always draw the cross hai.rindex() if not headless        
-            frame =  draw_cross_hair(frame, CROSS_HAIR_SIZE, is_on_target)
+                for target in targets:
+                    logging.debug("Target: " + str(target))
+                    
+                    if len(args.box_targets or []) == 0 or target['type'] not in args.box_targets:
+                        continue # skip this target if it's not in the list of targets to draw boxes around
+                    
+                    left, top, right, bottom = target["box"]
+                    center_x = frame_width // 2
+                    center_y = frame_height // 2
+                    
+                    
+                    if top <= center_y <= bottom and left <= center_x <= right:
+                        is_on_target=True 
+                        
+                    if target['type'] == 'face':
+                        frame = draw_face_box(frame, target, is_on_target)
+                        
+                    elif object_detector: # type: ignore
+                        
+                        class_color = cast(ObjectDetector, object_detector).get_color_for_class_name(target['type'])
 
+                        if 'mask' in target and target['mask'] is not None:
+                            frame = draw_object_mask(frame, class_color, np.array(target['mask']))
+                        
+                        if 'box' in target:
+                            frame = draw_object_box(frame, left, top, right, bottom, target['type'], class_color)
+                        
+                    # Always draw the cross hai.rindex() if not headless        
+                frame =  draw_cross_hair(frame, CROSS_HAIR_SIZE, is_on_target)
+
+                
+            if not HEADLESS:
+                logging.debug(f"Drawing frame")
+                cv2.imshow('Face Detector', frame)
+
+            detection_data: CameraVisionDetection = {
+                    "targets": targets,
+                    "view_dimensions": (frame_width, frame_height),
+                } if len(targets) > 0 else {"targets": [], 'view_dimensions': (frame_width, frame_height)}
             
-        if not HEADLESS:
-            logging.debug(f"Drawing frame")
-            cv2.imshow('Face Detector', frame)
-
-        detection_data: CameraVisionDetection = {
-                "targets": targets,
-                "view_dimensions": (frame_width, frame_height),
-            } if len(targets) > 0 else {"targets": [], 'view_dimensions': (frame_width, frame_height)}
-        
-        if detection_data == cached_detection:
-            logging.debug("No new action, skipping request")
-        else:
-            cached_detection = detection_data   
-            json_data = json.dumps(detection_data).encode('utf-8') # Encode the JSON object as a byte string
+            if detection_data == cached_detection:
+                logging.debug("No new action, skipping request")
+            else:
+                cached_detection = detection_data   
+                json_data = json.dumps(detection_data).encode('utf-8') # Encode the JSON object as a byte string
+                
+                logging.debug(f'{ "Mock: "if args.test else ""}Sending data({len(json_data)}) to the AI controller:' + json.dumps(detection_data))
+                if upd_socket_client_connection and not args.test:
+                    upd_socket_client_connection.sendto(json_data, (HOST, PORT)) # Send the byte string to the server
+                    
+            if IS_RECORD_MODE:
+                if video_writer is None:
+                    video_folder=f'{directory}/../../artifacts/videos'
+                    if not os.path.exists(video_folder):
+                        os.makedirs(video_folder)
+                    video_writer = cv2.VideoWriter(f'{video_folder}/{session_id}.mp4', fourcc, args.fps, (frame_width, frame_height))
+                # Write the processed frame to the output video file
+                cast(cv2.VideoWriter,video_writer).write(frame)
+                
+                
+            # This must be hit in order to render the frame
+            c = cv2.waitKey(1)
+            ## S 'key'
+            if c == 27:
+                break
             
-            logging.debug(f'{ "Mock: "if args.test else ""}Sending data({len(json_data)}) to the AI controller:' + json.dumps(detection_data))
-            if upd_socket_client_connection and not args.test:
-                upd_socket_client_connection.sendto(json_data, (HOST, PORT)) # Send the byte string to the server
-        
-        # This must be hit in order to render the frame
-        c = cv2.waitKey(1)
-        ## S 'key'
-        if c == 27:
-            break
-        
-        
-    except KeyboardInterrupt as e:
-        raise e
-    except AttributeError as e:
-        logging.error(f"Wrong property accessed. See logs below.Retrying in 5 seconds...{e}")     
-        print(e)
-        time.sleep(5)
-        pass
-    except BrokenPipeError as e:
-        logging.error("Socket pipe broken. Retrying in 5 seconds...")
-        time.sleep(5)
-        upd_socket_client_connection = None
-        pass 
-    except ConnectionResetError as e:
-        logging.error("Socket connection lost. Retrying in 5 seconds...")
-        time.sleep(5)
-        upd_socket_client_connection = None
-        pass
-   
-        
-cap.release()
+        except KeyboardInterrupt as e:
+            raise e
+        except AttributeError as e:
+            logging.error(f"Wrong property accessed. See logs below.Retrying in 5 seconds...{e}")     
+            print(e)
+            time.sleep(5)
+            pass
+        except BrokenPipeError as e:
+            logging.error("Socket pipe broken. Retrying in 5 seconds...")
+            time.sleep(5)
+            upd_socket_client_connection = None
+            pass 
+        except ConnectionResetError as e:
+            logging.error("Socket connection lost. Retrying in 5 seconds...")
+            time.sleep(5)
+            upd_socket_client_connection = None
+            pass
+    
+    
+# Run session logging any errors and cleaning up resources safely after session has finished 
+try:
+    run_session()
+except Exception as e:
+    logging.error(str(e))
+finally:
+    cap.release()
+    cv2.destroyAllWindows()
+    cast(cv2.VideoWriter,video_writer).release()    
 
-        
-cv2.destroyAllWindows()
+      

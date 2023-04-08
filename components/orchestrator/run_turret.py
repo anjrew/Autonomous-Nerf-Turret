@@ -72,10 +72,13 @@ def main():
         controller_script = 'game_controller/game_controller.py'
 
 
-    camera_option_idx = select_option(['Run without camera view ', 'Show camera view' ])
+    camera_option_idx = select_option(['Run without camera view ', 'Show camera view', 'Show camera view and Record' ])
     
     if not args.show_camera and not camera_option_idx:
         camera_vision_script += ' --headless'   
+    
+    if camera_option_idx == 2:
+        camera_vision_script += ' --record'
 
     script_paths = [
         serial_script,
