@@ -138,25 +138,26 @@ video_writer: Optional[cv2.VideoWriter] = None
 cap = cv2.VideoCapture(CAMERA_ID)
 
 
-
-def try_to_create_socket():
-    global upd_socket_client_connection
+def try_to_create_socket() -> Optional[socket.socket]:
     logging.info(f"Connecting to udp socket host @ {HOST, PORT}")
     try:
         # Create a new socket and connect to the server
         upd_socket_client_connection = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         logging.info(f"Successfully Connected to socket @ {HOST, PORT}")
+        return upd_socket_client_connection
     except Exception as e:
         time.sleep(1)
         upd_socket_client_connection = None
         logging.error("Failed on trying to connect to socket. Attempting to try again")
         print(e)
-        pass
+        return None
 
 
 def run_session() -> None:
     global video_writer
-    upd_socket_client_connection = None
+    
+    upd_socket_client_connection: Optional[socket.socket] = None
+
     face_locations = []
 
     skip_frames =  args.skip_frames + 1
@@ -173,8 +174,8 @@ def run_session() -> None:
             start_time = time.time()
 
         if not upd_socket_client_connection and not args.test:
-            try_to_create_socket()
-            
+            upd_socket_client_connection = try_to_create_socket()
+            continue
         try:
             frame_count += 1
             skip_frame = frame_count % skip_frames == 0

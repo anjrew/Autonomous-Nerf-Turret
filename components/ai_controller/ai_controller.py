@@ -10,6 +10,8 @@ import traceback
 import os
 import sys
 
+from concurrent.futures import ThreadPoolExecutor
+
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/..')
 
@@ -95,6 +97,7 @@ def try_to_bind_to_socket():
     """Try to bind to the socket and accept the connection"""
     global sock
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    # sock.settimeout(1)  # Set a timeout of 1 second
     server_address = (UDP_HOST, UDP_PORT)
     logging.info(f"Binding to host {server_address}")
     sock.bind(server_address)
@@ -102,95 +105,91 @@ def try_to_bind_to_socket():
     logging.info(f'Connected by {server_address}')
 
 
+def handle_request(data, addr):
+    print("Handling request")
+    object_detections: Optional[CameraVisionDetection] = None
+    try:
+        object_detections = json.loads(data.decode('utf-8'))
+        logging.debug(f"Received detections from Vision: {object_detections}")
+        if not object_detections:
+            raise ValueError('Object detection failed')
+    except json.JSONDecodeError as e:
+        logging.error(f"Error decoding JSON: {e}")
+        return
+    except ValueError as e:
+        logging.error(e)
+        return
 
-def handle_request():
-    while not stop_thread:
-        with lock:
-            global latest_request
-            if latest_request:
-                data, addr = latest_request
-                latest_request = None
-                object_detections:Optional[CameraVisionDetection] = None
-                try:
-                    object_detections = json.loads(data.decode('utf-8'))
-                    logging.debug(f"Received detections from Vision: {object_detections}")
-                    if not object_detections:
-                        raise  ValueError('Object detection failed')
-                except json.JSONDecodeError as e:
-                    logging.error(f"Error decoding JSON: {e}")
-                    continue
-                except ValueError as e:
-                    logging.error(e)
-                    continue
-                
-                action = controller.get_action(object_detections)
-                
-                logging.debug(f"Action decision of controller: {action.__dict__}")
-                global cached_action
-                if action == cached_action:
-                    logging.debug("No new action, skipping request")
-                    continue                
-                else:
-                    cached_action = action  
+    action = controller.get_action(object_detections)
 
-                if not args.test: 
-                    logging.debug(f"Sending action to serial driver {url}")
-                    # Only send requests on new action states    
-                    requests.post(url, json=action.__dict__)      
+    logging.debug(f"Action decision of controller: {action.__dict__}")
+    global cached_action
+    if action == cached_action:
+        logging.debug("No new action, skipping request")
+        return
+    else:
+        cached_action = action
+
+    if not args.test:
+        logging.debug(f"Sending action to serial driver {url}")
+        # Only send requests on new action states
+        requests.post(url, json=action.__dict__)     
 
 
-t = Thread(target=handle_request)
-t.start()
 
 start_time=None
 
-while True:
-    time.sleep(args.delay)
-    if args.benchmark:
-        start_time = time.time()
-    try:
-        if not sock:
-            try_to_bind_to_socket()
-        else:
-             # Receive data from a client
-            data, addr = sock.recvfrom(1024) # type: ignore
-            
-            with lock:
-                latest_request = (data, addr)
-            
-    except KeyboardInterrupt as e:
-        stop_thread = True
-        # On a keyboard interrupt
-        requests.post(url, json={
-            'azimuth_angle': 0,
-            'speed': 0,
-            'is_firing': False,
-        }) 
-        logging.debug("Sending request to stop turret ")
-        raise e 
-    except BrokenPipeError as e:
-        logging.error("Socket pipe broken. Retrying in 5 seconds...")
-        sock = None
-        time.sleep(5)
-        pass 
-    except ConnectionResetError as e:
-        logging.error("Socket connection lost. Retrying in 5 seconds...")
-        sock = None
-        time.sleep(5)
-        pass
-    except ConnectionRefusedError as e:
-        logging.error("Socket connection refused. Retrying in 5 seconds...")
-        sock = None
-        time.sleep(5)
-        pass
-    except Exception as e:
-        logging.error("An unknown error occurred: " + str(e) + ". Retrying in 5 seconds...") 
-        traceback.print_exc()
-        sock = None
-        time.sleep(5)
-        pass
-    finally:
-        if start_time and args.benchmark:
-            logging.debug("Frame processed in " + str(time.time() - start_time) + " seconds")
-        pass
+with ThreadPoolExecutor(max_workers=5) as executor:
+    while True:
+        print("Listening for request")
+        time.sleep(args.delay)
+        if args.benchmark:
+            start_time = time.time()
+        try:
+            if not sock:
+                try_to_bind_to_socket()
+            else:
+                print("Getting request")
+                # Receive data from a client
+                data, addr = sock.recvfrom(1024)  # type: ignore
+                print("Got request", data)
+                # Submit the received request to the executor for handling
+                executor.submit(handle_request, data, addr)
+
     
+        except KeyboardInterrupt as e:
+            stop_thread = True
+            # On a keyboard interrupt
+            requests.post(url, json={
+                'x': 0,
+                'y': 0,
+                'is_firing': False,
+            }) 
+            logging.debug("Sending request to stop turret ")
+            raise e 
+        except BrokenPipeError as e:
+            logging.error("Socket pipe broken. Retrying in 5 seconds...")
+            sock = None
+            time.sleep(5)
+            pass 
+        except ConnectionResetError as e:
+            logging.error("Socket connection lost. Retrying in 5 seconds...")
+            sock = None
+            time.sleep(5)
+            pass
+        except ConnectionRefusedError as e:
+            logging.error("Socket connection refused. Retrying in 5 seconds...")
+            sock = None
+            time.sleep(5)
+            pass
+        except Exception as e:
+            logging.error("An unknown error occurred: " + str(e) + ". Retrying in 5 seconds...") 
+            traceback.print_exc()
+            sock = None
+            time.sleep(5)
+            pass
+        finally:
+            if start_time and args.benchmark:
+                logging.debug("Frame processed in " + str(time.time() - start_time) + " seconds")
+            pass
+        

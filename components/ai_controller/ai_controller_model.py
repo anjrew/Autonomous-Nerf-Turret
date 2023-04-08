@@ -142,7 +142,7 @@ class AiController:
             is_on_target=True
 
         action = ControllerAction(
-                x=get_x_speed(view_width, movement_vector),
+                x=-get_x_speed(view_width, movement_vector),
                 y=get_y_speed(view_height, movement_vector, target['box']),
                 is_firing=is_on_target,
             )
