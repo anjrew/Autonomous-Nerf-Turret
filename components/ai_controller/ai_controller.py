@@ -141,7 +141,6 @@ start_time=None
 
 with ThreadPoolExecutor(max_workers=5) as executor:
     while True:
-        print("Listening for request")
         time.sleep(args.delay)
         if args.benchmark:
             start_time = time.time()
@@ -149,10 +148,8 @@ with ThreadPoolExecutor(max_workers=5) as executor:
             if not sock:
                 try_to_bind_to_socket()
             else:
-                print("Getting request")
                 # Receive data from a client
                 data, addr = sock.recvfrom(1024)  # type: ignore
-                print("Got request", data)
                 # Submit the received request to the executor for handling
                 executor.submit(handle_request, data, addr)
 
