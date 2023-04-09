@@ -8,6 +8,17 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": false
-        }
+        },
+        {
+            "name": "Python: Pytest",
+            "type": "python",
+            "request": "launch",
+            "module": "pytest",
+            "args": [
+                "."
+            ],
+            "console": "integratedTerminal"
+          }
+          
     ]
 }
