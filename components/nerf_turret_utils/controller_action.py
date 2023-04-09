@@ -19,4 +19,4 @@ class ControllerAction:
         self.is_firing = is_firing
         
     def __repr__(self) -> str:
-        return f"ControllerAction(x={self.x}, y={self.y}, is_firing={self.is_firing})"
+        return f"ControllerAction(x={getattr(self,'x')}, y={getattr(self,'y')}, is_firing={getattr(self,'is_firing')})"

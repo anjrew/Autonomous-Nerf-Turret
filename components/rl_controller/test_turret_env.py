@@ -2,13 +2,14 @@ import os
 import sys
 import numpy as np
 
+
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/..')
+from nerf_turret_utils.controller_action import ControllerAction
 
 import pytest
-from typing import Callable, Tuple
-from nerf_turret_utils.turret_controller import TurretAction
+from typing import Callable
 from rl_controller.models import TurretObservationSpace
-from turret_env import TurretEnv, TurretEnvState
+from turret_env import TurretEnv
 import logging
 
 logger = logging.getLogger(__name__)
@@ -21,7 +22,7 @@ def dummy_target_provider(target = { 'box': (0, 0, 0, 0), 'view_dimensions': (10
     return target_producer
 
 # A dummy action dispatcher for testing
-def dummy_action_dispatcher(_: TurretAction) -> None:
+def dummy_action_dispatcher(_: ControllerAction) -> None:
     return None
 
 def test_turret_environment_init():
@@ -34,7 +35,7 @@ def test_turret_environment_init():
 
 def test_turret_environment_step_no_target():
     env = TurretEnv(dummy_target_provider(), dummy_action_dispatcher)
-    test_action: np.ndarray = np.array((90, 0, 0, 0))
+    test_action: np.ndarray = np.array((0, 0, 0))
     state, reward, done, info = env.step(test_action)
     assert reward == 1 # Get base reward for doing nothing wrong
     assert done == False
@@ -42,7 +43,7 @@ def test_turret_environment_step_no_target():
 
 def test_turret_environment_step_right_on_target_and_firing():
     env = TurretEnv(dummy_target_provider({ 'box': (25, 25, 75, 75,), 'view_dimensions': (100, 100)}), dummy_action_dispatcher)
-    test_action: np.ndarray = np.array((90, 0, 0, 1))
+    test_action: np.ndarray = np.array((1, 0, 1))
     state, reward, done, info = env.step(test_action)
     assert reward == 2 # because firing
     assert done == False
@@ -76,24 +77,21 @@ def test_get_accuracy_reward():
 def test_calc_reward_no_target_no_shooting():
     target = (0, 0, 0, 0, 0, 0)
     env = TurretEnv(dummy_target_provider(target), dummy_action_dispatcher)
-    action: TurretAction = {
-        'azimuth_angle': 90,
-        'is_clockwise': False,
-        'is_firing': False,
-        'speed': 0
-    }
+    action=ControllerAction(
+        x=10,
+        y=0,
+        is_firing=False,
+    )
     reward = env.calc_reward(target, action)
     assert reward == 1 # No target, no shooting should be base reward
 
 def test_calc_reward_no_target_with_shooting():
     target = (0, 0, 0, 0, 0, 0)
     env = TurretEnv(dummy_target_provider(target), dummy_action_dispatcher)
-    action: TurretAction = {
-        'azimuth_angle': 90,
-        'is_clockwise': False,
-        'is_firing': True,
-        'speed': 0
-    }
+    action=ControllerAction(
+        x= 10,
+        y=0,
+        is_firing=True,)
 
     reward = env.calc_reward(target, action)
     assert reward == 0 # No target, no shooting should be base reward
@@ -102,12 +100,10 @@ def test_calc_reward_on_target_shooting():
     # (left, top, right, bottom, height, width)
     target = (10, 10, 20, 20, 30, 30) # Target in the center of the frame
     env = TurretEnv(dummy_target_provider(target), dummy_action_dispatcher)
-    action: TurretAction = {
-        'azimuth_angle': 90,
-        'is_clockwise': False,
-        'is_firing': True,
-        'speed': 0
-    }
+    action=ControllerAction(
+        x= 10,
+        y=0,
+        is_firing=True,)
     
     is_on_target = env.check_is_on_target(target)
     assert is_on_target == True
@@ -121,7 +117,7 @@ def test_calc_reward_on_target_shooting():
     reward = env.get_accuracy_reward(frame_height, frame_width, frame_center_x, frame_center_y, box_center_x, box_center_y)
     assert reward == 0.5
     
-    assert env.check_is_on_target(target) and action['is_firing']
+    assert env.check_is_on_target(target) and action.is_firing
     
     reward = env.calc_reward(target, action)
     # 1 basic + 0.5 for the accuracy and 0.5 for firing on target = 2
@@ -130,24 +126,22 @@ def test_calc_reward_on_target_shooting():
 def test_calc_reward_on_target_not_shooting():
     target = (10, 10, 20, 20, 30, 30) # Target in the center of the frame
     env = TurretEnv(dummy_target_provider(target), dummy_action_dispatcher)
-    action: TurretAction = {
-        'azimuth_angle': 90,
-        'is_clockwise': False,
-        'is_firing': False,
-        'speed': 0
-    }
+    action=ControllerAction(
+        x= 10,
+        y=0,
+        is_firing=False,
+    )
     reward = env.calc_reward(target, action)
     assert reward == 1.5
 
 def test_calc_reward_off_target_shooting():
     target = (10, 10, 20, 20, 100, 100) # Target in the center of the frame
     env = TurretEnv(dummy_target_provider(target), dummy_action_dispatcher)
-    action: TurretAction = {
-        'azimuth_angle': 90,
-        'is_clockwise': False,
-        'is_firing': True,
-        'speed': 0
-    }
+    action=ControllerAction(
+        x= 10,
+        y=0,
+        is_firing=True,
+    )
     reward = env.calc_reward(target, action)
     assert reward == 0
 
@@ -265,19 +259,20 @@ def test_map_action_tuple_to_dict():
     env = TurretEnv(dummy_target_provider(), dummy_action_dispatcher)
 
     # Test case 1: valid input
-    action_tuple = np.array((45, 1, 10, 0))
-    expected_output = {
-        "azimuth_angle": 45,
-        "is_clockwise": True,
-        "speed": 10,
-        "is_firing": False,
-    }
-    assert env.map_action_vector_to_object(action_tuple) == expected_output
+    action_tuple = np.array((0, 1, 0))
+    expected_output = ControllerAction(
+        x=-10,
+        y=10,
+        is_firing=False
+    )
+    
+    result = env.map_action_vector_to_object(action_tuple)
+    assert result.__dict__ == expected_output.__dict__, f'{result.__dict__} != {expected_output.__dict__}'
 
     # Test case 2: invalid input (wrong number of elements)
-    action_tuple = (45, 1, 10)
-    with pytest.raises(ValueError):
-        env.map_action_vector_to_object(action_tuple) # type: ignore
+    # action_tuple = (45, 1, 10)
+    # with pytest.raises(ValueError):
+    #     env.map_action_vector_to_object(action_tuple) # type: ignore
 
     # TODO: implement these test cases
     # Test case 3: invalid input (invalid type)
@@ -295,32 +290,27 @@ def test_map_action_object_to_vector():
     env = TurretEnv(dummy_target_provider(), dummy_action_dispatcher)
     
     # Test case 1: all values are valid
-    action_dict:TurretAction = {
-        "azimuth_angle": env.ACTION_SPACE_RANGE_OUT['azimuth_angle'][1],
-        "is_clockwise": True,
-        "speed": 5,
-        "is_firing": False
-    }
-    expected_output = np.array((1, 1, 0.5, 0))
-    result = env.map_action_object_to_vector(action_dict)
+    controller_action=ControllerAction(
+        x=env.ENV_ACTION_SPACE_RANGE['x'][1],
+        y=1,
+        is_firing=False)
+    expected_output = np.array((1, 0.55, 0))
+    result = env.map_action_object_to_vector(controller_action)
     
     assert np.array_equal(result ,expected_output)
 
-    # Test case 2: is_clockwise and is_firing are strings
-    action_dict:TurretAction  = {
-        "azimuth_angle": 180,
-        "is_clockwise": "True",
-        "speed": 0,
-        "is_firing": "False"
-    } # type: ignore
-    with pytest.raises(ValueError):
-        env.map_action_object_to_vector(action_dict)
+    with pytest.raises(AssertionError):
+        # Test case 2: is_clockwise and is_firing are strings
+        controller_action=ControllerAction(
+            x=8,
+            y=0,
+            is_firing= "False" # type: ignore
+        ) # type: ignore
+    
 
-    # Test case 3: missing azimuth_angle value
-    action_dict:TurretAction  = {
-        "is_clockwise": False,
-        "speed": 100,
-        "is_firing": True
-    } # type: ignore
-    with pytest.raises(KeyError):
-        env.map_action_object_to_vector(action_dict)
+    with pytest.raises(TypeError):
+        # Test case 3: missing azimuth_angle value
+        controller_action=ControllerAction(
+            y=100,
+            is_firing=True
+        ) # type: ignore

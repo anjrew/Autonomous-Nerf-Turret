@@ -7,8 +7,9 @@ import math
 import numpy as np
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/..')
 
+from nerf_turret_utils.constants import CONTROLLER_X_OUTPUT_RANGE, CONTROLLER_Y_OUTPUT_RANGE
 from models import TurretEnvState, TurretObservationSpace
-from nerf_turret_utils.turret_controller import TurretAction
+from nerf_turret_utils.controller_action import ControllerAction
 from nerf_turret_utils.number_utils  import map_range
 
 import gym
@@ -38,40 +39,38 @@ class TurretEnv(gym.Env):
     
     state = INITIAL_STATE
     
-    ACTION_SPACE_RANGE_IN = {
-        'azimuth_angle': (0, 1),
-        'is_clockwise': (0, 1),
-        'speed': (0, 1),
+    MODEL_ACTION_SPACE_RANGE = {
+        'x': (0, 1),
+        'y': (0, 1),
         'is_firing': (0, 1)
         }
+    """The range of the action space from the model outputs"""
     
-    ACTION_SPACE_RANGE_OUT = {
-        'azimuth_angle': (-40, 40),
-        'is_clockwise': (0, 1),
-        'speed': (0, 10),
+
+    ENV_ACTION_SPACE_RANGE = {
+        'x': CONTROLLER_X_OUTPUT_RANGE,
+        'y': CONTROLLER_Y_OUTPUT_RANGE,
         'is_firing': (0, 1)
         }
+    """The rage of the action space that is output from the environment"""
     
-    # Define combined action space
     action_space = spaces.Box(
         low=np.array([
-            ACTION_SPACE_RANGE_IN['azimuth_angle'][0],
-            ACTION_SPACE_RANGE_IN['is_clockwise'][0],
-            ACTION_SPACE_RANGE_IN['speed'][0], 
-            ACTION_SPACE_RANGE_IN['is_firing'][0]
+            MODEL_ACTION_SPACE_RANGE['x'][0],
+            MODEL_ACTION_SPACE_RANGE['y'][0],
+            MODEL_ACTION_SPACE_RANGE['is_firing'][0]
         ], np.float32), # type: ignore
         
         high=np.array([
-            ACTION_SPACE_RANGE_IN['azimuth_angle'][1],
-            ACTION_SPACE_RANGE_IN['is_clockwise'][1],
-            ACTION_SPACE_RANGE_IN['speed'][1], 
-            ACTION_SPACE_RANGE_IN['is_firing'][1]
+            MODEL_ACTION_SPACE_RANGE['x'][1],
+            MODEL_ACTION_SPACE_RANGE['y'][1],
+            MODEL_ACTION_SPACE_RANGE['is_firing'][1]
         ], np.int8), # type: ignore
         dtype=np.float32
     )
+    """The action space range"""
      
     observation_space = spaces.Box(low=-1, high=1, shape=(6,), dtype=np.float16)
-    
     """The observation space of the environment.
     This property is an instance of the `Tuple` class from the `gym.spaces` module,
     which represents a tuple of spaces.
@@ -88,7 +87,7 @@ class TurretEnv(gym.Env):
     
     def __init__(self, 
             target_provider: Callable[[], TurretObservationSpace], 
-            action_dispatcher: Callable[[TurretAction], None],
+            action_dispatcher: Callable[[ControllerAction], None],
             step_delay_s :float = 0 
         ) -> None:
         
@@ -104,7 +103,7 @@ class TurretEnv(gym.Env):
             
         self.target_provider = map_target 
              
-        self.dispatch_action = lambda x: action_dispatcher(self.map_to_dispatch_action(x))
+        self.dispatch_action = lambda x: action_dispatcher(x)
         
     def step(self, action: np.ndarray) -> Tuple:
         """
@@ -131,75 +130,60 @@ class TurretEnv(gym.Env):
         # info (dict): contains auxiliary diagnostic information (helpful for debugging, and sometimes learning)
         return np.array(target, dtype=np.float16), reward, self.done, { 'step': self.step_n } 
 
-    
-    def map_to_dispatch_action(self, parsed_action: TurretAction): 
-            
-            mapped_action: TurretAction = {
-                "azimuth_angle": int(map_range(
-                    parsed_action["azimuth_angle"],
-                    self.ACTION_SPACE_RANGE_IN["azimuth_angle"][0],
-                    self.ACTION_SPACE_RANGE_IN["azimuth_angle"][1], 
-                    self.ACTION_SPACE_RANGE_OUT["azimuth_angle"][0], 
-                    self.ACTION_SPACE_RANGE_OUT["azimuth_angle"][1]
-                )),
-                "is_clockwise": parsed_action["is_clockwise"],
-                "speed": int(map_range(
-                    parsed_action["speed"], 
-                    self.ACTION_SPACE_RANGE_IN["speed"][0], 
-                    self.ACTION_SPACE_RANGE_IN["speed"][1], 
-                    self.ACTION_SPACE_RANGE_OUT["speed"][0], 
-                    self.ACTION_SPACE_RANGE_OUT["speed"][1]
-                )),
-                "is_firing": parsed_action["is_firing"]
-            }
-            return mapped_action
 
-
-
-    def map_action_vector_to_object(self, action: np.ndarray) -> TurretAction:
+    def map_action_vector_to_object(self, action: np.ndarray) -> ControllerAction:
         """Takes a raw output from the action space and maps it to a object."""
-        if not  0 <= len(action) <= 4:
-            raise ValueError(f'The length of the action tuple must be between 0 and 4 but a length of {len(action)} was given.{action}')
-       
-        azimuth_angle, is_clockwise, speed, is_firing = action
-        is_clockwise, is_firing = bool(is_clockwise), bool(is_firing)
-
-        parsed_action: TurretAction = {
-            "azimuth_angle": azimuth_angle,
-            "is_clockwise": is_clockwise,
-            "speed": speed,
-            "is_firing": is_firing,
-        }
+        if not len(action) == 3:
+            raise ValueError(f'The length of the action tuple must be 3 but a length of {len(action)} was given.{action}')
+        x, y, is_firing = action
+        is_firing = bool(is_firing)
+        
+        x=int(map_range(
+                    x,
+                    self.MODEL_ACTION_SPACE_RANGE["x"][0],
+                    self.MODEL_ACTION_SPACE_RANGE["x"][1], 
+                    self.ENV_ACTION_SPACE_RANGE["x"][0], 
+                    self.ENV_ACTION_SPACE_RANGE["x"][1]
+                ))
+        y=int(map_range(
+            y, 
+            self.MODEL_ACTION_SPACE_RANGE["y"][0], 
+            self.MODEL_ACTION_SPACE_RANGE["y"][1], 
+            self.ENV_ACTION_SPACE_RANGE["y"][0], 
+            self.ENV_ACTION_SPACE_RANGE["y"][1]
+        ))
+        parsed_action=ControllerAction(
+            x=x,
+            y=y,
+            is_firing= is_firing,
+        )
         
         return parsed_action   
     
-    def map_action_object_to_vector(self, action: TurretAction) -> np.ndarray:
+    def map_action_object_to_vector(self, action: ControllerAction) -> np.ndarray:
         """Takes a object and maps it to a raw output for the action space."""
         azimuth_angle = map_range(
-                    action["azimuth_angle"],
-                    self.ACTION_SPACE_RANGE_OUT["azimuth_angle"][0],
-                    self.ACTION_SPACE_RANGE_OUT["azimuth_angle"][1], 
-                    self.ACTION_SPACE_RANGE_IN["azimuth_angle"][0], 
-                    self.ACTION_SPACE_RANGE_IN["azimuth_angle"][1]
-                )
-        
-        is_clockwise = int(action["is_clockwise"])
-        
+                    action.x,
+                    self.ENV_ACTION_SPACE_RANGE["x"][0],
+                    self.ENV_ACTION_SPACE_RANGE["x"][1], 
+                    self.MODEL_ACTION_SPACE_RANGE["x"][0], 
+                    self.MODEL_ACTION_SPACE_RANGE["x"][1]
+                )        
         
         speed = map_range(
-                    action["speed"],
-                    self.ACTION_SPACE_RANGE_OUT["speed"][0],
-                    self.ACTION_SPACE_RANGE_OUT["speed"][1], 
-                    self.ACTION_SPACE_RANGE_IN["speed"][0], 
-                    self.ACTION_SPACE_RANGE_IN["speed"][1]
+                    action.y,
+                    self.ENV_ACTION_SPACE_RANGE["y"][0],
+                    self.ENV_ACTION_SPACE_RANGE["y"][1], 
+                    self.MODEL_ACTION_SPACE_RANGE["y"][0], 
+                    self.MODEL_ACTION_SPACE_RANGE["y"][1]
                 )
-        is_firing = int(action["is_firing"])
+        is_firing = int(action.is_firing)
 
-        parsed_action = np.array(( azimuth_angle, is_clockwise, speed, is_firing))
+        parsed_action = np.array(( azimuth_angle, speed, is_firing))
         
         return parsed_action
     
-    def calc_reward(self, new_target_state: Tuple[int, int, int, int, int, int], action:TurretAction) -> float:
+    def calc_reward(self, new_target_state: Tuple[int, int, int, int, int, int], action:ControllerAction) -> float:
         """Calculates the reward for the current state of the environment.
         
         Args:
@@ -209,8 +193,7 @@ class TurretEnv(gym.Env):
         Returns:
             A float representing the reward for the current state of the environment.
         """
-        # assert type(action) == OrderedDict
-        assert type(action['is_firing']) == bool
+        assert type(action.is_firing) == bool
         left, top, right, bottom, frame_height, frame_width =  new_target_state
         
         frame_center_x, frame_center_y = frame_width // 2, frame_height // 2
@@ -219,7 +202,7 @@ class TurretEnv(gym.Env):
         
         # Get the original coordinates of the box with the height and width
         is_on_target = self.check_is_on_target(new_target_state)
-        is_shooting = action['is_firing']
+        is_shooting = action.is_firing
         # Return nothing as punishment for shooting with no target or shooting off target
         if (new_target_state == self.NO_TARGET_STATE and is_shooting) \
             or (not is_on_target and is_shooting):

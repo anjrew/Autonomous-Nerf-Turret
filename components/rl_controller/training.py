@@ -15,12 +15,13 @@ import requests
 from stable_baselines3 import PPO
 from stable_baselines3.common.env_checker import check_env
 
+
 # Local application imports
 file_directory = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(file_directory + '/..')
 
+from nerf_turret_utils.controller_action import ControllerAction
 from camera_vision.models import CameraVisionDetection, CameraVisionTarget
-from nerf_turret_utils.turret_controller import TurretAction
 from turret_env import TurretEnv
 from models import TurretObservationSpace
 from nerf_turret_utils.logging_utils import map_log_level
@@ -95,10 +96,10 @@ current_state = NO_TARGET_STATE
 get_current_state = lambda: current_state
 
 
-def dispatch_action(action: TurretAction) -> None:
+def dispatch_action(action: ControllerAction) -> None:
     if not args.test: 
         try:
-            requests.post(url, json=action)
+            requests.post(url, json=action.__dict__)
         except requests.exceptions.ConnectionError as e:
             logging.error(f"Error sending request to {url}: {e}")
  
