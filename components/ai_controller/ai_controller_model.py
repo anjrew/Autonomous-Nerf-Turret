@@ -143,7 +143,7 @@ class AiController:
 
         action = ControllerAction(
                 x=-get_x_speed(view_width, movement_vector),
-                y=get_y_speed(view_height, movement_vector, target['box']),
+                y=-get_y_speed(view_height, movement_vector, target['box']),
                 is_firing=is_on_target,
             )
         self.cached_action_state = action
