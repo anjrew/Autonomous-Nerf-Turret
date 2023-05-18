@@ -92,21 +92,25 @@ if args.id_targets:
     script_path = os.path.abspath(sys.argv[0])
     script_dir = os.path.dirname(script_path)
     targets_dir = f"{script_dir}/data/targets"
+    target_files = os.listdir(targets_dir)
     
-    for file in os.listdir(targets_dir):
-             
-        target_names.append(file.split('.')[0])
-        target_images.append(
-            face_recognition.face_encodings(
+    for file in target_files:
+        target_file_name = file.split('.')[0]
+        target_names.append(target_file_name)
+        face_encoding = face_recognition.face_encodings(
                 cv2.cvtColor(
                     cv2.imread(
                         f"{targets_dir}/{file}"
                     ),
                     cv2.COLOR_BGR2RGB
                 )
-            )[0]
-        )
-        
+            )
+        if face_encoding:    
+            target = face_encoding[0]
+            target_images.append(
+                target
+            )
+            
     logging.info(f" Labeling targets {target_names}")
             
 image_compression = args.image_compression
