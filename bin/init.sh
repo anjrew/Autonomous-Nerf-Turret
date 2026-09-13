@@ -1,6 +1,6 @@
 #!/bin/bash
 
-conda create -n NERF_TURRET python=3.8
+conda create -n NERF_TURRET python=3.11
 conda activate NERF_TURRET
 pip install -r requirements.txt
 
