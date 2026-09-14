@@ -22,7 +22,7 @@ class YoloObjectDetector(ObjectDetector):
     """Detect objects of multiple types Using YOLOv8
     """
     
-    def __init__(self, model_name: str = "yolov8n.pt") -> None:
+    def __init__(self, model_name: str = "yolo11n.pt") -> None:
         self.model = YOLO(model_name)  # load an official model
         self.class_names = self.model.names or {}
         logging.debug("Detecting from : " + str(self.class_names))
