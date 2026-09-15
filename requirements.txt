@@ -1,6 +1,8 @@
-numpy==2.4.6
+numpy==2.5.3
 opencv-python==4.14.0.94
 pyserial==3.5
+setuptools<81  # face_recognition_models imports pkg_resources (removed in setuptools 81)
+face-recognition-models  # face-recognition stops pulling this in on py3.13+
 requests==2.34.2
 pygame==2.6.1
 pytest==8.4.2
