@@ -127,6 +127,10 @@ WS_PORT = args.ws_port  # Port number to listen on
 
 url = f"http://{args.host}:{args.port}"
 
+# One keep-alive session for the per-frame command POSTs: re-creating the
+# TCP connection every frame costs ~0.3 ms on localhost (more over Wi-Fi).
+session = requests.Session()
+
 logging.info(f'{"Mocking" if args.test else "" } Forwarding controller values to host at {url}')
 
 if args.targets:
@@ -298,14 +302,14 @@ while True:
                 
                 if not args.test:
                     try:
-                        requests.post(url, json=controller_state)       
+                        session.post(url, json=controller_state)       
                     except:
                         logging.error("Failed to send controller state to server.")
 
             else:
                 if args.search:
                    
-                    requests.post(url, json={
+                    session.post(url, json={
                         **cached_controller_state,
                         'azimuth_angle': 1 if search["clockwise"] else -1,
                         'speed': 0,
@@ -321,7 +325,7 @@ while True:
                     
                 elif not already_sent_no_targets and not args.test:
                     ## No targets detected, so stop the gun but hold its current position
-                    requests.post(url, json={
+                    session.post(url, json={
                         **cached_controller_state,
                         'speed': 0,
                         'is_firing': False,
@@ -329,7 +333,7 @@ while True:
                     already_sent_no_targets=True 
     
     except KeyboardInterrupt as e:
-        requests.post(url, json={
+        session.post(url, json={
             'azimuth_angle': 0,
             'speed': 0,
             'is_firing': False,
