@@ -15,6 +15,8 @@ from nerf_turret_utils.logging_utils import map_log_level
 from nerf_turret_utils.image_utils import get_frame_box_dimensions_delta
 from nerf_turret_utils.number_utils import map_range
 from ai_controller_utils import assert_in_int_range, slow_start_fast_end_smoothing, get_priority_target_index, get_elevation_speed, get_elevation_clockwise
+from pid_controller import PIDController
+from tuning_ui import TuningState, start_tuning_ui
 
 
 parser = argparse.ArgumentParser("AI Controller for the Nerf Turret")
@@ -65,6 +67,17 @@ parser.add_argument('--target-type', '-ty', type=lambda x: str(x.lower()), defau
                     The type of object to shoot at. This can be anything available in yolov8 objects but it will default to shoot people, preferably in the face'.
                     """ )
 
+parser.add_argument('--no-pid', action='store_true',
+                    help='Fall back to the legacy heuristic aiming instead of the PID controllers.')
+parser.add_argument('--ui-port', type=int, default=8081,
+                    help='Port for the PID tuning web UI. Set to 0 to disable the UI.')
+parser.add_argument('--az-kp', type=float, default=0.10, help='Azimuth PID proportional gain.')
+parser.add_argument('--az-ki', type=float, default=0.02, help='Azimuth PID integral gain.')
+parser.add_argument('--az-kd', type=float, default=0.05, help='Azimuth PID derivative gain.')
+parser.add_argument('--el-kp', type=float, default=0.02, help='Elevation PID proportional gain.')
+parser.add_argument('--el-ki', type=float, default=0.005, help='Elevation PID integral gain.')
+parser.add_argument('--el-kd', type=float, default=0.01, help='Elevation PID derivative gain.')
+
 
 
 # TODO: Implement this feature
@@ -89,12 +102,34 @@ logging.basicConfig(level=args.log_level)
 logging.debug(f"\nArgs: {args}\n")
 
 TARGET_PADDING_PERCENTAGE = args.target_padding/100
-TARGET_PADDING_PERCENTAGE = args.target_padding/100
+
+# Live-tunable PID gains (sliders in the tuning UI apply per frame) and the
+# per-axis controllers. Output limits mirror the legacy clamps.
+tuning_state = TuningState({
+    'az': {'kp': args.az_kp, 'ki': args.az_ki, 'kd': args.az_kd},
+    'el': {'kp': args.el_kp, 'ki': args.el_ki, 'kd': args.el_kd},
+})
+azimuth_pid = PIDController(
+    kp=args.az_kp, ki=args.az_ki, kd=args.az_kd,
+    output_limits=(-args.max_azimuth_angle, args.max_azimuth_angle),
+)
+el_pid = PIDController(
+    kp=args.el_kp, ki=args.el_ki, kd=args.el_kd,
+    output_limits=(0, args.max_elevation_speed * args.y_speed / 2),
+)
+if args.ui_port:
+    ui_server = start_tuning_ui(tuning_state, args.ui_port)
+    logging.info(f'PID tuning UI on http://0.0.0.0:{args.ui_port}')
+last_frame_time = time.monotonic()
 WS_HOST = args.ws_host  # IP address of the server
 WS_PORT = args.ws_port  # Port number to listen on
 
 
 url = f"http://{args.host}:{args.port}"
+
+# One keep-alive session for the per-frame command POSTs: re-creating the
+# TCP connection every frame costs ~0.3 ms on localhost (more over Wi-Fi).
+session = requests.Session()
 
 logging.info(f'{"Mocking" if args.test else "" } Forwarding controller values to host at {url}')
 
@@ -111,6 +146,7 @@ cached_controller_state ={
 
 already_sent_no_targets=False # Flag to prevent sending the same message over and over again
 connection = None
+sock = None
 
 search = {
     'clockwise': True,
@@ -118,6 +154,7 @@ search = {
 }
     
 def try_to_bind_to_socket():
+    global sock, connection
     """Try to bind to the socket and accept the connection"""
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     global connection
@@ -163,6 +200,8 @@ while True:
                 
                 if target_index is None:
                     logging.debug(f'No valid target found from type {args.target_type} with ids {args.targets}')
+                    azimuth_pid.reset()
+                    el_pid.reset()
                     # If no valid target was found, then just move onto the next frame
                     continue
                 
@@ -202,22 +241,60 @@ while True:
                 max_distance_from_the_middle_left = -(view_width / 2)
                 max_distance_from_the_middle_right = view_width / 2
             
-                predicted_azimuth_angle = map_range(
-                    current_distance_from_the_middle - args.accuracy_threshold_x,
-                    max_distance_from_the_middle_left, 
-                    max_distance_from_the_middle_right ,
-                    -args.max_azimuth_angle ,
-                    args.max_azimuth_angle
-                )
-                azimuth_speed_adjusted = min(predicted_azimuth_angle , args.x_speed)
-                smoothed_speed_adjusted_azimuth = slow_start_fast_end_smoothing(azimuth_speed_adjusted, float(args.x_smoothing) + 1.0, 90)
-                azimuth_formatted = round(smoothed_speed_adjusted_azimuth, args.azimuth_dp)
+                now = time.monotonic()
+                dt = min(max(now - last_frame_time, 1e-3), 0.5)
+                globals()['last_frame_time'] = now
 
-                
+                if not args.no_pid:
+                    gains = tuning_state.gains()
+                    azimuth_pid.kp, azimuth_pid.ki, azimuth_pid.kd = (
+                        gains['az']['kp'], gains['az']['ki'], gains['az']['kd'])
+                    el_pid.kp, el_pid.ki, el_pid.kd = (
+                        gains['el']['kp'], gains['el']['ki'], gains['el']['kd'])
+
+                    # Horizontal error: pixels the target centre sits right of
+                    # the crosshair (same error the legacy path used).
+                    azimuth_error = (
+                        current_distance_from_the_middle - args.accuracy_threshold_x
+                    )
+                    azimuth_formatted = round(
+                        azimuth_pid.update(azimuth_error, azimuth_error, dt),
+                        args.azimuth_dp,
+                    )
+
+                    # Vertical error in magnitude domain, like the legacy
+                    # elevation heuristic; direction comes from the stepper.
+                    elevation_error = abs(movement_vector[1]) - args.accuracy_threshold_y
+                    elevation_speed = el_pid.update(
+                        max(elevation_error, 0.0), abs(movement_vector[1]), dt
+                    )
+
+                    tuning_state.telemetry({
+                        'azimuth': {'error': round(azimuth_error, 1),
+                                    'output': azimuth_formatted},
+                        'elevation': {'error': round(elevation_error, 1),
+                                      'output': round(elevation_speed, 2)},
+                        'dt_ms': round(dt * 1000, 1),
+                        'is_firing': is_on_target,
+                        'targets': len(json_data['targets']),
+                    })
+                else:
+                    predicted_azimuth_angle = map_range(
+                        current_distance_from_the_middle - args.accuracy_threshold_x,
+                        max_distance_from_the_middle_left,
+                        max_distance_from_the_middle_right,
+                        -args.max_azimuth_angle,
+                        args.max_azimuth_angle
+                    )
+                    azimuth_speed_adjusted = min(predicted_azimuth_angle, args.x_speed)
+                    smoothed_speed_adjusted_azimuth = slow_start_fast_end_smoothing(azimuth_speed_adjusted, float(args.x_smoothing) + 1.0, 90)
+                    azimuth_formatted = round(smoothed_speed_adjusted_azimuth, args.azimuth_dp)
+                    elevation_speed = get_elevation_speed(args, view_height, movement_vector, target['box'])
+
                 controller_state = cached_controller_state = {
                     'azimuth_angle': azimuth_formatted,
                     'is_clockwise': get_elevation_clockwise(movement_vector),
-                    'speed': get_elevation_speed(args, view_height, movement_vector, target['box']),
+                    'speed': int(elevation_speed) if not args.no_pid else get_elevation_speed(args, view_height, movement_vector, target['box']),
                     'is_firing': is_on_target,
                 }
                 
@@ -225,14 +302,14 @@ while True:
                 
                 if not args.test:
                     try:
-                        requests.post(url, json=controller_state)       
+                        session.post(url, json=controller_state)       
                     except:
                         logging.error("Failed to send controller state to server.")
 
             else:
                 if args.search:
                    
-                    requests.post(url, json={
+                    session.post(url, json={
                         **cached_controller_state,
                         'azimuth_angle': 1 if search["clockwise"] else -1,
                         'speed': 0,
@@ -248,7 +325,7 @@ while True:
                     
                 elif not already_sent_no_targets and not args.test:
                     ## No targets detected, so stop the gun but hold its current position
-                    requests.post(url, json={
+                    session.post(url, json={
                         **cached_controller_state,
                         'speed': 0,
                         'is_firing': False,
@@ -256,34 +333,32 @@ while True:
                     already_sent_no_targets=True 
     
     except KeyboardInterrupt as e:
-        requests.post(url, json={
+        session.post(url, json={
             'azimuth_angle': 0,
             'speed': 0,
             'is_firing': False,
         }) 
         logging.debug("Sending request to stop turret ")
         raise e 
-    except BrokenPipeError as e:
-        logging.error("Socket pipe broken. Retrying in 5 seconds...")
-        sock = None
+    except (BrokenPipeError, ConnectionResetError, ConnectionRefusedError) as e:
+        logging.error(f'Socket connection lost ({type(e).__name__}). Retrying in 5 seconds...')
+        # Reset BOTH handles: leaving the stale `connection` set made the loop
+        # retry the dead socket forever instead of rebinding.
+        connection = None
+        if sock is not None:
+            sock.close()
+            sock = None
+        azimuth_pid.reset()
+        el_pid.reset()
         time.sleep(5)
-        pass 
-    except ConnectionResetError as e:
-        logging.error("Socket connection lost. Retrying in 5 seconds...")
-        sock = None
-        time.sleep(5)
-        pass
-    except ConnectionRefusedError as e:
-        logging.error("Socket connection refused. Retrying in 5 seconds...")
-        sock = None
-        time.sleep(5)
-        pass
     except Exception as e:
         logging.error("An unknown error occurred: " + str(e) + ". Retrying in 5 seconds...") 
         traceback.print_exc()
-        sock = None
+        connection = None
+        if sock is not None:
+            sock.close()
+            sock = None
         time.sleep(5)
-        pass
     finally:
         if start_time and  args.benchmark:
             logging.debug("Frame processed in " + str(time.time() - start_time) + " seconds")
