@@ -22,8 +22,9 @@ class YoloObjectDetector(ObjectDetector):
     """Detect objects of multiple types Using YOLOv8
     """
     
-    def __init__(self, model_name: str = "yolov8n.pt") -> None:
+    def __init__(self, model_name: str = "yolo11n.pt", imgsz: int = 640) -> None:
         self.model = YOLO(model_name)  # load an official model
+        self.imgsz = imgsz
         self.class_names = self.model.names or {}
         logging.debug("Detecting from : " + str(self.class_names))
         self.colors = np.random.uniform(0, 255, size=(len(self.class_names), 3))
@@ -57,7 +58,7 @@ class YoloObjectDetector(ObjectDetector):
         # return model.predict(uri, save=True, save_txt=True, conf=0.8)
         results: List[dict] = []
 
-        detections = self.model.predict(source, save=save, save_txt=save_txt, conf=confidence)
+        detections = self.model.predict(source, save=save, save_txt=save_txt, conf=confidence, imgsz=self.imgsz)
         
         for detection in detections:
             if hasattr(detection, 'boxes') and detection.boxes:
@@ -102,7 +103,9 @@ if __name__ == '__main__':
     parser.add_argument("--confidence", "-c", help="Set the confidence from low(0) to high (1) as a float for detection. Default 0.8", default=0.8, type=float)
     parser.add_argument("--camera", "-cam", help="Weather or not to use the camera for testing purposes", action='store_true', default=False)
     parser.add_argument("--skip-frames", "-sk", help="Skip x amount of frames to process to increase performance", type=int, default=0)
-    parser.add_argument("--model-name", "-mn", help="The model name to use for detection", type=str, default="yolov8n-seg.pt")
+    parser.add_argument("--model-name", "-mn", help="The model name to use for detection", type=str, default="yolo11n.pt")
+    parser.add_argument("--imgsz", type=int, default=640,
+                        help="Inference input size. 640 = most accurate; 480 is ~28%% faster, 384 ~49%% faster with a small recall cost at range.")
     parser.add_argument("--image-compression", "-ic", 
                         help="The amount to compress the image. Eg give a value o2 2 and the image for inference will have half the pixels", type=int, default=1)
     parser.add_argument("--draw-mask", "-dm", 
@@ -118,7 +121,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     
     
-    detector = YoloObjectDetector(model_name=args.model_name)
+    detector = YoloObjectDetector(model_name=args.model_name, imgsz=args.imgsz)
     
     skip_frames =  args.skip_frames + 1
     frame_count = 0
