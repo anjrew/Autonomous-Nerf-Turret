@@ -112,6 +112,14 @@ if HEADLESS:
 
 cap = cv2.VideoCapture(CAMERA_ID)
 
+if not cap.isOpened():
+    logging.error(
+        f"Camera {CAMERA_ID} failed to open. On macOS this usually means camera access "
+        "is denied: System Settings > Privacy & Security > Camera, enable it for your "
+        "terminal app, then re-run."
+    )
+    sys.exit(1)
+
 scaling_factor = 0.5
 web_socket_client_connection = None
 face_locations = []
@@ -156,6 +164,11 @@ while True:
         logging.debug(f"Skipping frame: {skip_frame}")
         
         ret, frame = cap.read()
+        
+        if not ret or frame is None:
+            logging.error(f"Failed to read frame from camera {CAMERA_ID}. Retrying in 5 seconds...")
+            time.sleep(5)
+            continue
                 
         # Get the image height and width
         frame_height, frame_width, _ = frame.shape   

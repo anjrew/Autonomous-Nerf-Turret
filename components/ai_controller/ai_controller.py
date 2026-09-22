@@ -48,7 +48,7 @@ parser.add_argument('--targets', nargs='+', type=lambda x: str(x.lower().replace
 parser.add_argument('--search',  action='store_true', help='If this flag is set the gun will try to find targets if there are none currently in sight', default=False)
 
 parser.add_argument("--target-padding", "-p",help="""
-                    Set the padding for when the gun will try and shoot relative to the edge of the target in %.
+                    Set the padding for when the gun will try and shoot relative to the edge of the target in %%.
                     The amount of padding around the target bounding box in pixels that the gun will ignore before shooting
                     """, default=10, type=int)
 
