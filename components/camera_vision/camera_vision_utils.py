@@ -48,9 +48,15 @@ def get_target_id(frame, box:list, target_names: list, target_images: list) -> O
         The name of the identified target, or None if the target is not recognized.
     """
     left, top, right, bottom = box
-    t_width = right-left
-    t_height = bottom-top
-    sub_image = frame[top:top+t_height, left:left+t_width]
+    frame_height, frame_width = frame.shape[:2]
+    left = max(0, int(left))
+    top = max(0, int(top))
+    right = min(frame_width, int(right))
+    bottom = min(frame_height, int(bottom))
+    if right <= left or bottom <= top:
+        logging.debug("Target box outside frame bounds; skipping identification")
+        return None
+    sub_image = frame[top:bottom, left:right]
     img = cv2.cvtColor(   
                     sub_image,
                     cv2.COLOR_BGR2RGB

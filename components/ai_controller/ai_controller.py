@@ -69,8 +69,18 @@ parser.add_argument('--target-type', '-ty', type=lambda x: str(x.lower()), defau
 
 parser.add_argument('--no-pid', action='store_true',
                     help='Fall back to the legacy heuristic aiming instead of the PID controllers.')
+parser.add_argument('--no-fire', action='store_true',
+                    help='Aim and track targets but never fire the gun.')
+parser.add_argument('--target-offset-x', type=float, default=0.0,
+                    help='Horizontal aim offset in pixels. Positive aims right of the target centre; compensates for gun/camera misalignment.')
+parser.add_argument('--target-offset-y', type=float, default=0.0,
+                    help='Vertical aim offset in pixels. Positive aims below the target centre; compensates for gun/camera misalignment.')
 parser.add_argument('--ui-port', type=int, default=8081,
                     help='Port for the PID tuning web UI. Set to 0 to disable the UI.')
+parser.add_argument('--video-url', default='http://localhost:8082/video.mjpg',
+                    help='MJPEG stream URL embedded in the tuning UI live view.')
+parser.add_argument('--camera-settings-url', default='http://localhost:8082',
+                    help='Base URL of the camera_vision settings API proxied by the tuning UI.')
 parser.add_argument('--az-kp', type=float, default=0.10, help='Azimuth PID proportional gain.')
 parser.add_argument('--az-ki', type=float, default=0.02, help='Azimuth PID integral gain.')
 parser.add_argument('--az-kd', type=float, default=0.05, help='Azimuth PID derivative gain.')
@@ -103,11 +113,16 @@ logging.debug(f"\nArgs: {args}\n")
 
 TARGET_PADDING_PERCENTAGE = args.target_padding/100
 
-# Live-tunable PID gains (sliders in the tuning UI apply per frame) and the
-# per-axis controllers. Output limits mirror the legacy clamps.
+# Live-tunable PID gains (sliders in the tuning UI apply per frame), runtime
+# mode params (target type / tracked ids), and the per-axis controllers.
 tuning_state = TuningState({
     'az': {'kp': args.az_kp, 'ki': args.az_ki, 'kd': args.az_kd},
     'el': {'kp': args.el_kp, 'ki': args.el_ki, 'kd': args.el_kd},
+}, initial_params={
+    'target_type': args.target_type,
+    'targets': list(args.targets),
+    'target_offset_x': args.target_offset_x,
+    'target_offset_y': args.target_offset_y,
 })
 azimuth_pid = PIDController(
     kp=args.az_kp, ki=args.az_ki, kd=args.az_kd,
@@ -118,7 +133,8 @@ el_pid = PIDController(
     output_limits=(0, args.max_elevation_speed * args.y_speed / 2),
 )
 if args.ui_port:
-    ui_server = start_tuning_ui(tuning_state, args.ui_port)
+    ui_server = start_tuning_ui(tuning_state, args.ui_port, args.video_url,
+                                args.camera_settings_url)
     logging.info(f'PID tuning UI on http://0.0.0.0:{args.ui_port}')
 last_frame_time = time.monotonic()
 WS_HOST = args.ws_host  # IP address of the server
@@ -157,6 +173,7 @@ def try_to_bind_to_socket():
     global sock, connection
     """Try to bind to the socket and accept the connection"""
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     global connection
     logging.info(f"Binding to host {WS_HOST, WS_PORT}")
     sock.bind((WS_HOST, WS_PORT))
@@ -196,10 +213,13 @@ while True:
                 logging.debug('Data obtained:' + json.dumps(data.decode('utf-8')))
                 already_sent_no_targets=False 
                 center_x, center_y =  json_data['heading_vect']
-                target_index = get_priority_target_index(json_data['targets'], args.target_type, args.targets)
+                mode_params = tuning_state.params()
+                target_type = mode_params.get('target_type', args.target_type)
+                target_ids = mode_params.get('targets', list(args.targets))
+                target_index = get_priority_target_index(json_data['targets'], target_type, target_ids)
                 
                 if target_index is None:
-                    logging.debug(f'No valid target found from type {args.target_type} with ids {args.targets}')
+                    logging.debug(f'No valid target found from type {target_type} with ids {target_ids}')
                     azimuth_pid.reset()
                     el_pid.reset()
                     # If no valid target was found, then just move onto the next frame
@@ -233,8 +253,11 @@ while True:
                 padded_top = top + padding_height
                 padded_bottom = bottom - padding_height
                     
-                is_on_target = False  
-                if padded_top <= center_y <= padded_bottom and padded_left <= center_x <= padded_right:
+                aim_x = center_x + mode_params.get('target_offset_x', 0.0)
+                aim_y = center_y + mode_params.get('target_offset_y', 0.0)
+
+                is_on_target = False
+                if padded_top <= aim_y <= padded_bottom and padded_left <= aim_x <= padded_right:
                     is_on_target=True
                 
                 current_distance_from_the_middle = movement_vector[0]
@@ -252,10 +275,12 @@ while True:
                     el_pid.kp, el_pid.ki, el_pid.kd = (
                         gains['el']['kp'], gains['el']['ki'], gains['el']['kd'])
 
-                    # Horizontal error: pixels the target centre sits right of
-                    # the crosshair (same error the legacy path used).
+                    # Horizontal error: pixels between the target centre and
+                    # the offset aim point (same error the legacy path used).
                     azimuth_error = (
-                        current_distance_from_the_middle - args.accuracy_threshold_x
+                        current_distance_from_the_middle
+                        - mode_params.get('target_offset_x', 0.0)
+                        - args.accuracy_threshold_x
                     )
                     azimuth_formatted = round(
                         azimuth_pid.update(azimuth_error, azimuth_error, dt),
@@ -264,7 +289,11 @@ while True:
 
                     # Vertical error in magnitude domain, like the legacy
                     # elevation heuristic; direction comes from the stepper.
-                    elevation_error = abs(movement_vector[1]) - args.accuracy_threshold_y
+                    elevation_error = (
+                        abs(movement_vector[1])
+                        - mode_params.get('target_offset_y', 0.0)
+                        - args.accuracy_threshold_y
+                    )
                     elevation_speed = el_pid.update(
                         max(elevation_error, 0.0), abs(movement_vector[1]), dt
                     )
@@ -275,7 +304,7 @@ while True:
                         'elevation': {'error': round(elevation_error, 1),
                                       'output': round(elevation_speed, 2)},
                         'dt_ms': round(dt * 1000, 1),
-                        'is_firing': is_on_target,
+                        'is_firing': is_on_target and not args.no_fire,
                         'targets': len(json_data['targets']),
                     })
                 else:
@@ -295,7 +324,7 @@ while True:
                     'azimuth_angle': azimuth_formatted,
                     'is_clockwise': get_elevation_clockwise(movement_vector),
                     'speed': int(elevation_speed) if not args.no_pid else get_elevation_speed(args, view_height, movement_vector, target['box']),
-                    'is_firing': is_on_target,
+                    'is_firing': is_on_target and not args.no_fire,
                 }
                 
                 logging.debug("Sending controller state: " + json.dumps(controller_state))
