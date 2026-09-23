@@ -1,5 +1,6 @@
 import argparse
 import logging
+import math
 import socket
 import json
 from typing import Tuple
@@ -46,6 +47,12 @@ parser.add_argument('--targets', nargs='+', type=lambda x: str(x.lower().replace
                     help='List of target ids to track. This will only be valid if a target type of "person" is selected', default=[])
 
 parser.add_argument('--search',  action='store_true', help='If this flag is set the gun will try to find targets if there are none currently in sight', default=False)
+parser.add_argument('--search-speed', type=float, default=1.0,
+                    help='Peak azimuth step per frame while sweeping in search mode.')
+parser.add_argument('--search-ease', type=float, default=1.0,
+                    help='Ease-in/out at each end of the sweep: 0 = constant speed with instant reversal, 1 = sinusoidal, higher = stronger dwell at the ends.')
+parser.add_argument('--search-period', type=float, default=10.0,
+                    help='Seconds for one full back-and-forth sweep cycle in search mode.')
 
 parser.add_argument("--target-padding", "-p",help="""
                     Set the padding for when the gun will try and shoot relative to the edge of the target in %%.
@@ -123,6 +130,10 @@ tuning_state = TuningState({
     'targets': list(args.targets),
     'target_offset_x': args.target_offset_x,
     'target_offset_y': args.target_offset_y,
+    'search_enabled': args.search,
+    'search_speed': args.search_speed,
+    'search_ease': args.search_ease,
+    'search_period': args.search_period,
 })
 azimuth_pid = PIDController(
     kp=args.az_kp, ki=args.az_ki, kd=args.az_kd,
@@ -164,10 +175,8 @@ already_sent_no_targets=False # Flag to prevent sending the same message over an
 connection = None
 sock = None
 
-search = {
-    'clockwise': True,
-    'heading': 0,
-}
+search_phase = 0.0 # Radians along the back-and-forth sweep cycle
+last_search_time = time.monotonic()
     
 def try_to_bind_to_socket():
     global sock, connection
@@ -336,22 +345,36 @@ while True:
                         logging.error("Failed to send controller state to server.")
 
             else:
-                if args.search:
-                   
-                    session.post(url, json={
-                        **cached_controller_state,
-                        'azimuth_angle': 1 if search["clockwise"] else -1,
-                        'speed': 0,
-                        'is_firing': False,
-                    }) 
-                      
-                    if search['heading'] > 180:
-                        search['heading'] = 0
-                        search["clockwise"] = not search["clockwise"]
-                    else:
-                        search['heading'] += 1                  
-                        
-                    
+                mode_params = tuning_state.params()
+                if mode_params.get('search_enabled', args.search):
+                    # Back-and-forth sweep: sinusoidal phase gives natural
+                    # ease-out/in at each end; search_ease sharpens (>1) or
+                    # flattens (<1) that shaping.
+                    now_search = time.monotonic()
+                    search_dt = min(now_search - last_search_time, 0.5)
+                    last_search_time = now_search
+                    period = max(1.0, mode_params.get('search_period', args.search_period))
+                    search_phase = (search_phase + 2 * math.pi * search_dt / period) % (2 * math.pi)
+                    wave = math.sin(search_phase)
+                    ease = max(0.0, mode_params.get('search_ease', args.search_ease))
+                    peak = max(0.0, mode_params.get('search_speed', args.search_speed))
+                    step = peak * math.copysign(abs(wave) ** ease, wave)
+                    tuning_state.telemetry({
+                        'search': {'active': True,
+                                   'command': round(step, 2),
+                                   'phase_deg': round(math.degrees(search_phase), 1)},
+                    })
+                    if not args.test:
+                        try:
+                            session.post(url, json={
+                                **cached_controller_state,
+                                'azimuth_angle': round(step, 2),
+                                'speed': 0,
+                                'is_firing': False,
+                            })
+                        except Exception:
+                            logging.error("Failed to send search command to server.")
+
                 elif not already_sent_no_targets and not args.test:
                     ## No targets detected, so stop the gun but hold its current position
                     session.post(url, json={

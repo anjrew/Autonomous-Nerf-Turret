@@ -78,6 +78,11 @@ HTML_TEMPLATE = """<!doctype html>
  <h2 class="sec">Aim calibration</h2>
  <div class="row">X offset px <input type="range" id="target_offset_x" data-param="target_offset_x" min="-100" max="100" step="1"><output></output></div>
  <div class="row">Y offset px <input type="range" id="target_offset_y" data-param="target_offset_y" min="-100" max="100" step="1"><output></output></div>
+ <h2 class="sec">Search</h2>
+ <div class="row"><label><input type="checkbox" id="search_enabled" data-param="search_enabled"> autonomous search when no targets</label></div>
+ <div class="row">Sweep speed <input type="range" id="search_speed" data-param="search_speed" min="0.2" max="5" step="0.1"><output></output></div>
+ <div class="row">Ease at ends <input type="range" id="search_ease" data-param="search_ease" min="0" max="2" step="0.1"><output></output></div>
+ <div class="row">Cycle seconds <input type="range" id="search_period" data-param="search_period" min="2" max="30" step="1"><output></output></div>
  <h2 class="sec">Inference &amp; image</h2>
  <div class="row">imgsz <input type="range" id="imgsz" data-setting="imgsz" min="160" max="640" step="32"><output></output></div>
  <div class="row">Downscale <input type="range" id="image_compression" data-setting="image_compression" min="1" max="8" step="1"><output></output></div>
@@ -162,10 +167,12 @@ async function refreshTargetNames(){
 }
 refreshTargetNames();
 for (const el of document.querySelectorAll('[data-param]')){
-  el.addEventListener('input', async () => {
-    el.nextElementSibling.textContent = el.value;
-    await postJSON('/params', {[el.dataset.param]: parseFloat(el.value)});
-  });
+  const send = async () => {
+    const value = el.type === 'checkbox' ? el.checked : parseFloat(el.value);
+    if (el.nextElementSibling) el.nextElementSibling.textContent = el.value;
+    await postJSON('/params', {[el.dataset.param]: value});
+  };
+  el.addEventListener(el.type === 'checkbox' ? 'change' : 'input', send);
 }
 (async () => {
   try{
@@ -173,8 +180,11 @@ for (const el of document.querySelectorAll('[data-param]')){
     for (const el of document.querySelectorAll('[data-param]')){
       const v = s.controller && s.controller[el.dataset.param];
       if (v === undefined) continue;
-      el.value = v;
-      if (el.nextElementSibling) el.nextElementSibling.textContent = el.value;
+      if (el.type === 'checkbox') el.checked = !!v;
+      else {
+        el.value = v;
+        if (el.nextElementSibling) el.nextElementSibling.textContent = el.value;
+      }
     }
   }catch(e){}
 })();
@@ -272,6 +282,16 @@ class TuningState:
                 if key in values:
                     try:
                         self._params[key] = max(-250.0, min(250.0, float(values[key])))
+                    except (TypeError, ValueError):
+                        pass
+            if 'search_enabled' in values:
+                self._params['search_enabled'] = bool(values['search_enabled'])
+            for key, clamp in (('search_speed', (0.0, 10.0)),
+                               ('search_ease', (0.0, 3.0)),
+                               ('search_period', (1.0, 60.0))):
+                if key in values:
+                    try:
+                        self._params[key] = max(clamp[0], min(clamp[1], float(values[key])))
                     except (TypeError, ValueError):
                         pass
             return dict(self._params)
