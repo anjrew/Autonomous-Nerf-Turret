@@ -26,8 +26,7 @@ HTML_TEMPLATE = """<!doctype html>
 <html><head><meta charset="utf-8"><title>Turret control</title>
 <style>
  *{box-sizing:border-box}
- body{font-family:system-ui;background:#111;color:#ddd;margin:0;height:100vh;overflow:hidden;display:flex}
- #video-panel{flex:1;display:flex;align-items:center;justify-content:center;min-width:0;background:#000}
+ body{font-family:system-ui;background:#111;color:#ddd;margin:0;height:100vh;overflow:hidden;display:flex}#video-panel{flex:1;display:flex;align-items:center;justify-content:center;min-width:0;background:#000}
  #video{max-width:100%;max-height:100%}
  #sidebar{width:26rem;flex-shrink:0;padding:1rem;overflow-y:auto;background:#161616;border-left:1px solid #333;transition:margin-right .2s ease}
  body.collapsed #sidebar{margin-right:-26rem}
@@ -35,33 +34,56 @@ HTML_TEMPLATE = """<!doctype html>
  .row{margin:0.6rem 0}
  input[type=range]{width:14rem;vertical-align:middle}
  output{font-family:monospace;margin-left:0.6rem}
+ details.panel{margin:0.9rem 0;border-bottom:1px solid #333;padding-bottom:0.5rem}
+ details.panel summary{font-size:1.05rem}
  button,.preset,select,input[type=text]{background:#222;color:#ddd;border:1px solid #444;border-radius:4px;padding:0.25rem 0.6rem;cursor:pointer;font-size:0.9rem}
+ .preset.active{background:#8ab4f8;color:#111;border-color:#8ab4f8}
  select{cursor:pointer}
  input[type=text]{cursor:text;width:100%}
  label{cursor:pointer}
+ body.manual-mode .auto-only{display:none}
+ body.auto-mode #manual-panel{display:none}
  h2{border-bottom:1px solid #444;padding-bottom:0.3rem;margin-top:1.4rem}
  #telemetry{font-family:monospace;font-size:0.8rem;background:#1b1b1b;padding:0.8rem;border-radius:6px;white-space:pre-wrap}
  summary{cursor:pointer;color:#8ab4f8;margin-bottom:0.4rem;user-select:none}
  .sec{color:#8ab4f8}
-</style></head><body>
+</style></head><body class="__BODY_CLASS__">
 <button id="toggle">hide controls</button>
 <div id="video-panel">
  <img id="video" src="__VIDEO_URL__" alt="camera feed unavailable">
 </div>
  <div id="sidebar">
+ <details class="panel" open><summary>Control mode</summary>
+  <div class="row">Mode
+   <select id="control_mode" data-param="control_mode">
+    <option value="auto">auto (aim / search)</option>
+    <option value="manual">manual (sliders / joystick)</option>
+   </select>
+  </div>
+  <p class="sec">Joystick or keyboard input auto-engages manual; press M to toggle back to auto.</p>
+ </details>
  <details id="telemetry-box" open>
-  <summary>Telemetry</summary>
+  <summary>Config <button id="copy-config" type="button">copy</button></summary>
   <div id="telemetry">connecting...</div>
  </details>
- <h2 class="sec">Azimuth PID</h2>
- <div class="row">Kp <input type="range" id="az_kp" min="0" max="0.5" step="0.005"><output></output></div>
- <div class="row">Ki <input type="range" id="az_ki" min="0" max="0.1" step="0.001"><output></output></div>
- <div class="row">Kd <input type="range" id="az_kd" min="0" max="0.5" step="0.005"><output></output></div>
- <h2 class="sec">Elevation PID</h2>
- <div class="row">Kp <input type="range" id="el_kp" min="0" max="0.2" step="0.002"><output></output></div>
- <div class="row">Ki <input type="range" id="el_ki" min="0" max="0.05" step="0.001"><output></output></div>
- <div class="row">Kd <input type="range" id="el_kd" min="0" max="0.2" step="0.002"><output></output></div>
- <h2 class="sec">Mode</h2>
+ <details class="panel" open><summary>Azimuth PID</summary>
+ <div class="row">Kp <input type="range" id="az_kp" min="0" max="0.01" step="0.00001"><output></output></div>
+ <div class="row">Ki <input type="range" id="az_ki" min="0" max="0.01" step="0.00001"><output></output></div>
+ <div class="row">Kd <input type="range" id="az_kd" min="0" max="0.01" step="0.00001"><output></output></div>
+ </details>
+ <details class="panel auto-only" open><summary>Elevation PID</summary>
+ <div class="row">Kp <input type="range" id="el_kp" min="0" max="0.01" step="0.00001"><output></output></div>
+ <div class="row">Ki <input type="range" id="el_ki" min="0" max="0.01" step="0.00001"><output></output></div>
+ <div class="row">Kd <input type="range" id="el_kd" min="0" max="0.01" step="0.00001"><output></output></div>
+ </details>
+ <details class="panel" id="manual-panel" open><summary>Manual control</summary>
+  <div class="row">Azimuth <input type="range" id="manual_azimuth" data-param="manual_azimuth" min="-90" max="90" step="1"><output></output></div>
+  <div class="row">Elevation speed <input type="range" id="manual_speed" data-param="manual_speed" min="0" max="10" step="1"><output></output></div>
+  <div class="row"><label><input type="checkbox" id="manual_clockwise" data-param="manual_clockwise"> elevation clockwise</label></div>
+  <div class="row"><label><input type="checkbox" id="manual_fire" data-param="manual_fire"> fire (hold)</label></div>
+  <p class="sec">Joystick: left stick X = azimuth, Y = elevation, button 0 = fire. Keyboard: left/right azimuth, up/down speed, space = fire, M = toggle manual. Input auto-engages manual mode.</p>
+ </details>
+ <details class="panel auto-only" open><summary>Target mode</summary>
  <div class="row">Target type
   <select id="target_type"><option value="person">person</option><option value="face">face</option></select>
  </div>
@@ -75,15 +97,21 @@ HTML_TEMPLATE = """<!doctype html>
   <button class="preset" data-mode="center">People, aim face</button>
   <button class="preset" data-mode="id">Specific person</button>
  </div>
- <h2 class="sec">Aim calibration</h2>
+ </details>
+ <details class="panel auto-only" open><summary>Aim calibration</summary>
  <div class="row">X offset px <input type="range" id="target_offset_x" data-param="target_offset_x" min="-100" max="100" step="1"><output></output></div>
  <div class="row">Y offset px <input type="range" id="target_offset_y" data-param="target_offset_y" min="-100" max="100" step="1"><output></output></div>
- <h2 class="sec">Search</h2>
+ <div class="row">Dead zone X px <input type="range" id="accuracy_threshold_x" data-param="accuracy_threshold_x" min="0" max="100" step="1"><output></output></div>
+ <div class="row">Dead zone Y px <input type="range" id="accuracy_threshold_y" data-param="accuracy_threshold_y" min="0" max="100" step="1"><output></output></div>
+ </details>
+ <details class="panel auto-only" id="search-panel" open><summary>Search</summary>
  <div class="row"><label><input type="checkbox" id="search_enabled" data-param="search_enabled"> autonomous search when no targets</label></div>
- <div class="row">Sweep speed <input type="range" id="search_speed" data-param="search_speed" min="0.2" max="5" step="0.1"><output></output></div>
+ <div class="row">Range deg <input type="range" id="search_range" data-param="search_range" min="5" max="90" step="1"><output></output></div>
  <div class="row">Ease at ends <input type="range" id="search_ease" data-param="search_ease" min="0" max="2" step="0.1"><output></output></div>
  <div class="row">Cycle seconds <input type="range" id="search_period" data-param="search_period" min="2" max="30" step="1"><output></output></div>
- <h2 class="sec">Inference &amp; image</h2>
+ <div class="row">Resume delay s <input type="range" id="search_resume_delay" data-param="search_resume_delay" min="0" max="10" step="0.5"><output></output></div>
+ </details>
+ <details class="panel" open><summary>Inference &amp; image</summary>
  <div class="row">imgsz <input type="range" id="imgsz" data-setting="imgsz" min="160" max="640" step="32"><output></output></div>
  <div class="row">Downscale <input type="range" id="image_compression" data-setting="image_compression" min="1" max="8" step="1"><output></output></div>
  <div class="row">Detect every N frames <input type="range" id="detect_every" data-setting="detect_every" min="1" max="60" step="1"><output></output></div>
@@ -91,8 +119,10 @@ HTML_TEMPLATE = """<!doctype html>
  <div class="row">Loop delay ms <input type="range" id="loop_delay" data-setting="loop_delay" min="0" max="50" step="5"><output></output></div>
  <div class="row"><label><input type="checkbox" id="detect_faces" data-setting="detect_faces"> detect faces</label></div>
  <div class="row"><label><input type="checkbox" id="detect_objects" data-setting="detect_objects"> detect objects</label></div>
+ <div class="row"><label><input type="checkbox" id="segmentation" data-setting="segmentation"> segmentation (aim at mask centroid)</label></div>
  <div class="row"><label><input type="checkbox" id="id_targets" data-setting="id_targets"> face ID targeting</label></div>
  <p class="sec">Changes apply to the control loop immediately.</p>
+ </details>
 </div>
 <script>
 const toggleBtn = document.getElementById('toggle');
@@ -103,7 +133,14 @@ toggleBtn.addEventListener('click', () => {
 async function pullState(){
   try{
     const s = await (await fetch('/state')).json();
+    lastState = s;
     document.getElementById('telemetry').textContent = JSON.stringify(s, null, 1);
+    let cfg = lastSettings;
+    try{ cfg = await (await fetch('/settings')).json(); lastSettings = cfg; }catch(e){}
+    const preset = deriveActivePreset(s, cfg);
+    for (const btn of document.querySelectorAll('.preset')){
+      btn.classList.toggle('active', btn.dataset.mode === preset);
+    }
     if (s.controller){
       const tt = document.getElementById('target_type');
       const ti = document.getElementById('targets');
@@ -112,10 +149,34 @@ async function pullState(){
         ti.value = (s.controller.targets || []).join(', ');
       }
       ti.disabled = tt.value !== 'face';
+      const manual = (s.controller.control_mode === 'manual');
+      document.body.classList.toggle('manual-mode', manual);
+      document.body.classList.toggle('auto-mode', !manual);
     }
   }catch(e){ document.getElementById('telemetry').textContent = 'server unreachable'; }
 }
 setInterval(pullState, 500); pullState();
+let lastState = null;
+let lastSettings = null;
+function deriveActivePreset(st, cfg){
+  if (!st || !cfg) return null;
+  const c = st.controller || {};
+  if (cfg.id_targets && c.target_type === 'face') return 'id';
+  if (c.target_type === 'face' && cfg.detect_faces && !cfg.detect_objects) return 'face';
+  if (c.target_type === 'person' && cfg.detect_faces && cfg.detect_objects) return 'center';
+  if (c.target_type === 'person' && !cfg.detect_faces && cfg.detect_objects) return 'person';
+  return null;
+}
+let lastState = null;
+document.getElementById('copy-config').addEventListener('click', (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  const text = lastState ? JSON.stringify(lastState, null, 1) : '';
+  navigator.clipboard.writeText(text).then(
+    () => { e.target.textContent = 'copied'; setTimeout(() => { e.target.textContent = 'copy'; }, 1200); },
+    () => { e.target.textContent = 'failed'; setTimeout(() => { e.target.textContent = 'copy'; }, 1200); }
+  );
+});
 async function postJSON(url, body){
   const r = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify(body)});
@@ -145,6 +206,7 @@ for (const el of document.querySelectorAll('[data-setting]')){
 (async () => {
   try{
     const s = await (await fetch('/settings')).json();
+    lastSettings = s;
     for (const el of document.querySelectorAll('[data-setting]')){
       const v = s[el.dataset.setting];
       if (v === undefined) continue;
@@ -158,21 +220,24 @@ for (const el of document.querySelectorAll('[data-setting]')){
 })();
 const targetType = document.getElementById('target_type');
 const targetsInput = document.getElementById('targets');
-async function refreshTargetNames(){
+async function refreshTargetNames(force){
   try{
-    const names = await (await fetch('/targets?refresh=1')).json();
+    const names = await (await fetch(force ? '/targets?refresh=1' : '/targets')).json();
     document.getElementById('target-names').innerHTML =
       names.map(n => `<option value="${n}">`).join('');
   }catch(e){}
 }
-refreshTargetNames();
+refreshTargetNames(false);
 for (const el of document.querySelectorAll('[data-param]')){
   const send = async () => {
-    const value = el.type === 'checkbox' ? el.checked : parseFloat(el.value);
+    let value;
+    if (el.type === 'checkbox') value = el.checked;
+    else if (el.tagName === 'SELECT') value = el.value;
+    else value = parseFloat(el.value);
     if (el.nextElementSibling) el.nextElementSibling.textContent = el.value;
     await postJSON('/params', {[el.dataset.param]: value});
   };
-  el.addEventListener(el.type === 'checkbox' ? 'change' : 'input', send);
+  el.addEventListener(el.type === 'checkbox' || el.tagName === 'SELECT' ? 'change' : 'input', send);
 }
 (async () => {
   try{
@@ -181,6 +246,7 @@ for (const el of document.querySelectorAll('[data-param]')){
       const v = s.controller && s.controller[el.dataset.param];
       if (v === undefined) continue;
       if (el.type === 'checkbox') el.checked = !!v;
+      else if (el.tagName === 'SELECT') el.value = v;
       else {
         el.value = v;
         if (el.nextElementSibling) el.nextElementSibling.textContent = el.value;
@@ -286,14 +352,26 @@ class TuningState:
                         pass
             if 'search_enabled' in values:
                 self._params['search_enabled'] = bool(values['search_enabled'])
-            for key, clamp in (('search_speed', (0.0, 10.0)),
+            for key, clamp in (('accuracy_threshold_x', (0.0, 200.0)),
+                               ('accuracy_threshold_y', (0.0, 200.0)),
+                               ('search_resume_delay', (0.0, 30.0)),
+                               ('search_range', (0.0, 90.0)),
                                ('search_ease', (0.0, 3.0)),
-                               ('search_period', (1.0, 60.0))):
+                               ('search_period', (1.0, 60.0)),
+                               ('manual_azimuth', (-90.0, 90.0)),
+                               ('manual_speed', (0.0, 10.0))):
                 if key in values:
                     try:
                         self._params[key] = max(clamp[0], min(clamp[1], float(values[key])))
                     except (TypeError, ValueError):
                         pass
+            if 'control_mode' in values:
+                mode_value = str(values['control_mode']).lower()
+                if mode_value in ('auto', 'manual'):
+                    self._params['control_mode'] = mode_value
+            for key in ('manual_clockwise', 'manual_fire'):
+                if key in values:
+                    self._params[key] = bool(values[key])
             return dict(self._params)
 
     def snapshot(self) -> Dict[str, Any]:
@@ -325,10 +403,32 @@ def make_handler(state: TuningState, video_url: str = "",
         except Exception as e:
             return 502, {"error": f"camera settings unreachable: {e}"}
 
+    def render():
+        """Render the page for the current mode and gains, so the initial HTML
+        is already correct even before/without JavaScript."""
+        mode = state.params().get('control_mode', 'auto')
+        gains = state.gains()
+        html = HTML_TEMPLATE.replace("__VIDEO_URL__", video_url)
+        html = html.replace("__BODY_CLASS__", 'manual-mode' if mode == 'manual' else 'auto-mode')
+        for axis in ('az', 'el'):
+            for gain in ('kp', 'ki', 'kd'):
+                value = gains.get(axis, {}).get(gain)
+                if value is None:
+                    continue
+                marker = f'id="{axis}_{gain}"'
+                index = html.find(marker)
+                if index == -1:
+                    continue
+                output_at = html.find('<output></output>', index)
+                if output_at != -1:
+                    html = html[:output_at] + f'<output>{value}</output>' + html[output_at + len('<output></output>'):]
+        return html
+
     class Handler(BaseHTTPRequestHandler):
         def _send(self, code: int, body: bytes, ctype: str) -> None:
             self.send_response(code)
             self.send_header("Content-Type", ctype)
+            self.send_header("Cache-Control", "no-store, must-revalidate")
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)
@@ -338,7 +438,7 @@ def make_handler(state: TuningState, video_url: str = "",
 
         def do_GET(self) -> None:  # noqa: N802 (stdlib naming)
             if self.path == "/":
-                self._send(200, html.encode(), "text/html; charset=utf-8")
+                self._send(200, render().encode(), "text/html; charset=utf-8")
             elif self.path == "/state":
                 self._send_json(200, state.snapshot())
             elif self.path == "/settings":

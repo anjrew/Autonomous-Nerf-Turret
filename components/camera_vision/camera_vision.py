@@ -1,5 +1,7 @@
 # Standard library imports
 import socket
+import argparse
+import threading
 import time
 import os
 import sys
@@ -18,7 +20,7 @@ import numpy as np
 # Local/application-specific imports
 from argparse import ArgumentParser
 from nerf_turret_utils.args_utils import map_log_level, str2bool
-from camera_vision_utils import get_face_location_details, get_target_id, find_faces_in_frame, draw_face_box, draw_cross_hair
+from camera_vision_utils import get_face_location_details, get_target_id, find_faces_in_frame, draw_face_box, draw_cross_hair, largest_blob_centroid
 from yolo_object_detection.object_detection import YoloObjectDetector
 from yolo_object_detection.object_detection import ObjectDetector
 from yolo_object_detection.utils import draw_object_mask, draw_object_box
@@ -64,6 +66,8 @@ parser.add_argument("--box-targets", "-bt",
 
 parser.add_argument("--imgsz", type=int, default=640,
                     help="Inference input size. 640 = most accurate; lower values trade recall for speed. Live-tunable.")
+parser.add_argument("--segmentation", action=argparse.BooleanOptionalAction, default=True,
+                    help="Use the YOLO segmentation model and aim at the largest mask blob's centroid. Live-tunable; on by default.")
 
 args = parser.parse_args()
 
@@ -77,6 +81,7 @@ settings = TurretSettings({
     'detect_faces': args.detect_faces,
     'detect_objects': args.detect_objects,
     'id_targets': args.id_targets,
+    'segmentation': args.segmentation,
     'loop_delay': args.delay,
 })
 
@@ -92,11 +97,12 @@ targets_loaded = False
 script_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
 
 
-def ensure_targets_loaded():
-    """Load known-target encodings once, the first time face ID targeting is used"""
+targets_lock = threading.Lock()
+
+
+def _load_targets():
+    """Encode the known-target photos; caller must hold targets_lock"""
     global target_images, target_names, targets_loaded
-    if targets_loaded:
-        return
     targets_dir = f"{script_dir}/data/targets"
     os.makedirs(targets_dir, exist_ok=True)
     names, images = [], []
@@ -126,11 +132,25 @@ def ensure_targets_loaded():
         )
 
 
-def get_target_names(refresh: bool = False) -> list:
+def ensure_targets_loaded():
+    """Load known-target encodings once, the first time face ID targeting is used"""
     global targets_loaded
+    if targets_loaded:
+        return
+    with targets_lock:
+        if targets_loaded:
+            return
+        _load_targets()
+
+
+def get_target_names(refresh: bool = False) -> list:
+    """Return target names; with refresh=True re-encode (serialized to avoid
+    concurrent dlib work, which crashed the native heap)."""
     if refresh:
-        targets_loaded = False
-    ensure_targets_loaded()
+        with targets_lock:
+            _load_targets()
+    else:
+        ensure_targets_loaded()
     return list(target_names)
 
 
@@ -145,16 +165,20 @@ if VIEW == 'web' and args.stream_port:
 object_detector: Optional[ObjectDetector] = None
 
 
-def ensure_object_detector():
+def ensure_object_detector(model_name: str = 'yolo11n.pt'):
     global object_detector
-    if object_detector is None:
-        object_detector = ONNXObjectDetector() if args.detector == 'onnx' else YoloObjectDetector(
-            imgsz=settings.get('imgsz', 640))
+    if args.detector == 'onnx':
+        if object_detector is None:
+            object_detector = ONNXObjectDetector()
+        return object_detector
+    if object_detector is None or getattr(object_detector, 'model_name', None) != model_name:
+        object_detector = YoloObjectDetector(model_name=model_name,
+                                             imgsz=settings.get('imgsz', 640))
     return object_detector
 
 
 if settings.get('detect_objects'):
-    ensure_object_detector()
+    ensure_object_detector('yolo11n-seg.pt' if settings.get('segmentation') else 'yolo11n.pt')
                        
 ## Setup ready to send data to subscribers
 HOST = args.host  # IP address of the server
@@ -252,16 +276,48 @@ while True:
             targets.append(target)
             
         if settings.get('detect_objects', args.detect_objects) and not skip_frame:
-            if object_detector is None:
-                ensure_object_detector()
-            else:
-                object_detector.imgsz = settings.get('imgsz', 640)
-            results =  object_detector.detect(compressed_image, settings.get('object_confidence', args.object_confidence)) #type: ignore
+            segmentation_on = bool(settings.get('segmentation', args.segmentation))
+            model_name = 'yolo11n-seg.pt' if segmentation_on else 'yolo11n.pt'
+            detector = ensure_object_detector(model_name)
+            if args.detector != 'onnx' and detector is not None:
+                detector.imgsz = settings.get('imgsz', 640) # type: ignore
+            results =  detector.detect(compressed_image, settings.get('object_confidence', args.object_confidence)) #type: ignore
             for result in results:
 
-                # target = { "box": result["box"], "type": result["class_name"], "mask": result["mask"].tolist()}
                 target = { "box": (np.array(result["box"]) * image_compression).tolist(), "type": result["class_name"],}
+                if segmentation_on and result.get('mask') is not None:
+                    # Resize the mask to the full frame once, then derive both
+                    # the aim centroid and the drawn contour from it, so the
+                    # marker always sits inside the segmented area.
+                    mask = np.asarray(result['mask'])
+                    if mask.ndim == 3:
+                        mask = mask.reshape(mask.shape[-2], mask.shape[-1])
+                    mask = cv2.resize(mask.astype('uint8'), (frame_width, frame_height),
+                                      interpolation=cv2.INTER_NEAREST)
+                    centroid = largest_blob_centroid(mask, 1.0)
+                    if centroid is not None:
+                        target["center"] = centroid
+                    mask_color = detector.get_color_for_class_name(result['class_name']) # type: ignore
+                    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                    cv2.drawContours(frame, contours, -1, mask_color, 2)
                 targets.append(target)
+            if segmentation_on:
+                # Aim at the biggest body first: the controller takes the first
+                # matching target, so order object targets by area descending.
+                object_targets = [t for t in targets if t['type'] not in ('face',)]
+                object_targets.sort(
+                    key=lambda t: (t['box'][2] - t['box'][0]) * (t['box'][3] - t['box'][1]),
+                    reverse=True,
+                )
+                other_targets = [t for t in targets if t['type'] == 'face']
+                targets = other_targets + object_targets
+                for t in targets:
+                    t.pop('aim', None)
+                persons = [t for t in object_targets if t['type'] == 'person']
+                if persons:
+                    persons[0]['aim'] = True
+                elif object_targets:
+                    object_targets[0]['aim'] = True
                 
         is_on_target = False
             
@@ -291,6 +347,16 @@ while True:
                 
                 if 'box' in target:
                     frame = draw_object_box(frame, left, top, right, bottom, target['type'], class_color)
+
+                if 'center' in target and target.get('aim'):
+                    ccx, ccy = int(target['center'][0]), int(target['center'][1])
+                    # Distinct diamond + dot marker (unique colour/shape) so the
+                    # aim centroid stands out from boxes and mask contours.
+                    marker_color = (255, 0, 255) # magenta (BGR)
+                    diamond = np.array([[ccx, ccy - 10], [ccx + 10, ccy],
+                                        [ccx, ccy + 10], [ccx - 10, ccy]], np.int32)
+                    cv2.polylines(frame, [diamond], True, marker_color, 2)
+                    cv2.circle(frame, (ccx, ccy), 2, (255, 255, 255), -1)
                 
             # Always draw the cross hai.rindex() if not headless        
         frame =  draw_cross_hair(frame, CROSS_HAIR_SIZE, is_on_target)
@@ -310,11 +376,11 @@ while True:
             # logging.debug(f'{ "Mock: "if args.test else ""}Sending data({len(json_data)}) to the AI controller:' + json.dumps(data))
             logging.debug(f'{ "Mock: "if args.test else ""}Sending data({len(json_data)}) to the AI controller:' + json.dumps(data))
             if web_socket_client_connection and not args.test:
-                web_socket_client_connection.sendall(json_data) # Send the byte string to the server
+                web_socket_client_connection.sendall(json_data + b'\n') # Send the byte string to the server
                 
         else:
             if web_socket_client_connection and not args.test:
-                web_socket_client_connection.sendall(json.dumps({"targets": []}).encode('utf-8'))
+                web_socket_client_connection.sendall(b'{"targets": []}\n')
             
         if VIEW == 'web' and args.stream_port:
             ok, jpeg = cv2.imencode('.jpg', frame)

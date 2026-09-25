@@ -10,7 +10,7 @@ from typing import Optional
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/..')
 
 from serial_driver_server import SerialDriverServer
-from serial_driver_utils import map_log_level
+from serial_driver_utils import map_log_level, ReconnectingSerial
     
 
 parser = argparse.ArgumentParser()
@@ -38,18 +38,16 @@ FASTEST_EL_SPEED = 10
 try:
     # =========================== SERIAL ===========================================
 
-    ports = serial.tools.list_ports.comports()
-    serialInst = serial.Serial()
-
-    portsList = []
-
     if args.is_port_man:
-        
+        ports = serial.tools.list_ports.comports()
+        serialInst = serial.Serial()
+
+        portsList = []
         print("\nSerial Port options: ")
         for i, onePort in enumerate(ports):
             print(f"{i}: ",onePort.name, " - ", onePort.manufacturer or "Unknown Manufacturer")
             portsList.append(onePort.device)
-            
+
         val = None
         while val == None or int(val) >= len(portsList):
             val = input("Select Port: ")
@@ -57,17 +55,14 @@ try:
                 print("Invalid Port Selected")
             else:
                 serialInst.port = portsList[int(val or  0)]
+
+        serialInst.baudrate = args.baud
+        serialInst.open()
+        print("Connected to Serial Port:", serialInst.port, "at", serialInst.baudrate, "baud rate.")
     else:
-        for port in ports:
-            if "Arduino" in (port.manufacturer or ""):
-                serialInst.port = port.device
-
-    if not serialInst.port:
-        raise Exception("No Arduino Found")
-
-    serialInst.baudrate = args.baud
-    serialInst.open()
-    print("Connected to Serial Port:", serialInst.port, "at", serialInst.baudrate, "baud rate.")    
+        # Auto-reconnecting wrapper: survives Arduino USB dropouts mid-session
+        serialInst = ReconnectingSerial(baudrate=args.baud)
+        serialInst.open()
 
     
     # ============================== SERVER ======================================

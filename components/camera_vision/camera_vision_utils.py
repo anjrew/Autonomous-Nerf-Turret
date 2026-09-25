@@ -34,6 +34,26 @@ def get_face_location_details(image_compression:int, face_location:tuple) -> dic
 
 
 
+def largest_blob_centroid(mask, scale: float = 1.0) -> Optional[list]:
+    """Centroid of the largest connected region in a segmentation mask.
+
+    Aiming at this is steadier than a bounding-box centre when the mask has
+    holes or stray pixels. Coordinates are scaled back to the full frame.
+    """
+    m = np.asarray(mask)
+    if m.ndim == 3:
+        m = m.reshape(m.shape[-2], m.shape[-1])
+    m = (m > 0.5).astype('uint8')
+    if not m.any():
+        return None
+    count, _, stats, centroids = cv2.connectedComponentsWithStats(m, 8)
+    if count <= 1:
+        return None
+    index = 1 + int(np.argmax(stats[1:, cv2.CC_STAT_AREA]))
+    cx, cy = centroids[index]
+    return [float(cx) * scale, float(cy) * scale]
+
+
 def get_target_id(frame, box:list, target_names: list, target_images: list) -> Optional[str]:
     """
     Identify a target based on the face bounding box coordinates, target names, and target images.

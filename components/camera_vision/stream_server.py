@@ -31,6 +31,7 @@ class TurretSettings:
         'detect_faces': (bool, None, None),
         'detect_objects': (bool, None, None),
         'id_targets': (bool, None, None),
+        'segmentation': (bool, None, None),
         'loop_delay': (float, 0.0, 0.5),
     }
 

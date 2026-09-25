@@ -23,6 +23,7 @@ class YoloObjectDetector(ObjectDetector):
     """
     
     def __init__(self, model_name: str = "yolo11n.pt", imgsz: int = 640) -> None:
+        self.model_name = model_name
         self.model = YOLO(model_name)  # load an official model
         self.imgsz = imgsz
         self.class_names = self.model.names or {}
