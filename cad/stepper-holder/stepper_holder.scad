@@ -131,10 +131,11 @@ module motor_cradle() {
 
 module stepper_holder() {
     if (part == "all") {
-        // Lay the three pieces out side by side for printing.
-        inner_plate();
-        translate([plate_size + 10, 0, 0]) outer_plate();
-        translate([2 * (plate_size + 10), 0, 0]) motor_cradle();
+        // Lay the three pieces side by side, all aligned on the Z axis.
+        translate([0, 0, plate_thickness]) inner_plate();
+        translate([plate_size + 10, 0, plate_thickness + motor_length]) outer_plate();
+        translate([2 * (plate_size + 10), 0, plate_thickness / 2 + motor_length / 2])
+            motor_cradle();
     } else if (part == "inner") {
         inner_plate();
     } else if (part == "outer") {
