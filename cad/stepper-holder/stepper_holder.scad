@@ -6,7 +6,7 @@
 // Plate size (square)
 plate_size      = 80.0;
 // Plate thickness
-plate_thickness = 5.0;
+plate_thickness = 2.0;
 // Corner mounting screw holes (M3 clearance)
 corner_hole_dia   = 3.4;
 corner_hole_inset = 8.0;
