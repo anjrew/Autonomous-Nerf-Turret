@@ -1,120 +1,83 @@
-// Parametric NEMA 17 (17HS4023) stepper motor holder / bracket
+// Parametric NEMA 17 (17HS4023) stepper motor front plate / holder
 // Export: F6 to render, then File > Export > Export as STL
 // All dimensions in mm.
 
-/* [Motor] */
-// NEMA 17 face size (square)
-motor_face        = 42.3;   // 17HS4023 is 42.3 mm
-// Bolt hole spacing (NEMA 17 standard)
-bolt_spacing      = 31.0;
-// Bolt hole diameter (M3 clearance)
-bolt_dia          = 3.4;
-// Centring boss diameter (clearance)
-boss_dia          = 22.5;
-// Shaft hole diameter
-shaft_dia         = 8.0;    // generous clearance around the 5 mm shaft + hub
-// Motor body length (for the cradle depth)
-motor_length      = 40.0;
-
-/* [Holder] */
+/* [Front plate] */
+// Plate size (square)
+plate_size      = 80.0;
 // Plate thickness
-plate_thickness   = 5.0;
-// Plate size (square) - set larger than the motor face
-plate_size        = 60.0;
-// Side wall height (cradle holding the motor body)
-wall_height       = 18.0;
-// Wall thickness
-wall_thickness    = 4.0;
-// Where the mounting tabs sit: "front" (on the front face) or "sides"
-flange_orientation = "front";
-// Mounting tab width (along the mount surface) and thickness
-flange_width      = 14.0;
-flange_thickness  = 5.0;
-// Side-tab length (only used when flange_orientation = "sides")
-flange_length     = 24.0;
-// Tab screw holes (M3)
-flange_hole_dia   = 3.4;
-flange_hole_inset = 8.0;
+plate_thickness = 5.0;
+// Corner mounting screw holes (M3 clearance)
+corner_hole_dia   = 3.4;
+corner_hole_inset = 8.0;
+
+/* [Motor cutout] */
+// NEMA 17 bolt hole spacing
+bolt_spacing = 31.0;
+// Motor bolt hole diameter (M3 clearance)
+bolt_dia     = 3.4;
+// Centring boss clearance
+boss_dia     = 22.5;
+// Shaft clearance
+shaft_dia    = 8.0;
+// Motor face size (17HS4023 is 42.3 mm)
+motor_face   = 42.3;
+
+/* [Body cradle] */
+// Add a three-sided cradle to hold the motor body
+include_cradle = true;
+// Cradle wall height
+wall_height    = 18.0;
+// Cradle wall thickness
+wall_thickness = 4.0;
+// Motor body length (for reference; cradle is open at the back)
+motor_length   = 40.0;
 
 /* [Quality] */
 $fn = 64;
 
-module nema17_face_plate() {
+module front_plate() {
     difference() {
         cube([plate_size, plate_size, plate_thickness], center = true);
 
-        // Bolt holes
+        // Corner mounting holes
+        for (x = [-1, 1], y = [-1, 1]) {
+            translate([x * (plate_size / 2 - corner_hole_inset),
+                       y * (plate_size / 2 - corner_hole_inset), 0])
+                cylinder(d = corner_hole_dia, h = plate_thickness + 2, center = true);
+        }
+
+        // Stepper cutout: bolt pattern, boss and shaft clearance
         for (x = [-1, 1], y = [-1, 1]) {
             translate([x * bolt_spacing / 2, y * bolt_spacing / 2, 0])
                 cylinder(d = bolt_dia, h = plate_thickness + 2, center = true);
         }
-
-        // Central boss / shaft clearance
         cylinder(d = boss_dia, h = plate_thickness + 2, center = true);
-        // Shaft path through the boss opening
         cylinder(d = shaft_dia, h = plate_thickness + 2, center = true);
     }
 }
 
 module motor_cradle() {
-    // Three-sided cradle around the motor body (open on the shaft side)
-    difference() {
-        translate([0, 0, plate_thickness / 2 + wall_height / 2]) {
+    if (include_cradle) {
+        // Cradle extends behind the plate to hold the motor body.
+        translate([0, 0, -plate_thickness / 2 - motor_length / 2]) {
             difference() {
-                cube([plate_size, plate_size, wall_height], center = true);
-                // Inner cavity
-                translate([0, 0, 0])
-                    cube([motor_face + 0.6, motor_face + 0.6, wall_height + 2], center = true);
-                // Open the top so the motor can drop in
-                translate([0, 0, wall_height / 2 + 1])
-                    cube([plate_size + 2, plate_size + 2, 2], center = true);
-                // Open the back so wires can exit
-                translate([0, -(motor_face + 0.6) / 2 - 1, 0])
-                    cube([14, 4, wall_height + 2], center = true);
+                cube([motor_face + 2 * wall_thickness,
+                      motor_face + 2 * wall_thickness,
+                      motor_length], center = true);
+                // Motor cavity
+                cube([motor_face + 0.6, motor_face + 0.6, motor_length + 2], center = true);
+                // Wiring exit slot in the back wall
+                translate([0, (motor_face + 0.6) / 2, 0])
+                    cube([16, wall_thickness + 2, 20], center = true);
             }
         }
     }
 }
 
-module side_flange(side = 1) {
-    // side = -1 left, +1 right
-    translate([side * (plate_size / 2 + flange_length / 2 - 2), 0, 0]) {
-        difference() {
-            cube([flange_length, flange_width, plate_thickness], center = true);
-            // Screw hole (through the flange) plus a slot opening to the edge
-            translate([0, 0, 0])
-                cylinder(d = flange_hole_dia, h = plate_thickness + 2, center = true);
-            translate([side * (flange_length / 2), 0, 0])
-                cube([flange_length, flange_hole_dia, plate_thickness + 2], center = true);
-        }
-    }
-}
-
-module front_flange(side = 1) {
-    // Clamp tab on the front face of the plate, protruding forward (+Z),
-    // with a screw hole through it so it bolts to a front panel/bracket.
-    translate([side * (plate_size / 2 - flange_width / 2 + 2),
-               0,
-               plate_thickness / 2 + flange_thickness / 2 - 2]) {
-        difference() {
-            cube([flange_width, plate_size, flange_thickness], center = true);
-            for (y = [-1, 1])
-                translate([0, y * (plate_size / 2 - flange_hole_inset), 0])
-                    cylinder(d = flange_hole_dia, h = flange_thickness + 2, center = true);
-        }
-    }
-}
-
 module stepper_holder() {
-    nema17_face_plate();
+    front_plate();
     motor_cradle();
-    if (flange_orientation == "front") {
-        front_flange(-1);
-        front_flange(1);
-    } else {
-        side_flange(-1);
-        side_flange(1);
-    }
 }
 
 stepper_holder();
