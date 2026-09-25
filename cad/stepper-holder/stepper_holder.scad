@@ -133,14 +133,11 @@ module motor_cradle() {
 
 module stepper_holder() {
     if (part == "all") {
-        // Stacked vertically: inner plate at the bottom, cradle between,
-        // outer frame on top.
-        translate([0, 0, plate_thickness])
-            inner_plate();
-        translate([0, 0, plate_size + 20 + plate_thickness / 2 + motor_length / 2])
-            motor_cradle();
-        translate([0, 0, 2 * plate_size + 40 + plate_thickness + motor_length])
-            outer_plate();
+        // Assembled: inner plate attached at the motor end (bottom) of the
+        // cradle, outer frame attached at the far end (top).
+        inner_plate();
+        motor_cradle();
+        outer_plate();
     } else if (part == "inner") {
         inner_plate();
     } else if (part == "outer") {
