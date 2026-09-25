@@ -49,6 +49,11 @@ wire_slot_height     = 8.0;
 // Which wall the slot breaks through: -1 = -Y wall, +1 = +Y wall
 wire_slot_side       = -1;
 
+/* [Parts] */
+// Which piece(s) to render: "both" (side by side), "plate" (inner end plate)
+// or "cradle" (outer cradle that wraps the motor body)
+part = "both";
+
 /* [Quality] */
 $fn = 64;
 
@@ -115,8 +120,17 @@ module motor_cradle() {
 }
 
 module stepper_holder() {
-    front_plate();
-    motor_cradle();
+    // The holder is two pieces: the inner end plate (motor cutout + corner
+    // screws) and the outer cradle (wraps the motor body). When "both" they
+    // are laid out side by side so each can be exported/printed separately.
+    if (part == "both") {
+        front_plate();
+        translate([plate_size + 10, 0, 0]) motor_cradle();
+    } else if (part == "plate") {
+        front_plate();
+    } else {
+        motor_cradle();
+    }
 }
 
 stepper_holder();
