@@ -30,8 +30,8 @@ include_cradle = true;
 wall_height    = 18.0;
 // Cradle wall thickness
 wall_thickness = 4.0;
-// Motor body length (for reference; cradle is open at the back)
-motor_length   = 40.0;
+// Motor body length (measured: 32 mm deep)
+motor_length   = 32.0;
 
 /* [Quality] */
 $fn = 64;
