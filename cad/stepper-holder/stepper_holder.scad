@@ -7,9 +7,11 @@
 plate_size      = 60.0;
 // Plate thickness
 plate_thickness = 2.0;
+// Corner chamfer flat length on the base plate
+plate_corner_flat = 8.0;
 // Corner mounting screw holes (M3 clearance)
 corner_hole_dia   = 3.4;
-corner_hole_inset = 4.0;
+corner_hole_inset = 8.0;
 
 /* [Motor cutout] */
 // NEMA 17 bolt hole spacing
@@ -40,7 +42,8 @@ $fn = 64;
 
 module front_plate() {
     difference() {
-        cube([plate_size, plate_size, plate_thickness], center = true);
+        // Chamfered plate corners to match the rest of the holder
+        octagon_prism(plate_thickness, plate_size, plate_corner_flat);
 
         // Corner mounting holes
         for (x = [-1, 1], y = [-1, 1]) {
