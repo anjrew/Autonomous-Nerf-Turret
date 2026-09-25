@@ -59,11 +59,11 @@ module front_plate() {
     }
 }
 
-module motor_cavity(height) {
-    // Octagonal cross-section matching the motor's tapered corners: a square
-    // across flats with 45 degree cuts leaving `corner_flat` on each corner.
-    half = (motor_face + 0.6) / 2;
-    cut = corner_flat / sqrt(2);
+module octagon_prism(height, across_flats, flat) {
+    // Square across flats with 45 degree corner cuts leaving `flat`,
+    // used for both the motor cavity and the cradle's outer corners.
+    half = across_flats / 2;
+    cut = flat / sqrt(2);
     linear_extrude(height = height, center = true)
         polygon(points = [
             [ half,        half - cut],
@@ -82,11 +82,12 @@ module motor_cradle() {
         // Cradle extends behind the plate to hold the motor body.
         translate([0, 0, -plate_thickness / 2 - motor_length / 2]) {
             difference() {
-                cube([motor_face + 2 * wall_thickness,
-                      motor_face + 2 * wall_thickness,
-                      motor_length], center = true);
+                // Outer shell with the same chamfered corner profile
+                octagon_prism(motor_length,
+                              motor_face + 2 * wall_thickness,
+                              corner_flat);
                 // Motor cavity (octagonal, matches the tapered corners)
-                motor_cavity(motor_length + 2);
+                octagon_prism(motor_length + 2, motor_face + 0.6, corner_flat);
                 // Wiring exit slot: 8 mm wide, spanning 2-8 mm from the back end
                 translate([0, (motor_face + 0.6) / 2, -motor_length / 2 + 5])
                     cube([8, wall_thickness + 2, 6], center = true);
