@@ -67,8 +67,8 @@ module motor_cradle() {
                       motor_length], center = true);
                 // Motor cavity
                 cube([motor_face + 0.6, motor_face + 0.6, motor_length + 2], center = true);
-                // Wiring exit slot in the back wall
-                translate([0, (motor_face + 0.6) / 2, 0])
+                // Wiring exit slot: 8 mm wide, spanning 2-8 mm from the back end
+                translate([0, (motor_face + 0.6) / 2, -motor_length / 2 + 5])
                     cube([8, wall_thickness + 2, 6], center = true);
             }
         }
