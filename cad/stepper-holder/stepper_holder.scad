@@ -25,10 +25,14 @@ plate_size        = 60.0;
 wall_height       = 18.0;
 // Wall thickness
 wall_thickness    = 4.0;
-// Mounting flange width (each side) and length
+// Where the mounting tabs sit: "front" (on the front face) or "sides"
+flange_orientation = "front";
+// Mounting tab width (along the mount surface) and thickness
 flange_width      = 14.0;
+flange_thickness  = 5.0;
+// Side-tab length (only used when flange_orientation = "sides")
 flange_length     = 24.0;
-// Flange screw holes (M3)
+// Tab screw holes (M3)
 flange_hole_dia   = 3.4;
 flange_hole_inset = 8.0;
 
@@ -72,7 +76,7 @@ module motor_cradle() {
     }
 }
 
-module flange(side = 1) {
+module side_flange(side = 1) {
     // side = -1 left, +1 right
     translate([side * (plate_size / 2 + flange_length / 2 - 2), 0, 0]) {
         difference() {
@@ -86,11 +90,31 @@ module flange(side = 1) {
     }
 }
 
+module front_flange(side = 1) {
+    // Clamp tab on the front face of the plate, protruding forward (+Z),
+    // with a screw hole through it so it bolts to a front panel/bracket.
+    translate([side * (plate_size / 2 - flange_width / 2 + 2),
+               0,
+               plate_thickness / 2 + flange_thickness / 2 - 2]) {
+        difference() {
+            cube([flange_width, plate_size, flange_thickness], center = true);
+            for (y = [-1, 1])
+                translate([0, y * (plate_size / 2 - flange_hole_inset), 0])
+                    cylinder(d = flange_hole_dia, h = flange_thickness + 2, center = true);
+        }
+    }
+}
+
 module stepper_holder() {
     nema17_face_plate();
     motor_cradle();
-    flange(-1);
-    flange(1);
+    if (flange_orientation == "front") {
+        front_flange(-1);
+        front_flange(1);
+    } else {
+        side_flange(-1);
+        side_flange(1);
+    }
 }
 
 stepper_holder();
