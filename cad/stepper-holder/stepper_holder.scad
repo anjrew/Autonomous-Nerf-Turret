@@ -13,7 +13,7 @@ plate_thickness = 2.0;
 plate_size        = 60.0;
 plate_corner_flat = 8.0;
 // Corner mounting screw holes (M3 clearance)
-corner_hole_dia   = 3.4;
+corner_hole_dia   = 3.8;
 corner_hole_inset = 6.0;
 
 /* [Motor cutout] */
@@ -24,7 +24,7 @@ motor_clearance = 0.6;
 // NEMA 17 bolt hole spacing
 bolt_spacing = 31.0;
 // Motor bolt hole diameter (M3 clearance)
-bolt_dia     = 3.4;
+bolt_dia     = 3.8;
 // Centring boss clearance
 boss_dia     = 22.5;
 // Shaft clearance
