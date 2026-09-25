@@ -91,9 +91,9 @@ module motor_cradle() {
                               corner_flat);
                 // Motor cavity (octagonal, matches the tapered corners)
                 octagon_prism(motor_length + 2, motor_face + 0.6, corner_flat);
-                // Wiring exit slot: 8 mm wide, spanning 2-8 mm from the back end
-                translate([0, -(motor_face + 0.6) / 2, -motor_length / 2 + 5])
-                    cube([8, wall_thickness + 2, 6], center = true);
+                // Wiring exit slot: 8 mm wide, from 2 mm to 10 mm off the back
+                translate([0, -(motor_face + 0.6) / 2, -motor_length / 2 + 6])
+                    cube([8, wall_thickness + 6, 8], center = true);
             }
         }
     }
