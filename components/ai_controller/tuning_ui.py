@@ -53,7 +53,7 @@ HTML_TEMPLATE = """<!doctype html>
  <img id="video" src="__VIDEO_URL__" alt="camera feed unavailable">
 </div>
  <div id="sidebar">
- <details class="panel" open><summary>Control mode</summary>
+ <details class="panel"><summary>Control mode</summary>
   <div class="row">Mode
    <select id="control_mode" data-param="control_mode">
     <option value="auto">auto (aim / search)</option>
@@ -62,28 +62,28 @@ HTML_TEMPLATE = """<!doctype html>
   </div>
   <p class="sec">Joystick or keyboard input auto-engages manual; press M to toggle back to auto.</p>
  </details>
- <details id="telemetry-box" open>
+ <details id="telemetry-box">
   <summary>Config <button id="copy-config" type="button">copy</button></summary>
   <div id="telemetry">connecting...</div>
  </details>
- <details class="panel" open><summary>Azimuth PID</summary>
+ <details class="panel"><summary>Azimuth PID</summary>
  <div class="row">Kp <input type="range" id="az_kp" min="0" max="0.01" step="0.00001"><output></output></div>
  <div class="row">Ki <input type="range" id="az_ki" min="0" max="0.01" step="0.00001"><output></output></div>
  <div class="row">Kd <input type="range" id="az_kd" min="0" max="0.01" step="0.00001"><output></output></div>
  </details>
- <details class="panel auto-only" open><summary>Elevation PID</summary>
+ <details class="panel auto-only"><summary>Elevation PID</summary>
  <div class="row">Kp <input type="range" id="el_kp" min="0" max="0.01" step="0.00001"><output></output></div>
  <div class="row">Ki <input type="range" id="el_ki" min="0" max="0.01" step="0.00001"><output></output></div>
  <div class="row">Kd <input type="range" id="el_kd" min="0" max="0.01" step="0.00001"><output></output></div>
  </details>
- <details class="panel" id="manual-panel" open><summary>Manual control</summary>
+ <details class="panel" id="manual-panel"><summary>Manual control</summary>
   <div class="row">Azimuth <input type="range" id="manual_azimuth" data-param="manual_azimuth" min="-90" max="90" step="1"><output></output></div>
   <div class="row">Elevation speed <input type="range" id="manual_speed" data-param="manual_speed" min="0" max="10" step="1"><output></output></div>
   <div class="row"><label><input type="checkbox" id="manual_clockwise" data-param="manual_clockwise"> elevation clockwise</label></div>
   <div class="row"><label><input type="checkbox" id="manual_fire" data-param="manual_fire"> fire (hold)</label></div>
   <p class="sec">Joystick: left stick X = azimuth, Y = elevation, button 0 = fire. Keyboard: left/right azimuth, up/down speed, space = fire, M = toggle manual. Input auto-engages manual mode.</p>
  </details>
- <details class="panel auto-only" open><summary>Target mode</summary>
+ <details class="panel auto-only"><summary>Target mode</summary>
  <div class="row">Target type
   <select id="target_type"><option value="person">person</option><option value="face">face</option></select>
  </div>
@@ -98,20 +98,20 @@ HTML_TEMPLATE = """<!doctype html>
   <button class="preset" data-mode="id">Specific person</button>
  </div>
  </details>
- <details class="panel auto-only" open><summary>Aim calibration</summary>
+ <details class="panel auto-only"><summary>Aim calibration</summary>
  <div class="row">X offset px <input type="range" id="target_offset_x" data-param="target_offset_x" min="-100" max="100" step="1"><output></output></div>
  <div class="row">Y offset px <input type="range" id="target_offset_y" data-param="target_offset_y" min="-100" max="100" step="1"><output></output></div>
  <div class="row">Dead zone X px <input type="range" id="accuracy_threshold_x" data-param="accuracy_threshold_x" min="0" max="100" step="1"><output></output></div>
  <div class="row">Dead zone Y px <input type="range" id="accuracy_threshold_y" data-param="accuracy_threshold_y" min="0" max="100" step="1"><output></output></div>
  </details>
- <details class="panel auto-only" id="search-panel" open><summary>Search</summary>
+ <details class="panel auto-only" id="search-panel"><summary>Search</summary>
  <div class="row"><label><input type="checkbox" id="search_enabled" data-param="search_enabled"> autonomous search when no targets</label></div>
  <div class="row">Range deg <input type="range" id="search_range" data-param="search_range" min="5" max="90" step="1"><output></output></div>
  <div class="row">Ease at ends <input type="range" id="search_ease" data-param="search_ease" min="0" max="2" step="0.1"><output></output></div>
  <div class="row">Cycle seconds <input type="range" id="search_period" data-param="search_period" min="2" max="30" step="1"><output></output></div>
  <div class="row">Resume delay s <input type="range" id="search_resume_delay" data-param="search_resume_delay" min="0" max="10" step="0.5"><output></output></div>
  </details>
- <details class="panel" open><summary>Inference &amp; image</summary>
+ <details class="panel auto-only"><summary>Inference &amp; image</summary>
  <div class="row">imgsz <input type="range" id="imgsz" data-setting="imgsz" min="160" max="640" step="32"><output></output></div>
  <div class="row">Downscale <input type="range" id="image_compression" data-setting="image_compression" min="1" max="8" step="1"><output></output></div>
  <div class="row">Detect every N frames <input type="range" id="detect_every" data-setting="detect_every" min="1" max="60" step="1"><output></output></div>
@@ -155,7 +155,6 @@ async function pullState(){
     }
   }catch(e){ document.getElementById('telemetry').textContent = 'server unreachable'; }
 }
-setInterval(pullState, 500); pullState();
 let lastState = null;
 let lastSettings = null;
 function deriveActivePreset(st, cfg){
@@ -167,7 +166,7 @@ function deriveActivePreset(st, cfg){
   if (c.target_type === 'person' && !cfg.detect_faces && cfg.detect_objects) return 'person';
   return null;
 }
-let lastState = null;
+setInterval(pullState, 500); pullState();
 document.getElementById('copy-config').addEventListener('click', (e) => {
   e.preventDefault();
   e.stopPropagation();
