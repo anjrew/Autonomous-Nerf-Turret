@@ -99,6 +99,8 @@ module outer_plate() {
     z_far = -plate_thickness / 2 - motor_length - plate_thickness / 2;
     difference() {
         octagon_prism(plate_thickness, plate_size, plate_corner_flat, z_far);
+        // Central opening so the motor's shape can pass through the middle
+        octagon_prism(plate_thickness * 4, motor_face + motor_clearance, corner_flat, z_far);
         for (x = [-1, 1], y = [-1, 1]) {
             translate([x * (plate_size / 2 - corner_hole_inset),
                        y * (plate_size / 2 - corner_hole_inset), z_far])
