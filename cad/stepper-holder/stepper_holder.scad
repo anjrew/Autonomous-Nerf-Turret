@@ -35,7 +35,17 @@ wall_height    = 18.0;
 // Cradle wall thickness
 wall_thickness = 2.0;
 // Motor body length (measured: 32 mm deep)
-motor_length   = 32.0;
+motor_length   = 45.0;
+
+/* [Wire cutout] */
+// Distance of the slot centre from the plate end of the cradle
+wire_slot_from_plate = 10.0;
+// Slot width (along the plate)
+wire_slot_width      = 8.0;
+// Slot height (along the motor axis)
+wire_slot_height     = 8.0;
+// Which wall the slot breaks through: -1 = -Y wall, +1 = +Y wall
+wire_slot_side       = -1;
 
 /* [Quality] */
 $fn = 64;
@@ -91,9 +101,12 @@ module motor_cradle() {
                               corner_flat);
                 // Motor cavity (octagonal, matches the tapered corners)
                 octagon_prism(motor_length + 2, motor_face + 0.6, corner_flat);
-                // Wiring exit slot, now near the plate end of the cradle
-                translate([0, -(motor_face + 0.6) / 2, motor_length / 2 - 6])
-                    cube([8, wall_thickness + 6, 8], center = true);
+                // Wiring exit slot (parameters under [Wire cutout])
+                translate([0,
+                           wire_slot_side * (motor_face + 0.6) / 2,
+                           motor_length / 2 - wire_slot_from_plate])
+                    cube([wire_slot_width, wall_thickness + 6, wire_slot_height],
+                         center = true);
             }
         }
     }
