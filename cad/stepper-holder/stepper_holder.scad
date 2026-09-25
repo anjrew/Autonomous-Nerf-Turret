@@ -22,6 +22,8 @@ boss_dia     = 22.5;
 shaft_dia    = 8.0;
 // Motor face size (17HS4023 is 42.3 mm)
 motor_face   = 42.3;
+// Length of the flat on each tapered corner (motor is octagonal)
+corner_flat  = 6.0;
 
 /* [Body cradle] */
 // Add a three-sided cradle to hold the motor body
@@ -57,6 +59,24 @@ module front_plate() {
     }
 }
 
+module motor_cavity(height) {
+    // Octagonal cross-section matching the motor's tapered corners: a square
+    // across flats with 45 degree cuts leaving `corner_flat` on each corner.
+    half = (motor_face + 0.6) / 2;
+    cut = corner_flat / sqrt(2);
+    linear_extrude(height = height, center = true)
+        polygon(points = [
+            [ half,        half - cut],
+            [ half - cut,  half],
+            [-(half - cut), half],
+            [-half,        half - cut],
+            [-half,       -(half - cut)],
+            [-(half - cut), -half],
+            [ half - cut,  -half],
+            [ half,       -(half - cut)],
+        ]);
+}
+
 module motor_cradle() {
     if (include_cradle) {
         // Cradle extends behind the plate to hold the motor body.
@@ -65,8 +85,8 @@ module motor_cradle() {
                 cube([motor_face + 2 * wall_thickness,
                       motor_face + 2 * wall_thickness,
                       motor_length], center = true);
-                // Motor cavity
-                cube([motor_face + 0.6, motor_face + 0.6, motor_length + 2], center = true);
+                // Motor cavity (octagonal, matches the tapered corners)
+                motor_cavity(motor_length + 2);
                 // Wiring exit slot: 8 mm wide, spanning 2-8 mm from the back end
                 translate([0, (motor_face + 0.6) / 2, -motor_length / 2 + 5])
                     cube([8, wall_thickness + 2, 6], center = true);
