@@ -22,8 +22,10 @@ bolt_dia     = 3.4;
 boss_dia     = 22.5;
 // Shaft clearance
 shaft_dia    = 8.0;
-// Motor face size (17HS4023 is 42.3 mm)
-motor_face   = 42.3;
+// Motor face size (measured: 42 mm)
+motor_face   = 42.0;
+// Total clearance added to the cavity so the motor isn't too tight
+motor_clearance = 0.6;
 // Length of the flat on each tapered corner (motor is octagonal)
 corner_flat  = 6.0;
 
@@ -100,10 +102,10 @@ module motor_cradle() {
                               motor_face + 2 * wall_thickness,
                               corner_flat);
                 // Motor cavity (octagonal, matches the tapered corners)
-                octagon_prism(motor_length + 2, motor_face + 0.6, corner_flat);
+                octagon_prism(motor_length + 2, motor_face + motor_clearance, corner_flat);
                 // Wiring exit slot (parameters under [Wire cutout])
                 translate([0,
-                           wire_slot_side * (motor_face + 0.6) / 2,
+                           wire_slot_side * (motor_face + motor_clearance) / 2,
                            motor_length / 2 - wire_slot_from_plate])
                     cube([wire_slot_width, wall_thickness + 6, wire_slot_height],
                          center = true);
