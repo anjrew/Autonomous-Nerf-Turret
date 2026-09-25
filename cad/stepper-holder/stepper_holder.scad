@@ -11,7 +11,7 @@ plate_thickness = 2.0;
 plate_corner_flat = 8.0;
 // Corner mounting screw holes (M3 clearance)
 corner_hole_dia   = 3.4;
-corner_hole_inset = 8.0;
+corner_hole_inset = 7.0;
 
 /* [Motor cutout] */
 // NEMA 17 bolt hole spacing
