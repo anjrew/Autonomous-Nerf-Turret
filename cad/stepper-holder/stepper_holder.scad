@@ -69,7 +69,7 @@ module motor_cradle() {
                 cube([motor_face + 0.6, motor_face + 0.6, motor_length + 2], center = true);
                 // Wiring exit slot in the back wall
                 translate([0, (motor_face + 0.6) / 2, 0])
-                    cube([16, wall_thickness + 2, 20], center = true);
+                    cube([8, wall_thickness + 2, 6], center = true);
             }
         }
     }
