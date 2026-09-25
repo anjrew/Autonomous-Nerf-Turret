@@ -3,13 +3,13 @@
 // All dimensions in mm.
 
 /* [Front plate] */
-// Plate size (square)
-plate_size      = 80.0;
+// Plate size (square): just big enough for the cradle plus corner holes
+plate_size      = 60.0;
 // Plate thickness
 plate_thickness = 2.0;
 // Corner mounting screw holes (M3 clearance)
 corner_hole_dia   = 3.4;
-corner_hole_inset = 8.0;
+corner_hole_inset = 4.0;
 
 /* [Motor cutout] */
 // NEMA 17 bolt hole spacing
