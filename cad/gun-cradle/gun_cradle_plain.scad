@@ -18,9 +18,9 @@ end_m3_hole = 2.4;
 
 /* [Corner radii] */
 // Radius on the inside corners of the cavity
-inner_corner_radius = 4.0;
+inner_corner_radius = 8.0;
 // Radius on the outside corners of the cradle
-outer_corner_radius = 6.0;
+outer_corner_radius = 12.0;
 
 /* [Base fillet] */
 // Fillet where the cavity floor meets the walls
