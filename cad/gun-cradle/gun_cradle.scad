@@ -30,12 +30,11 @@ open_short_side = true;
 open_side = 1;
 
 /* [Mounts] */
-// Two mounting tabs coming off the bottom edge, one per long wall
-mount_tabs     = true;
-tab_width      = 20.0;  // along the wall
-tab_depth      = 15.0;  // sticking out sideways
-tab_thickness  = 4.0;   // vertical thickness
-tab_hole_dia   = 10.0;  // 10 mm pipe passes through
+// Pipe sockets coming off each side that a 10 mm pipe slides into
+mount_pipes    = true;
+pipe_dia       = 10.0;  // pipe bore (slip fit)
+socket_outer_dia = 16.0;
+socket_length  = 15.0;  // how far the socket sticks out
 
 /* [Quality] */
 $fn = 48;
@@ -59,15 +58,16 @@ module gun_cradle() {
                     linear_extrude(height = outer_height, center = true)
                         square([outer_width, outer_corner_radius], center = true);
             }
-            // Two mounts coming off the bottom, one on each long wall
-            if (mount_tabs) {
+            // Pipe sockets coming off each side at the bottom
+            if (mount_pipes) {
                 for (x = [-1, 1]) {
-                    translate([x * (outer_width / 2 + tab_depth / 2), 0,
-                               -outer_height / 2 + tab_thickness / 2])
-                        difference() {
-                            cube([tab_depth, tab_width, tab_thickness], center = true);
-                            cylinder(d = tab_hole_dia, h = tab_thickness + 2, center = true);
-                        }
+                    translate([x * (outer_width / 2 + socket_length / 2 - 1), 0,
+                               -outer_height / 2 + socket_outer_dia / 2])
+                        rotate([0, 90, 0])
+                            difference() {
+                                cylinder(d = socket_outer_dia, h = socket_length, center = true);
+                                cylinder(d = pipe_dia, h = socket_length + 2, center = true);
+                            }
                 }
             }
         }
