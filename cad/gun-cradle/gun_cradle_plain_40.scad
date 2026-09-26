@@ -13,8 +13,8 @@ cavity_length = 40.0;   // Y (the 40)
 wall_thickness = 3.0;
 // No base: the cradle is open at both ends (set > 0 to add a floor)
 base_thickness = 0.0;
-// M3 bolt clearance hole through each end wall (screw passes through)
-end_m3_hole = 3.4;
+// M2 screw clearance hole through each end wall (screw passes through)
+end_m3_hole = 2.4;
 
 /* [Corner radii] */
 // Radius on the inside corners of the cavity
