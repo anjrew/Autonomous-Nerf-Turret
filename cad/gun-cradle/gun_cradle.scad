@@ -62,6 +62,10 @@ module gun_cradle() {
         if (open_short_side) {
             translate([0, open_side * (cavity_length / 2 + wall_thickness / 2 + 0.5), 0])
                 cube([outer_width + 2, wall_thickness + 1, outer_height + 2], center = true);
+            // Square the inner cavity corners at the open end as well
+            translate([0, open_side * (cavity_length / 2 - inner_corner_radius / 2), 0])
+                linear_extrude(height = cavity_height + 2, center = true)
+                    square([cavity_width, inner_corner_radius], center = true);
         }
     }
 }
