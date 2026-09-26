@@ -39,6 +39,8 @@ socket_length  = 15.0;  // how far the socket sticks out
 socket_z_fraction = 0.5;
 // Distance of the socket centre from the closed end, along Y
 socket_y = 100.0;
+// Grub screw hole through the socket wall (self-tapping; 3.0 for M3)
+grub_dia = 3.0;
 
 /* [Quality] */
 $fn = 48;
@@ -72,6 +74,9 @@ module gun_cradle() {
                             difference() {
                                 cylinder(d = socket_outer_dia, h = socket_length, center = true);
                                 cylinder(d = pipe_dia, h = socket_length + 2, center = true);
+                                // Grub screw hole through the socket wall
+                                rotate([90, 0, 0])
+                                    cylinder(d = grub_dia, h = socket_outer_dia + 2, center = true);
                             }
                 }
             }
