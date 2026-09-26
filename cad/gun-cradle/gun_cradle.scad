@@ -71,7 +71,7 @@ module pipe_socket() {
     // between two ears; an M3 bolt through the ears squeezes the socket onto
     // the pipe, and one ear takes a trapped hex nut.
     r_out = socket_outer_dia / 2;
-    ear_x = r_out + clamp_ear_h / 2;
+    ear_x = r_out + clamp_ear_h / 2 - 2; // overlap the tube so they fuse
     ear_y = clamp_slit / 2 + clamp_ear_w / 2;
     difference() {
         union() {
