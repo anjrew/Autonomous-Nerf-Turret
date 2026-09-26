@@ -37,6 +37,8 @@ socket_outer_dia = 16.0;
 socket_length  = 15.0;  // how far the socket sticks out
 // Socket height as a fraction of the wall (0 = bottom edge, 0.5 = centred)
 socket_z_fraction = 0.5;
+// Distance of the socket centre from the closed end, along Y
+socket_y = 100.0;
 
 /* [Quality] */
 $fn = 48;
@@ -63,7 +65,8 @@ module gun_cradle() {
             // Pipe sockets coming off each side at the bottom
             if (mount_pipes) {
                 for (x = [-1, 1]) {
-                    translate([x * (outer_width / 2 + socket_length / 2 - 1), 0,
+                    translate([x * (outer_width / 2 + socket_length / 2 - 1),
+                               -outer_length / 2 + socket_y,
                                -outer_height / 2 + socket_z_fraction * outer_height])
                         rotate([0, 90, 0])
                             difference() {
