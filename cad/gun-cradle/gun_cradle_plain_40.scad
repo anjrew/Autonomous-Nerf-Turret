@@ -106,10 +106,10 @@ module gun_cradle() {
                 rounded_rect(cavity_width, cavity_length, inner_corner_radius);
 
         // Capsule opening disabled for this part (too short to fit)
-        // M3 bolt holes through the end walls
-        for (y = [-1, 1]) {
-            translate([0, y * outer_length / 2, 0])
-                rotate([90, 0, 0])
+        // M3 bolt holes through the end walls, on the X axis
+        for (x = [-1, 1]) {
+            translate([x * outer_width / 2, 0, 0])
+                rotate([0, 90, 0])
                     cylinder(d = end_m3_hole, h = wall_thickness + 4, center = true);
         }
         // Remove one short side (±Y walls, the 60 mm-wide faces) entirely
@@ -128,8 +128,8 @@ gun_cradle();
 
 // Preview-only markers (translucent, excluded from the STL) showing where
 // the M3 end-wall holes are.
-%for (y = [-1, 1])
-    translate([0, y * outer_length / 2, 0])
-        rotate([90, 0, 0])
+%for (x = [-1, 1])
+    translate([x * outer_width / 2, 0, 0])
+        rotate([0, 90, 0])
             color("red")
                 cylinder(d = 3.0, h = wall_thickness + 12, center = true);
