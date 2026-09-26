@@ -42,9 +42,16 @@ module rounded_rect(width, length, radius) {
 
 module gun_cradle() {
     difference() {
-        // Outer shell with rounded outside corners
-        linear_extrude(height = outer_height, center = true)
-            rounded_rect(outer_width, outer_length, outer_corner_radius);
+        // Outer shell with rounded outside corners, squared off at the open end
+        union() {
+            linear_extrude(height = outer_height, center = true)
+                rounded_rect(outer_width, outer_length, outer_corner_radius);
+            if (open_short_side) {
+                translate([0, open_side * (outer_length / 2 - outer_corner_radius / 2), 0])
+                    linear_extrude(height = outer_height, center = true)
+                        square([outer_width, outer_corner_radius], center = true);
+            }
+        }
 
         // Cavity with rounded inside corners, open at the top
         translate([0, 0, base_thickness / 2 + 0.5])
