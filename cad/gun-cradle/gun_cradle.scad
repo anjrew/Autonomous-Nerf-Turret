@@ -39,8 +39,14 @@ socket_length  = 15.0;  // how far the socket sticks out
 socket_z_fraction = 0.5;
 // Distance of the socket centre from the closed end, along Y
 socket_y = 100.0;
-// Grub screw hole through the socket wall (self-tapping; 3.0 for M3)
+// Grub screw hole through the socket wall (kept for reference; unused)
 grub_dia = 3.0;
+// Clamp hardware
+clamp_slit   = 1.6;  // slit width
+clamp_ear_h  = 6.0;  // how far the clamp ears stick out
+clamp_ear_w  = 5.0;  // ear width each side of the slit
+clamp_bolt_dia = 3.4; // M3 bolt clearance
+clamp_nut_af   = 5.5; // M3 hex nut across flats
 
 /* [Quality] */
 $fn = 48;
@@ -51,6 +57,31 @@ outer_height = cavity_height + base_thickness;
 
 module rounded_rect(width, length, radius) {
     offset(r = radius) square([width - 2 * radius, length - 2 * radius], center = true);
+}
+
+module pipe_socket() {
+    // Split-clamp pipe socket (local axis = Z). A slit runs along the top
+    // between two ears; an M3 bolt through the ears squeezes the socket onto
+    // the pipe, and one ear takes a trapped hex nut.
+    r_out = socket_outer_dia / 2;
+    ear_x = r_out + clamp_ear_h / 2;
+    ear_y = clamp_slit / 2 + clamp_ear_w / 2;
+    difference() {
+        union() {
+            cylinder(d = socket_outer_dia, h = socket_length, center = true);
+            for (y = [-1, 1])
+                translate([ear_x, y * ear_y, 0])
+                    cube([clamp_ear_h, clamp_ear_w, socket_length], center = true);
+        }
+        cylinder(d = pipe_dia, h = socket_length + 2, center = true);
+        translate([(r_out + clamp_ear_h) / 2 + 0.5, 0, 0])
+            cube([r_out + clamp_ear_h + 2, clamp_slit, socket_length + 2], center = true);
+        translate([ear_x, 0, 0])
+            rotate([90, 0, 0])
+                cylinder(d = clamp_bolt_dia, h = 2 * clamp_ear_w + clamp_slit + 4, center = true);
+        translate([ear_x, clamp_slit / 2 + clamp_ear_w - 1.6, 0])
+            cylinder(d = clamp_nut_af / cos(30), h = 3.2, center = true, $fn = 6);
+    }
 }
 
 module gun_cradle() {
@@ -71,13 +102,7 @@ module gun_cradle() {
                                -outer_length / 2 + socket_y,
                                -outer_height / 2 + socket_z_fraction * outer_height])
                         rotate([0, 90, 0])
-                            difference() {
-                                cylinder(d = socket_outer_dia, h = socket_length, center = true);
-                                cylinder(d = pipe_dia, h = socket_length + 2, center = true);
-                                // Grub screw hole through the socket wall
-                                rotate([90, 0, 0])
-                                    cylinder(d = grub_dia, h = socket_outer_dia + 2, center = true);
-                            }
+                            pipe_socket();
                 }
             }
         }
