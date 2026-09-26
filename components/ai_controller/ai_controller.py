@@ -47,7 +47,7 @@ parser.add_argument("--benchmark", "-b",help="Wether to measure the script perfo
 parser.add_argument('--targets', nargs='+', type=lambda x: str(x.lower().replace(" ", "_")), 
                     help='List of target ids to track. This will only be valid if a target type of "person" is selected', default=[])
 
-parser.add_argument('--search',  action='store_true', help='If this flag is set the gun will try to find targets if there are none currently in sight', default=False)
+parser.add_argument('--search', action=argparse.BooleanOptionalAction, default=True, help='Sweep to find targets when none are in sight (default on; --no-search disables).')
 parser.add_argument('--search-range', type=float, default=60.0,
                     help='Search sweep amplitude in degrees from centre (0-90).')
 parser.add_argument('--search-ease', type=float, default=1.0,
@@ -95,12 +95,12 @@ parser.add_argument('--video-url', default='http://localhost:8082/video.mjpg',
                     help='MJPEG stream URL embedded in the tuning UI live view.')
 parser.add_argument('--camera-settings-url', default='http://localhost:8082',
                     help='Base URL of the camera_vision settings API proxied by the tuning UI.')
-parser.add_argument('--az-kp', type=float, default=0.002, help='Azimuth PID proportional gain.')
-parser.add_argument('--az-ki', type=float, default=0.001, help='Azimuth PID integral gain.')
-parser.add_argument('--az-kd', type=float, default=0.00065, help='Azimuth PID derivative gain.')
-parser.add_argument('--el-kp', type=float, default=0.002, help='Elevation PID proportional gain.')
+parser.add_argument('--az-kp', type=float, default=0.00517, help='Azimuth PID proportional gain.')
+parser.add_argument('--az-ki', type=float, default=0.0, help='Azimuth PID integral gain.')
+parser.add_argument('--az-kd', type=float, default=0.0003, help='Azimuth PID derivative gain.')
+parser.add_argument('--el-kp', type=float, default=0.00244, help='Elevation PID proportional gain.')
 parser.add_argument('--el-ki', type=float, default=0.001, help='Elevation PID integral gain.')
-parser.add_argument('--el-kd', type=float, default=0.00065, help='Elevation PID derivative gain.')
+parser.add_argument('--el-kd', type=float, default=0.0, help='Elevation PID derivative gain.')
 
 
 
