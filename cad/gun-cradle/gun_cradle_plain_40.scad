@@ -4,8 +4,8 @@
 
 /* [Cavity] */
 // Internal cavity the gun sits in
-// Inner (cavity) 60 x 40 x 15 mm; outer = cavity + 2 x wall
-cavity_width  = 60.0;   // X (the 60)
+// Inner (cavity) 64 x 40 x 15 mm; outer = cavity + 2 x wall
+cavity_width  = 64.0;   // X (the 64)
 cavity_height = 15.0;   // Z
 cavity_length = 40.0;   // Y (the 40)
 
@@ -13,8 +13,8 @@ cavity_length = 40.0;   // Y (the 40)
 wall_thickness = 3.0;
 // No base: the cradle is open at both ends (set > 0 to add a floor)
 base_thickness = 0.0;
-// M3 bolt hole through each end wall (2.5 self-tapping, 3.4 clearance)
-end_m3_hole = 2.5;
+// M3 bolt clearance hole through each end wall (screw passes through)
+end_m3_hole = 3.4;
 
 /* [Corner radii] */
 // Radius on the inside corners of the cavity
