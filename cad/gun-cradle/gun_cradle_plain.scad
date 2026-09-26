@@ -32,7 +32,7 @@ open_side = -1;
 
 /* [Mounts] */
 // Pipe sockets coming off each side that a 10 mm pipe slides into
-mount_pipes    = true;
+mount_pipes    = false;
 pipe_dia       = 10.0;  // pipe bore (slip fit)
 socket_outer_dia = 16.0;
 socket_length  = 15.0;  // how far the socket sticks out
@@ -103,16 +103,7 @@ module gun_cradle() {
             linear_extrude(height = cavity_height + 1, center = true)
                 rounded_rect(cavity_width, cavity_length, inner_corner_radius);
 
-        // Capsule opening through the closed short wall
-        translate([0, -open_side * outer_length / 2,
-                   -outer_height / 2 + capsule_from_bottom + capsule_length / 2])
-            rotate([90, 0, 0])
-                linear_extrude(height = wall_thickness + 4, center = true)
-                    hull() {
-                        translate([0, -(capsule_length - capsule_width) / 2]) circle(d = capsule_width);
-                        translate([0,  (capsule_length - capsule_width) / 2]) circle(d = capsule_width);
-                    }
-
+        // Capsule opening disabled for this part (too short to fit)
         // Remove one short side (±Y walls, the 60 mm-wide faces) entirely
         if (open_short_side) {
             translate([0, open_side * (cavity_length / 2 + wall_thickness / 2 + 0.5), 0])
