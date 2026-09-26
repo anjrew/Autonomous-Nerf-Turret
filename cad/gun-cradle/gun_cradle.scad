@@ -29,6 +29,14 @@ open_short_side = true;
 // Which short side: -1 = -X, +1 = +X
 open_side = 1;
 
+/* [Mounts] */
+// Two mounting tabs coming off the bottom edge, one per long wall
+mount_tabs     = true;
+tab_width      = 20.0;  // along the wall
+tab_depth      = 15.0;  // sticking out sideways
+tab_thickness  = 4.0;   // vertical thickness
+tab_hole_dia   = 3.8;
+
 /* [Quality] */
 $fn = 48;
 
@@ -50,6 +58,17 @@ module gun_cradle() {
                 translate([0, open_side * (outer_length / 2 - outer_corner_radius / 2), 0])
                     linear_extrude(height = outer_height, center = true)
                         square([outer_width, outer_corner_radius], center = true);
+            }
+            // Two mounts coming off the bottom, one on each long wall
+            if (mount_tabs) {
+                for (x = [-1, 1]) {
+                    translate([x * (outer_width / 2 + tab_depth / 2), 0,
+                               -outer_height / 2 + tab_thickness / 2])
+                        difference() {
+                            cube([tab_depth, tab_width, tab_thickness], center = true);
+                            cylinder(d = tab_hole_dia, h = tab_thickness + 2, center = true);
+                        }
+                }
             }
         }
 
