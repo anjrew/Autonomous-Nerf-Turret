@@ -10,7 +10,8 @@ cavity_length = 100.0;  // Y
 
 /* [Walls] */
 wall_thickness = 3.0;
-base_thickness = 3.0;
+// No base: the cradle is open at both ends (set > 0 to add a floor)
+base_thickness = 0.0;
 
 /* [Corner radii] */
 // Radius on the inside corners of the cavity
