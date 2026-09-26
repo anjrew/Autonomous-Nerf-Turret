@@ -51,10 +51,10 @@ module gun_cradle() {
             linear_extrude(height = cavity_height + 1, center = true)
                 rounded_rect(cavity_width, cavity_length, inner_corner_radius);
 
-        // Remove one short side entirely
+        // Remove one short side (±Y walls, the 60 mm-wide faces) entirely
         if (open_short_side) {
-            translate([open_side * (cavity_width / 2 + wall_thickness / 2 + 0.5), 0, 0])
-                cube([wall_thickness + 1, outer_length + 2, outer_height + 2], center = true);
+            translate([0, open_side * (cavity_length / 2 + wall_thickness / 2 + 0.5), 0])
+                cube([outer_width + 2, wall_thickness + 1, outer_height + 2], center = true);
         }
     }
 }
