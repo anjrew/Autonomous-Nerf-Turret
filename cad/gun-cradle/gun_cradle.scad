@@ -36,7 +36,7 @@ pipe_dia       = 10.0;  // pipe bore (slip fit)
 socket_outer_dia = 16.0;
 socket_length  = 15.0;  // how far the socket sticks out
 // Socket height as a fraction of the wall (0 = bottom edge, 0.5 = centred)
-socket_z_fraction = 0.5;
+socket_z_fraction = 0.6;
 // Distance of the socket centre from the closed end, along Y
 socket_y = 100.0;
 // Grub screw hole through the socket wall (kept for reference; unused)
