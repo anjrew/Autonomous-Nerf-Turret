@@ -23,6 +23,12 @@ outer_corner_radius = 6.0;
 // Fillet where the cavity floor meets the walls
 floor_fillet = 3.0;
 
+/* [Open side] */
+// Completely open one of the short sides
+open_short_side = true;
+// Which short side: -1 = -X, +1 = +X
+open_side = 1;
+
 /* [Quality] */
 $fn = 48;
 
@@ -44,6 +50,12 @@ module gun_cradle() {
         translate([0, 0, base_thickness / 2 + 0.5])
             linear_extrude(height = cavity_height + 1, center = true)
                 rounded_rect(cavity_width, cavity_length, inner_corner_radius);
+
+        // Remove one short side entirely
+        if (open_short_side) {
+            translate([open_side * (cavity_width / 2 + wall_thickness / 2 + 0.5), 0, 0])
+                cube([wall_thickness + 1, outer_length + 2, outer_height + 2], center = true);
+        }
     }
 }
 
