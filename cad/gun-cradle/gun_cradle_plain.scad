@@ -5,7 +5,7 @@
 /* [Cavity] */
 // Internal cavity the gun sits in
 // Cavity 60 x 80 x 15 mm (outer = cavity + 2 x wall)
-cavity_width  = 60.0;   // X
+cavity_width  = 64.0;   // X
 cavity_height = 15.0;   // Z
 cavity_length = 80.0;   // Y
 
@@ -13,6 +13,8 @@ cavity_length = 80.0;   // Y
 wall_thickness = 3.0;
 // No base: the cradle is open at both ends (set > 0 to add a floor)
 base_thickness = 0.0;
+// M3 clearance hole through each X-axis end wall (screw passes through)
+end_m3_hole = 3.4;
 
 /* [Corner radii] */
 // Radius on the inside corners of the cavity
@@ -104,6 +106,12 @@ module gun_cradle() {
                 rounded_rect(cavity_width, cavity_length, inner_corner_radius);
 
         // Capsule opening disabled for this part (too short to fit)
+        // M3 bolt holes through the X-axis end walls, 5 mm from the open end
+        for (x = [-1, 1]) {
+            translate([x * outer_width / 2, open_side * (outer_length / 2 - 5), 0])
+                rotate([0, 90, 0])
+                    cylinder(d = end_m3_hole, h = wall_thickness + 4, center = true);
+        }
         // Remove one short side (±Y walls, the 60 mm-wide faces) entirely
         if (open_short_side) {
             translate([0, open_side * (cavity_length / 2 + wall_thickness / 2 + 0.5), 0])
