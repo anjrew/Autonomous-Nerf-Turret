@@ -35,8 +35,8 @@ mount_pipes    = true;
 pipe_dia       = 10.0;  // pipe bore (slip fit)
 socket_outer_dia = 16.0;
 socket_length  = 15.0;  // how far the socket sticks out
-// Socket height above the bottom edge (outer_height/2 = centred)
-socket_z_from_bottom = outer_height / 2;
+// Socket height as a fraction of the wall (0 = bottom edge, 0.5 = centred)
+socket_z_fraction = 0.5;
 
 /* [Quality] */
 $fn = 48;
@@ -64,7 +64,7 @@ module gun_cradle() {
             if (mount_pipes) {
                 for (x = [-1, 1]) {
                     translate([x * (outer_width / 2 + socket_length / 2 - 1), 0,
-                               -outer_height / 2 + socket_z_from_bottom])
+                               -outer_height / 2 + socket_z_fraction * outer_height])
                         rotate([0, 90, 0])
                             difference() {
                                 cylinder(d = socket_outer_dia, h = socket_length, center = true);
