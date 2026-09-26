@@ -4,10 +4,10 @@
 
 /* [Cavity] */
 // Internal cavity the gun sits in
-// Outer size is 40 x 60 x 15 mm (cavity = outer - 2 x wall)
-cavity_width  = 34.0;   // X -> outer 40
-cavity_height = 15.0;   // Z -> outer 15 (no base)
-cavity_length = 54.0;   // Y -> outer 60
+// Inner (cavity) 40 x 60 x 15 mm; outer = cavity + 2 x wall
+cavity_width  = 40.0;   // X (short side)
+cavity_height = 15.0;   // Z
+cavity_length = 60.0;   // Y (long side)
 
 /* [Walls] */
 wall_thickness = 3.0;
