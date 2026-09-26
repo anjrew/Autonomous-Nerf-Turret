@@ -34,6 +34,26 @@ def get_face_location_details(image_compression:int, face_location:tuple) -> dic
 
 
 
+def largest_blob_centroid(mask, scale: float = 1.0) -> Optional[list]:
+    """Centroid of the largest connected region in a segmentation mask.
+
+    Aiming at this is steadier than a bounding-box centre when the mask has
+    holes or stray pixels. Coordinates are scaled back to the full frame.
+    """
+    m = np.asarray(mask)
+    if m.ndim == 3:
+        m = m.reshape(m.shape[-2], m.shape[-1])
+    m = (m > 0.5).astype('uint8')
+    if not m.any():
+        return None
+    count, _, stats, centroids = cv2.connectedComponentsWithStats(m, 8)
+    if count <= 1:
+        return None
+    index = 1 + int(np.argmax(stats[1:, cv2.CC_STAT_AREA]))
+    cx, cy = centroids[index]
+    return [float(cx) * scale, float(cy) * scale]
+
+
 def get_target_id(frame, box:list, target_names: list, target_images: list) -> Optional[str]:
     """
     Identify a target based on the face bounding box coordinates, target names, and target images.
@@ -48,9 +68,15 @@ def get_target_id(frame, box:list, target_names: list, target_images: list) -> O
         The name of the identified target, or None if the target is not recognized.
     """
     left, top, right, bottom = box
-    t_width = right-left
-    t_height = bottom-top
-    sub_image = frame[top:top+t_height, left:left+t_width]
+    frame_height, frame_width = frame.shape[:2]
+    left = max(0, int(left))
+    top = max(0, int(top))
+    right = min(frame_width, int(right))
+    bottom = min(frame_height, int(bottom))
+    if right <= left or bottom <= top:
+        logging.debug("Target box outside frame bounds; skipping identification")
+        return None
+    sub_image = frame[top:bottom, left:right]
     img = cv2.cvtColor(   
                     sub_image,
                     cv2.COLOR_BGR2RGB

@@ -1,6 +1,69 @@
 import logging
 import argparse
-from typing import Union
+import threading
+import time
+from typing import Optional, Union
+
+import serial
+
+
+class ReconnectingSerial:
+    """Serial wrapper that reopens the Arduino port after a USB disconnect
+    (e.g. servo-draw brownouts), so the turret recovers without a restart."""
+
+    def __init__(self, baudrate: int = 9600, retry_interval: float = 2.0) -> None:
+        self.baudrate = baudrate
+        self.retry_interval = retry_interval
+        self._serial: Optional[serial.Serial] = None
+        self._lock = threading.Lock()
+        self._last_attempt = 0.0
+
+    def open(self) -> None:
+        if not self._try_open():
+            logging.warning("No Arduino found; will keep retrying in the background")
+
+    def _try_open(self) -> bool:
+        import serial.tools.list_ports
+        candidates = [
+            p.device for p in serial.tools.list_ports.comports()
+            if 'usbmodem' in p.device or 'usbserial' in p.device
+            or 'Arduino' in (p.manufacturer or '')
+        ]
+        for device in candidates:
+            try:
+                self._serial = serial.Serial(device, self.baudrate)
+                logging.info(f"Serial port connected: {device} at {self.baudrate} baud")
+                return True
+            except Exception as e:
+                logging.debug(f"Could not open {device}: {e}")
+        return False
+
+    def write(self, data: bytes) -> None:
+        with self._lock:
+            if self._serial is None or not self._serial.is_open:
+                if time.time() - self._last_attempt < self.retry_interval:
+                    raise serial.SerialException("Serial port not connected yet")
+                self._last_attempt = time.time()
+                if not self._try_open():
+                    raise serial.SerialException("Serial port not connected yet")
+            try:
+                self._serial.write(data)
+            except Exception:
+                try:
+                    self._serial.close()
+                except Exception:
+                    pass
+                self._serial = None
+                raise
+
+    def close(self) -> None:
+        with self._lock:
+            if self._serial:
+                try:
+                    self._serial.close()
+                except Exception:
+                    pass
+            self._serial = None
 
 # Define the conversion function
 def map_log_level(level_str) -> int:

@@ -4,11 +4,14 @@ __pycache__/
 *.log
 *.tmp
 *.swp
+.DS_Store
 /build
 /dist
 /venv
 /env
 /envs
+.venv/
+.venv*/
 /Pipfile.lock
 /conda.lock
 
