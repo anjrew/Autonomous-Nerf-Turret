@@ -48,6 +48,13 @@ clamp_ear_w  = 5.0;  // ear width each side of the slit
 clamp_bolt_dia = 3.4; // M3 bolt clearance
 clamp_nut_af   = 5.5; // M3 hex nut across flats
 
+/* [Capsule opening] */
+// Capsule slot through the closed short wall (centred in X)
+capsule_length = 35.0;
+capsule_width  = 10.0;
+// Distance from the bottom edge to the start of the capsule
+capsule_from_bottom = 13.0;
+
 /* [Quality] */
 $fn = 48;
 
@@ -111,6 +118,16 @@ module gun_cradle() {
         translate([0, 0, base_thickness / 2 + 0.5])
             linear_extrude(height = cavity_height + 1, center = true)
                 rounded_rect(cavity_width, cavity_length, inner_corner_radius);
+
+        // Capsule opening through the closed short wall
+        translate([0, -open_side * outer_length / 2,
+                   -outer_height / 2 + capsule_from_bottom + capsule_length / 2])
+            rotate([90, 0, 0])
+                linear_extrude(height = wall_thickness + 4, center = true)
+                    hull() {
+                        translate([0, -(capsule_length - capsule_width) / 2]) circle(d = capsule_width);
+                        translate([0,  (capsule_length - capsule_width) / 2]) circle(d = capsule_width);
+                    }
 
         // Remove one short side (±Y walls, the 60 mm-wide faces) entirely
         if (open_short_side) {
