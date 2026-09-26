@@ -125,3 +125,11 @@ module gun_cradle() {
 }
 
 gun_cradle();
+
+// Preview-only markers (translucent, excluded from the STL) showing where
+// the M3 end-wall holes are.
+%for (y = [-1, 1])
+    translate([0, y * outer_length / 2, 0])
+        rotate([90, 0, 0])
+            color("red")
+                cylinder(d = 3.0, h = wall_thickness + 12, center = true);
