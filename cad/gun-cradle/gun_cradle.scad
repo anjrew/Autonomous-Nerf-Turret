@@ -6,7 +6,7 @@
 // Internal cavity the gun sits in
 cavity_width  = 60.0;   // X
 cavity_height = 100.0;  // Z
-cavity_length = 100.0;  // Y
+cavity_length = 120.0;  // Y (20 mm longer)
 
 /* [Walls] */
 wall_thickness = 3.0;
