@@ -27,7 +27,7 @@ floor_fillet = 3.0;
 // Completely open one of the short sides
 open_short_side = true;
 // Which short side: -1 = -X, +1 = +X
-open_side = 1;
+open_side = -1;
 
 /* [Mounts] */
 // Pipe sockets coming off each side that a 10 mm pipe slides into
