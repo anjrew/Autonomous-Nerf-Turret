@@ -35,7 +35,7 @@ mount_tabs     = true;
 tab_width      = 20.0;  // along the wall
 tab_depth      = 15.0;  // sticking out sideways
 tab_thickness  = 4.0;   // vertical thickness
-tab_hole_dia   = 3.8;
+tab_hole_dia   = 10.0;  // 10 mm pipe passes through
 
 /* [Quality] */
 $fn = 48;
