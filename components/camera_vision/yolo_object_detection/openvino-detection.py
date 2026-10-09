@@ -118,10 +118,10 @@ for result in output:
             # print('segmentation', result.masks[0])
             # probs = result.probs  # Class probabilities for classification outputs
 
-from ultralytics.yolo.utils import ROOT, yaml_load
-from ultralytics.yolo.utils.checks import check_yaml
+from ultralytics.utils import ROOT, YAML
+from ultralytics.utils.checks import check_yaml
 
-CLASSES = yaml_load(check_yaml('coco128.yaml'))['names']
+CLASSES = YAML.load(check_yaml('coco128.yaml'))['names']
 
 colors = np.random.uniform(0, 255, size=(len(CLASSES), 3))
     

@@ -1,5 +1,7 @@
 # Standard library imports
 import socket
+import argparse
+import threading
 import time
 import os
 import sys
@@ -18,11 +20,12 @@ import numpy as np
 # Local/application-specific imports
 from argparse import ArgumentParser
 from nerf_turret_utils.args_utils import map_log_level, str2bool
-from camera_vision_utils import get_face_location_details, get_target_id, find_faces_in_frame, draw_face_box, draw_cross_hair
+from camera_vision_utils import get_face_location_details, get_target_id, find_faces_in_frame, draw_face_box, draw_cross_hair, largest_blob_centroid
 from yolo_object_detection.object_detection import YoloObjectDetector
 from yolo_object_detection.object_detection import ObjectDetector
 from yolo_object_detection.utils import draw_object_mask, draw_object_box
 from yolo_object_detection.opencv_onnx_python import ONNXObjectDetector
+from stream_server import start_stream_server, update as update_stream, TurretSettings
 
 
 parser = ArgumentParser(description="Track faces with bounding boxes")
@@ -38,7 +41,10 @@ parser.add_argument("--detector", "-d" , help="The detector to use with inferenc
 
 parser.add_argument("--log-level", "-ll" , help="Set the logging level by integer value.", default=logging.INFO, type=map_log_level)
 parser.add_argument("--delay", help="Delay to limit the data flow into the websocket server.", default=0, type=int)
-parser.add_argument("--headless", help="Whether to run the service in headless mode.", action='store_true', default=False)
+parser.add_argument("--headless", help="Deprecated: same as --view none.", action='store_true', default=False)
+parser.add_argument("--view", choices=['web', 'window', 'none'], default='web',
+                    help="Where to show the feed: web (MJPEG stream in the tuning UI, default), window (native OpenCV window), or none.")
+parser.add_argument("--stream-port", help="Port for the MJPEG web stream of the annotated feed. 0 disables the stream.", type=int, default=8082)
 parser.add_argument("--id-targets", "-it", help="Whether to id targets that are stored in the './data/targets' folder.", action='store_true', default=False)
 parser.add_argument("--test", "-t", help="Test without trying to emit data.", action='store_true', default=False)
 parser.add_argument("--benchmark", "-b", help="Wether to measure the script performance and output in the logs.", action='store_true', default=False)
@@ -58,28 +64,53 @@ parser.add_argument("--object-confidence", "-oc",
 parser.add_argument("--box-targets", "-bt",
                         help="What objects to draw boxes around", nargs='+', type=str, default=['person', 'face'])
 
+parser.add_argument("--imgsz", type=int, default=640,
+                    help="Inference input size. 640 = most accurate; lower values trade recall for speed. Live-tunable.")
+parser.add_argument("--segmentation", action=argparse.BooleanOptionalAction, default=True,
+                    help="Use the YOLO segmentation model and aim at the largest mask blob's centroid. Live-tunable; on by default.")
+
 args = parser.parse_args()
 
-image_compression = args.image_compression
 logging.basicConfig(level=args.log_level)
+
+settings = TurretSettings({
+    'imgsz': args.imgsz,
+    'image_compression': args.image_compression,
+    'detect_every': args.skip_frames + 1,
+    'object_confidence': args.object_confidence,
+    'detect_faces': args.detect_faces,
+    'detect_objects': args.detect_objects,
+    'id_targets': args.id_targets,
+    'segmentation': args.segmentation,
+    'loop_delay': args.delay,
+})
+
+VIEW = 'none' if args.headless else args.view
 
 logging.debug(f"\nArgs: {args}\n")
 
 
 target_images = []
 target_names = [ ]
+targets_loaded = False
+
+script_dir = os.path.dirname(os.path.abspath(sys.argv[0]))
 
 
-if args.id_targets:
-    """Load the target images and use them to build the target names"""
-    script_path = os.path.abspath(sys.argv[0])
-    script_dir = os.path.dirname(script_path)
+targets_lock = threading.Lock()
+
+
+def _load_targets():
+    """Encode the known-target photos; caller must hold targets_lock"""
+    global target_images, target_names, targets_loaded
     targets_dir = f"{script_dir}/data/targets"
-    
+    os.makedirs(targets_dir, exist_ok=True)
+    names, images = [], []
     for file in os.listdir(targets_dir):
-             
-        target_names.append(file.split('.')[0])
-        target_images.append(
+        if not file.lower().endswith(('.jpg', '.jpeg', '.png')):
+            continue
+        names.append(file.rsplit('.', 1)[0])
+        images.append(
             face_recognition.face_encodings(
                 cv2.cvtColor(
                     cv2.imread(
@@ -89,13 +120,65 @@ if args.id_targets:
                 )
             )[0]
         )
-        
-    logging.info(f" Labeling targets {target_names}")
-            
+    target_names = names
+    target_images = images
+    targets_loaded = True
+    if target_names:
+        logging.info(f" Labeling targets {target_names}")
+    else:
+        logging.warning(
+            f"No target photos in {targets_dir}; face ID targeting will match nobody "
+            "until photos named <person>.jpg are added there."
+        )
 
-object_detector: Optional[ObjectDetector]        
-if args.detect_objects:
-    object_detector = ONNXObjectDetector() if args.detector == 'onnx' else YoloObjectDetector() 
+
+def ensure_targets_loaded():
+    """Load known-target encodings once, the first time face ID targeting is used"""
+    global targets_loaded
+    if targets_loaded:
+        return
+    with targets_lock:
+        if targets_loaded:
+            return
+        _load_targets()
+
+
+def get_target_names(refresh: bool = False) -> list:
+    """Return target names; with refresh=True re-encode (serialized to avoid
+    concurrent dlib work, which crashed the native heap)."""
+    if refresh:
+        with targets_lock:
+            _load_targets()
+    else:
+        ensure_targets_loaded()
+    return list(target_names)
+
+
+if settings.get('id_targets'):
+    ensure_targets_loaded()
+
+if VIEW == 'web' and args.stream_port:
+    start_stream_server(args.stream_port, settings, get_target_names)
+    logging.info(f"MJPEG stream on http://0.0.0.0:{args.stream_port}/video.mjpg")
+
+
+object_detector: Optional[ObjectDetector] = None
+
+
+def ensure_object_detector(model_name: str = 'yolo11n.pt'):
+    global object_detector
+    if args.detector == 'onnx':
+        if object_detector is None:
+            object_detector = ONNXObjectDetector()
+        return object_detector
+    if object_detector is None or getattr(object_detector, 'model_name', None) != model_name:
+        object_detector = YoloObjectDetector(model_name=model_name,
+                                             imgsz=settings.get('imgsz', 640))
+    return object_detector
+
+
+if settings.get('detect_objects'):
+    ensure_object_detector('yolo11n-seg.pt' if settings.get('segmentation') else 'yolo11n.pt')
                        
 ## Setup ready to send data to subscribers
 HOST = args.host  # IP address of the server
@@ -105,12 +188,16 @@ PORT = args.port  # Port number to listen on
 # Set this value to change the Camera ID
 CAMERA_ID = args.camera
 CROSS_HAIR_SIZE = args.crosshair_size
-HEADLESS=args.headless
-
-if HEADLESS:
-    cv2.CAP_DSHOW = False
 
 cap = cv2.VideoCapture(CAMERA_ID)
+
+if not cap.isOpened():
+    logging.error(
+        f"Camera {CAMERA_ID} failed to open. On macOS this usually means camera access "
+        "is denied: System Settings > Privacy & Security > Camera, enable it for your "
+        "terminal app, then re-run."
+    )
+    sys.exit(1)
 
 scaling_factor = 0.5
 web_socket_client_connection = None
@@ -142,7 +229,7 @@ start_time=time.time()
 targets = [] # List of targets in the frame to keep out here for skipped frame processing
 
 while True:
-    time.sleep(args.delay)
+    time.sleep(settings.get('loop_delay', args.delay))
     if args.benchmark:
         print(f'Performance benchmark on 1 loop:{ round(time.time() - start_time, 3) * 1000 }ms', )
         start_time = time.time()
@@ -151,11 +238,17 @@ while True:
         try_to_create_socket()
         
     try:
+        image_compression = settings.get('image_compression', args.image_compression)
         frame_count += 1
-        skip_frame = frame_count % skip_frames == 0
+        skip_frame = frame_count % settings.get('detect_every', skip_frames) == 0
         logging.debug(f"Skipping frame: {skip_frame}")
         
         ret, frame = cap.read()
+        
+        if not ret or frame is None:
+            logging.error(f"Failed to read frame from camera {CAMERA_ID}. Retrying in 5 seconds...")
+            time.sleep(5)
+            continue
                 
         # Get the image height and width
         frame_height, frame_width, _ = frame.shape   
@@ -164,8 +257,10 @@ while True:
 
         if not skip_frame:
             targets = []
-            if args.detect_faces:
+            if settings.get('detect_faces', args.detect_faces):
                 face_locations = find_faces_in_frame(compressed_image)
+        elif not settings.get('detect_faces', args.detect_faces):
+            face_locations = []
 
         
         # Loop through each face in this frame of video that were detected
@@ -173,51 +268,98 @@ while True:
             # Scale back up face locations since the frame we detected in was scaled to 1/4 size
             target = get_face_location_details(image_compression, face_location)
             
-            if args.id_targets:
-                target["id"]  = get_target_id(frame, target["box"], target_names, target_images)
+            if settings.get('id_targets', args.id_targets):
+                ensure_targets_loaded()
+                if target_names:
+                    target["id"]  = get_target_id(frame, target["box"], target_names, target_images)
                 
             targets.append(target)
             
-        if 'object_detector' in globals() and not skip_frame: 
-            results =  object_detector.detect(compressed_image, args.object_confidence) #type: ignore
+        if settings.get('detect_objects', args.detect_objects) and not skip_frame:
+            segmentation_on = bool(settings.get('segmentation', args.segmentation))
+            model_name = 'yolo11n-seg.pt' if segmentation_on else 'yolo11n.pt'
+            detector = ensure_object_detector(model_name)
+            if args.detector != 'onnx' and detector is not None:
+                detector.imgsz = settings.get('imgsz', 640) # type: ignore
+            results =  detector.detect(compressed_image, settings.get('object_confidence', args.object_confidence)) #type: ignore
             for result in results:
 
-                # target = { "box": result["box"], "type": result["class_name"], "mask": result["mask"].tolist()}
                 target = { "box": (np.array(result["box"]) * image_compression).tolist(), "type": result["class_name"],}
+                if segmentation_on and result.get('mask') is not None:
+                    # Resize the mask to the full frame once, then derive both
+                    # the aim centroid and the drawn contour from it, so the
+                    # marker always sits inside the segmented area.
+                    mask = np.asarray(result['mask'])
+                    if mask.ndim == 3:
+                        mask = mask.reshape(mask.shape[-2], mask.shape[-1])
+                    mask = cv2.resize(mask.astype('uint8'), (frame_width, frame_height),
+                                      interpolation=cv2.INTER_NEAREST)
+                    centroid = largest_blob_centroid(mask, 1.0)
+                    if centroid is not None:
+                        target["center"] = centroid
+                    mask_color = detector.get_color_for_class_name(result['class_name']) # type: ignore
+                    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                    cv2.drawContours(frame, contours, -1, mask_color, 2)
                 targets.append(target)
+            if segmentation_on:
+                # Aim at the biggest body first: the controller takes the first
+                # matching target, so order object targets by area descending.
+                object_targets = [t for t in targets if t['type'] not in ('face',)]
+                object_targets.sort(
+                    key=lambda t: (t['box'][2] - t['box'][0]) * (t['box'][3] - t['box'][1]),
+                    reverse=True,
+                )
+                other_targets = [t for t in targets if t['type'] == 'face']
+                targets = other_targets + object_targets
+                for t in targets:
+                    t.pop('aim', None)
+                persons = [t for t in object_targets if t['type'] == 'person']
+                if persons:
+                    persons[0]['aim'] = True
+                elif object_targets:
+                    object_targets[0]['aim'] = True
                 
-        if not HEADLESS: ## Draw targets
-            is_on_target = False
+        is_on_target = False
+            
+        for target in targets:
+            logging.debug("Target: " + str(target))
+            
+            if len(args.box_targets or []) == 0 or target['type'] not in args.box_targets:
+                continue # skip this target if it's not in the list of targets to draw boxes around
+            
+            left, top, right, bottom = target["box"]
+            center_x = frame_width // 2
+            center_y = frame_height // 2
+            
+            
+            if top <= center_y <= bottom and left <= center_x <= right:
+                is_on_target=True 
+                 
+            if target['type'] == 'face':
+                frame = draw_face_box(frame, target, is_on_target)
                 
-            for target in targets:
-                logging.debug("Target: " + str(target))
+            elif object_detector: # type: ignore
                 
-                if len(args.box_targets or []) == 0 or target['type'] not in args.box_targets:
-                    continue # skip this target if it's not in the list of targets to draw boxes around
-                
-                left, top, right, bottom = target["box"]
-                center_x = frame_width // 2
-                center_y = frame_height // 2
-                
-                
-                if top <= center_y <= bottom and left <= center_x <= right:
-                    is_on_target=True 
-                     
-                if target['type'] == 'face':
-                    frame = draw_face_box(frame, target, is_on_target)
-                    
-                elif object_detector: # type: ignore
-                    
-                    class_color = object_detector.get_color_for_class_name(target['type'])
+                class_color = object_detector.get_color_for_class_name(target['type'])
 
-                    if 'mask' in target:
-                        frame = draw_object_mask(frame, class_color, np.array(target['mask']))
-                    
-                    if 'box' in target:
-                        frame = draw_object_box(frame, left, top, right, bottom, target['type'], class_color)
-                    
-                # Always draw the cross hai.rindex() if not headless        
-            frame =  draw_cross_hair(frame, CROSS_HAIR_SIZE, is_on_target)
+                if 'mask' in target:
+                    frame = draw_object_mask(frame, class_color, np.array(target['mask']))
+                
+                if 'box' in target:
+                    frame = draw_object_box(frame, left, top, right, bottom, target['type'], class_color)
+
+                if 'center' in target and target.get('aim'):
+                    ccx, ccy = int(target['center'][0]), int(target['center'][1])
+                    # Distinct diamond + dot marker (unique colour/shape) so the
+                    # aim centroid stands out from boxes and mask contours.
+                    marker_color = (255, 0, 255) # magenta (BGR)
+                    diamond = np.array([[ccx, ccy - 10], [ccx + 10, ccy],
+                                        [ccx, ccy + 10], [ccx - 10, ccy]], np.int32)
+                    cv2.polylines(frame, [diamond], True, marker_color, 2)
+                    cv2.circle(frame, (ccx, ccy), 2, (255, 255, 255), -1)
+                
+            # Always draw the cross hai.rindex() if not headless        
+        frame =  draw_cross_hair(frame, CROSS_HAIR_SIZE, is_on_target)
 
  
         
@@ -234,19 +376,24 @@ while True:
             # logging.debug(f'{ "Mock: "if args.test else ""}Sending data({len(json_data)}) to the AI controller:' + json.dumps(data))
             logging.debug(f'{ "Mock: "if args.test else ""}Sending data({len(json_data)}) to the AI controller:' + json.dumps(data))
             if web_socket_client_connection and not args.test:
-                web_socket_client_connection.sendall(json_data) # Send the byte string to the server
+                web_socket_client_connection.sendall(json_data + b'\n') # Send the byte string to the server
                 
         else:
             if web_socket_client_connection and not args.test:
-                web_socket_client_connection.sendall(json.dumps({"targets": []}).encode('utf-8'))
+                web_socket_client_connection.sendall(b'{"targets": []}\n')
             
-        if not HEADLESS:
+        if VIEW == 'web' and args.stream_port:
+            ok, jpeg = cv2.imencode('.jpg', frame)
+            if ok:
+                update_stream(jpeg.tobytes())
+
+        if VIEW == 'window':
             cv2.imshow('Face Detector', frame)
 
-        c = cv2.waitKey(1)
-        ## S 'key'
-        if c == 27:
-            break
+            c = cv2.waitKey(1)
+            ## S 'key'
+            if c == 27:
+                break
         
         
     except KeyboardInterrupt as e:
@@ -265,6 +412,10 @@ while True:
         logging.error("Socket connection lost. Retrying in 5 seconds...")
         time.sleep(5)
         web_socket_client_connection = None
+        pass
+    except Exception as e:
+        logging.error(f"Unhandled error in camera loop ({type(e).__name__}: {e}). Retrying in 1 second...")
+        time.sleep(1)
         pass
     finally:
         # Record the time taken to process the frame

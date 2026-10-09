@@ -9,8 +9,8 @@ sys.path.append(directory_path)
 
 import cv2.dnn #type: ignore
 import numpy as np
-from ultralytics.yolo.utils import ROOT, yaml_load
-from ultralytics.yolo.utils.checks import check_yaml
+from ultralytics.utils import ROOT, YAML
+from ultralytics.utils.checks import check_yaml
 import logging
 
 print(sys.path)
@@ -30,7 +30,7 @@ class ONNXObjectDetector(ObjectDetector):
             model_name: Name of the ONNX model file to use.
         """
         self.model: cv2.dnn.Net = cv2.dnn.readNetFromONNX(f'{directory_path}/{model_name}')
-        self.class_names = yaml_load(check_yaml('coco128.yaml'))['names']
+        self.class_names = YAML.load(check_yaml('coco128.yaml'))['names']
         logging.debug("Detecting from : " + str(self.class_names))
         self.colors = np.random.uniform(0, 255, size=(len(self.class_names), 3))
         self.class_name_id = { v:k for k, v in self.class_names.items() } # type: ignore
