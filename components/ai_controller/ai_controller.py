@@ -149,6 +149,7 @@ tuning_state = TuningState({
     'manual_fire': False,
     'accuracy_threshold_x': args.accuracy_threshold_x,
     'accuracy_threshold_y': args.accuracy_threshold_y,
+    'targets_exclude': False,
 })
 
 
@@ -410,7 +411,8 @@ while True:
                 mode_params = tuning_state.params()
                 target_type = mode_params.get('target_type', args.target_type)
                 target_ids = mode_params.get('targets', list(args.targets))
-                target_index = get_priority_target_index(json_data['targets'], target_type, target_ids)
+                target_index = get_priority_target_index(json_data['targets'], target_type, target_ids,
+                                                         mode_params.get('targets_exclude', False))
 
                 if target_index is None:
                     # Objects were seen but none match the current target type,
