@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 800" width="1000" height="800" role="img" aria-labelledby="title desc">
+  <title id="title">Autonomous Nerf Turret power distribution</title>
+  <desc id="desc">A 12 volt supply powers the Arduino, stepper motor, and buck converter. The buck converter supplies 6 volts to the servo motor and the Nerf gun. All components share a common ground.</desc>
+  <defs>
+    <style>
+      .label { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; fill: #1f2328; }
+      .muted { fill: #57606a; }
+      .node { fill: #ffffff; stroke: #d0d7de; stroke-width: 1.5; }
+      .node-title { font-size: 16px; font-weight: 600; }
+      .node-sub { font-size: 12px; }
+      .rail { stroke-width: 3; fill: none; stroke-linecap: round; }
+      .branch { stroke-width: 2.5; fill: none; stroke-linecap: round; }
+      .v12 { stroke: #cf222e; }
+      .v6 { stroke: #2da44e; }
+      .gnd { stroke: #1f2328; }
+      .rail-label { font-size: 14px; font-weight: 700; }
+    </style>
+  </defs>
+
+  <!-- Legend -->
+  <g transform="translate(600,34)">
+    <line x1="0" y1="0" x2="26" y2="0" class="branch v12"/>
+    <text class="label muted" x="34" y="4" font-size="12.5">12 V</text>
+    <line x1="96" y1="0" x2="122" y2="0" class="branch v6"/>
+    <text class="label muted" x="130" y="4" font-size="12.5">6 V</text>
+    <line x1="188" y1="0" x2="214" y2="0" class="branch gnd"/>
+    <text class="label muted" x="222" y="4" font-size="12.5">GND</text>
+  </g>
+
+  <!-- Rails -->
+  <line x1="920" y1="80" x2="920" y2="620" class="rail v12"/>
+  <text class="label rail-label" x="920" y="66" text-anchor="middle" fill="#cf222e">12 V</text>
+
+  <line x1="80" y1="80" x2="80" y2="650" class="rail gnd"/>
+  <text class="label rail-label" x="80" y="676" text-anchor="middle">GND</text>
+
+  <!-- Arduino -->
+  <rect class="node" x="380" y="70" width="210" height="95" rx="10"/>
+  <text class="label node-title" x="485" y="108" text-anchor="middle">Arduino</text>
+  <text class="label muted node-sub" x="485" y="130" text-anchor="middle">VIN 7–12 V</text>
+  <line x1="590" y1="117" x2="920" y2="117" class="branch v12"/>
+  <line x1="80" y1="117" x2="380" y2="117" class="branch gnd"/>
+
+  <!-- Servo -->
+  <path class="node" d="M160,270 L340,270 L370,310 L340,350 L160,350 L130,310 Z" fill="#ddf4ff" stroke="#0969da"/>
+  <text class="label node-title" x="250" y="304" text-anchor="middle">Servo motor</text>
+  <text class="label muted node-sub" x="250" y="324" text-anchor="middle">4.8–6 V</text>
+  <line x1="80" y1="310" x2="130" y2="310" class="branch gnd"/>
+
+  <!-- Stepper -->
+  <path class="node" d="M450,400 L590,400 L620,440 L590,480 L450,480 L420,440 Z" fill="#ddf4ff" stroke="#0969da"/>
+  <text class="label node-title" x="520" y="434" text-anchor="middle">Stepper motor</text>
+  <text class="label muted node-sub" x="520" y="454" text-anchor="middle">12 V</text>
+  <line x1="620" y1="440" x2="920" y2="440" class="branch v12"/>
+  <line x1="80" y1="440" x2="420" y2="440" class="branch gnd"/>
+
+  <!-- Buck converter -->
+  <rect class="node" x="420" y="560" width="200" height="80" rx="10"/>
+  <text class="label node-title" x="520" y="590" text-anchor="middle">Buck converter</text>
+  <text class="label muted node-sub" x="520" y="611" text-anchor="middle">12 V → 6 V</text>
+  <line x1="620" y1="600" x2="920" y2="600" class="branch v12"/>
+  <line x1="80" y1="580" x2="420" y2="580" class="branch gnd"/>
+
+  <!-- Nerf gun -->
+  <rect x="130" y="590" width="240" height="90" rx="10" fill="#ffebe9" stroke="#cf222e" stroke-width="1.5"/>
+  <text class="label node-title" x="250" y="628" text-anchor="middle">Nerf gun</text>
+  <text class="label muted node-sub" x="250" y="650" text-anchor="middle">6 V drive motors</text>
+  <line x1="80" y1="625" x2="130" y2="625" class="branch gnd"/>
+
+  <!-- 6 V bus (hops over the stepper ground lead) -->
+  <line x1="400" y1="310" x2="400" y2="432" class="branch v6"/>
+  <path d="M400,432 A8,8 0 0 1 400,448" class="branch v6"/>
+  <line x1="400" y1="448" x2="400" y2="655" class="branch v6"/>
+  <line x1="400" y1="310" x2="370" y2="310" class="branch v6"/>
+  <line x1="420" y1="620" x2="400" y2="620" class="branch v6"/>
+  <line x1="400" y1="655" x2="370" y2="655" class="branch v6"/>
+  <text class="label rail-label" x="388" y="552" text-anchor="end" fill="#2da44e">6 V</text>
+
+  <!-- Junction dots -->
+  <circle cx="920" cy="117" r="4" fill="#cf222e"/>
+  <circle cx="920" cy="440" r="4" fill="#cf222e"/>
+  <circle cx="400" cy="620" r="4" fill="#2da44e"/>
+</svg>
