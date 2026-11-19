@@ -368,7 +368,7 @@ class TuningState:
                 mode_value = str(values['control_mode']).lower()
                 if mode_value in ('auto', 'manual'):
                     self._params['control_mode'] = mode_value
-            for key in ('manual_clockwise', 'manual_fire'):
+            for key in ('manual_clockwise', 'manual_fire', 'targets_exclude'):
                 if key in values:
                     self._params[key] = bool(values[key])
             return dict(self._params)

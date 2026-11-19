@@ -47,7 +47,7 @@ def slow_start_fast_end_smoothing(x: float, p: float, max_value: int) -> float:
     return output if x >= 0 else -abs(output)
 
 
-def get_priority_target_index(targets: List[dict], type: str,  target_ids: List[str]=[]) -> Optional[int]:
+def get_priority_target_index(targets: List[dict], type: str,  target_ids: List[str]=[], exclude: bool = False) -> Optional[int]:
     """
     Returns the index of the highest priority target in the `targets` list based on the input `ids` and `type`.
 
@@ -73,7 +73,11 @@ def get_priority_target_index(targets: List[dict], type: str,  target_ids: List[
     if len(target_ids) > 0: # If there are target IDs just check if the target IDs face is in the list
         assert type == "face", "The `type` argument must be 'face' if the `ids` argument is not empty, as these are face IDs."
         for i, target in enumerate(targets):
-            if target.get("id", None) in target_ids:
+            if exclude:
+                # Inverted: shoot anyone whose id is NOT in the list
+                if target.get("id", None) not in target_ids:
+                    return i
+            elif target.get("id", None) in target_ids:
                 return i
     else:
         for i, target in enumerate(targets):
